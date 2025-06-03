@@ -13,6 +13,7 @@ use winit::{
 
 mod block;
 mod camera;
+mod chunk;
 mod render;
 mod texture;
 
