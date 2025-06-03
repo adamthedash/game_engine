@@ -1,0 +1,15 @@
+[package]
+name = "game_engine"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.98"
+bytemuck = { version = "1.23.0", features = ["derive"] }
+cgmath = "0.18.0"
+env_logger = "0.11.8"
+image = "0.25.6"
+tokio = { version = "1.45.1", features = ["full"] }
+wgpu = "25.0.2"
+wgpu_text = "0.9.3"
+winit = { version = "0.30.11", features = ["rwh_06"] }
