@@ -7,8 +7,8 @@ use winit::{
     application::ApplicationHandler,
     event::{KeyEvent, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
-    keyboard::PhysicalKey,
-    window::{Window, WindowId},
+    keyboard::{KeyCode, PhysicalKey},
+    window::{CursorGrabMode, Window, WindowId},
 };
 
 mod block;
@@ -28,7 +28,7 @@ impl App<'_> {
         Self {
             runtime: Runtime::new().unwrap(),
             render_state: None,
-            camera_controller: CameraController::new(0.2),
+            camera_controller: CameraController::new(0.2, 0.2),
         }
     }
 }
@@ -44,14 +44,19 @@ impl ApplicationHandler for App<'_> {
             // Initial position of the camera/player
             let camera = Camera {
                 pos: (0., 1., 2.).into(),
-                target: (0., 0., 0.).into(),
+                forward: cgmath::Vector3::unit_x(),
                 up: cgmath::Vector3::unit_y(),
                 aspect: 1.,
                 fovy: 45.,
                 znear: 0.1,
                 zfar: 100.,
             };
-            self.render_state = Some(self.runtime.block_on(RenderState::new(window, camera)));
+            let render_state = self.runtime.block_on(RenderState::new(window, camera));
+            render_state
+                .window
+                .set_cursor_grab(CursorGrabMode::Confined)
+                .unwrap();
+            self.render_state = Some(render_state);
         }
     }
 
@@ -93,8 +98,14 @@ impl ApplicationHandler for App<'_> {
                     },
                 ..
             } => {
-                self.camera_controller.update_state(key, state);
+                if key == KeyCode::F4 {
+                    println!("Closing");
+                    event_loop.exit();
+                }
+
+                self.camera_controller.handle_keypress(key, state);
             }
+            WindowEvent::AxisMotion { axis, value, .. } => {}
             _ => {}
         }
     }
