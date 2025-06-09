@@ -96,11 +96,13 @@ impl CameraController {
                 let forward = (camera.target - camera.pos).normalize();
                 let right = forward.cross(camera.up);
                 camera.pos -= right * self.speed;
+                camera.target -= right * self.speed;
             }
             (false, true) => {
                 let forward = (camera.target - camera.pos).normalize();
                 let right = forward.cross(camera.up);
                 camera.pos += right * self.speed;
+                camera.target += right * self.speed;
             }
             _ => {}
         }
@@ -108,19 +110,23 @@ impl CameraController {
             (true, false) => {
                 let forward = (camera.target - camera.pos).normalize();
                 camera.pos += forward * self.speed;
+                camera.target += forward * self.speed;
             }
             (false, true) => {
                 let forward = (camera.target - camera.pos).normalize();
                 camera.pos -= forward * self.speed;
+                camera.target -= forward * self.speed;
             }
             _ => {}
         }
         match (self.up_pressed, self.down_pressed) {
             (true, false) => {
                 camera.pos += camera.up.normalize() * self.speed;
+                camera.target += camera.up.normalize() * self.speed;
             }
             (false, true) => {
                 camera.pos -= camera.up.normalize() * self.speed;
+                camera.target -= camera.up.normalize() * self.speed;
             }
             _ => {}
         }
