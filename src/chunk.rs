@@ -28,6 +28,7 @@ struct World {
 
 impl World {
     /// Save the world data to disk
+    /// 1 chunk = 1 file, block types stored as a flat array
     pub fn save(&self, folder: &Path) {
         assert!(!folder.exists());
         fs::create_dir(folder).unwrap();

@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr, sync::Arc};
+use std::{path::PathBuf, str::FromStr, sync::Arc, time};
 
 use bytemuck::{Pod, Zeroable};
 use cgmath::{Matrix4, Quaternion, Vector3};
@@ -412,6 +412,7 @@ impl RenderState<'_> {
 
     /// Perform the actual rendering to the screen
     pub fn render(&mut self) {
+        let start_time = time::Instant::now();
         // Get a view on the surface texture that we'll draw to
         let output = self.surface.get_current_texture().unwrap();
         let view = output
@@ -495,5 +496,11 @@ impl RenderState<'_> {
 
         // Show the new output to the screen
         output.present();
+
+        let end_time = time::Instant::now();
+        println!(
+            "RenderState.render(): {:?}ms",
+            end_time.duration_since(start_time)
+        );
     }
 }
