@@ -1,8 +1,7 @@
-use crate::render::RenderState;
-use cgmath::{Deg, Rad};
 use std::{f32, sync::Arc};
 
 use camera::{Camera, CameraController};
+use cgmath::{Deg, Rad};
 use tokio::runtime::Runtime;
 use winit::{
     application::ApplicationHandler,
@@ -11,6 +10,8 @@ use winit::{
     keyboard::{KeyCode, PhysicalKey},
     window::{Window, WindowId},
 };
+
+use crate::render::RenderState;
 
 mod block;
 mod camera;

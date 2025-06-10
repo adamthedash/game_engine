@@ -3,7 +3,6 @@ use std::{
     str::FromStr,
 };
 
-use crate::{render::Vertex, texture::Texture};
 use anyhow::{Context, Result};
 use tobj::{LoadOptions, load_obj};
 use wgpu::{
@@ -11,6 +10,8 @@ use wgpu::{
     Queue,
     util::{BufferInitDescriptor, DeviceExt},
 };
+
+use crate::{render::Vertex, texture::Texture};
 
 /// Represents a single model mesh / material. Eg. a single block type
 pub struct Model {
