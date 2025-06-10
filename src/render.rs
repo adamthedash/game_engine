@@ -51,12 +51,14 @@ impl Vertex {
 pub struct Instance {
     pub pos: Vector3<f32>,
     pub rotation: Quaternion<f32>,
+    pub texture_index: u32,
 }
 
 impl Instance {
     fn to_raw(&self) -> InstanceRaw {
         InstanceRaw {
             model: (Matrix4::from_translation(self.pos) * Matrix4::from(self.rotation)).into(),
+            texture_index: self.texture_index,
         }
     }
 }
@@ -66,6 +68,7 @@ impl Instance {
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct InstanceRaw {
     model: [[f32; 4]; 4],
+    texture_index: u32,
 }
 
 impl InstanceRaw {
@@ -77,6 +80,7 @@ impl InstanceRaw {
             6 => Float32x4,
             7 => Float32x4,
             8 => Float32x4,
+            9 => Uint32,
         ],
     };
 }
@@ -140,6 +144,7 @@ impl RenderState<'_> {
                     (0..64).map(move |y| {
                         Block {
                             world_pos: (x, y, z),
+                            block_id: (x + y + z) as u32 % 2,
                         }
                         .to_instance()
                     })
@@ -305,7 +310,7 @@ impl RenderState<'_> {
             render_pass.set_pipeline(&self.shader_pipeline.render_pipeline);
 
             let mesh = &self.obj_model.meshes[0];
-            let material = &self.obj_model.materials[mesh.material];
+            let material = &self.obj_model.materials[0];
             self.shader_pipeline.setup_rendering_pass(
                 &mut render_pass,
                 &mesh.vertex_buffer,

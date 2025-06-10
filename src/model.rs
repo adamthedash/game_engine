@@ -30,7 +30,6 @@ pub struct Mesh {
     pub vertex_buffer: wgpu::Buffer,
     pub index_buffer: wgpu::Buffer,
     pub num_elements: u32,
-    pub material: usize, // Index of material
 }
 
 impl Model {
@@ -52,38 +51,46 @@ impl Model {
         )?;
 
         // Load materials onto GPU as textures
-        let materials = materials?
+        let texture_paths = materials?
             .into_iter()
             .map(|m| -> Result<_> {
                 let texture_filename =
                     PathBuf::from_str(&m.diffuse_texture.expect("No diffuse texture"))?;
                 // Assume materials are stored alongside obj
                 let texture_path = path.parent().unwrap().join(texture_filename);
-                let texture = Texture::from_image(&texture_path, device, queue, &m.name)
-                    .with_context(|| format!("Failed to load texture: {:?}", texture_path))?;
-
-                let bind_group = device.create_bind_group(&BindGroupDescriptor {
-                    layout,
-                    entries: &[
-                        BindGroupEntry {
-                            binding: 0,
-                            resource: BindingResource::TextureView(&texture.view),
-                        },
-                        BindGroupEntry {
-                            binding: 1,
-                            resource: BindingResource::Sampler(&texture.sampler),
-                        },
-                    ],
-                    label: Some(&format!("Bind group: {}", m.name)),
-                });
-
-                Ok(Material {
-                    name: m.name,
-                    texture,
-                    bind_group,
-                })
+                Ok(texture_path)
             })
             .collect::<Result<Vec<_>>>()?;
+
+        let texture = Texture::from_images(
+            &texture_paths
+                .iter()
+                .map(|p| p.as_path())
+                .collect::<Vec<_>>(),
+            device,
+            queue,
+            &format!("Texture: {:?}", path.file_name()),
+        )?;
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
+            layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&texture.view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&texture.sampler),
+                },
+            ],
+            label: Some(&format!("Bind group: {:?}", path.file_name())),
+        });
+
+        let material = Material {
+            name: path.file_name().unwrap().to_str().unwrap().to_string(),
+            texture,
+            bind_group,
+        };
 
         // Load meshes into buffers
         let meshes = models
@@ -133,11 +140,13 @@ impl Model {
                     vertex_buffer,
                     index_buffer,
                     num_elements: m.mesh.indices.len() as u32,
-                    material: m.mesh.material_id.unwrap_or(0),
                 }
             })
             .collect::<Vec<_>>();
 
-        Ok(Model { meshes, materials })
+        Ok(Model {
+            meshes,
+            materials: vec![material],
+        })
     }
 }

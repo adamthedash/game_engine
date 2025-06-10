@@ -1,2 +1,5 @@
-newmtl textured
-map_Kd block.png
+newmtl smiley
+map_Kd smiley.png
+
+newmtl smiley2
+map_Kd smiley2.png

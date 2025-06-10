@@ -4,6 +4,7 @@ use crate::render::Instance;
 
 pub struct Block {
     pub world_pos: (i32, i32, i32),
+    pub block_id: u32,
 }
 
 impl Block {
@@ -15,6 +16,7 @@ impl Block {
                 z: self.world_pos.2 as f32,
             },
             rotation: Quaternion::one(),
+            texture_index: self.block_id,
         }
     }
 }
