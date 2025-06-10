@@ -17,6 +17,7 @@ mod camera;
 mod chunk;
 mod model;
 mod render;
+mod shader;
 mod texture;
 
 struct App<'a> {

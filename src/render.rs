@@ -3,17 +3,11 @@ use std::{path::Path, sync::Arc, time};
 use bytemuck::{Pod, Zeroable};
 use cgmath::{Matrix4, Quaternion, Vector3};
 use wgpu::{
-    Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState, Buffer,
-    BufferAddress, BufferBindingType, BufferUsages, ColorTargetState, ColorWrites, CommandEncoder,
-    CommandEncoderDescriptor, DepthBiasState, DepthStencilState, Device, DeviceDescriptor, Face,
-    Features, FragmentState, FrontFace, InstanceDescriptor, LoadOp, MultisampleState, Operations,
-    PipelineCompilationOptions, PipelineLayout, PipelineLayoutDescriptor, PrimitiveState,
-    PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDepthStencilAttachment,
-    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions,
-    SamplerBindingType, ShaderModule, ShaderModuleDescriptor, ShaderStages, StencilState, StoreOp,
-    Surface, SurfaceConfiguration, TextureFormat, TextureSampleType, TextureView,
-    TextureViewDescriptor, TextureViewDimension, VertexBufferLayout, VertexState, VertexStepMode,
+    Backends, Buffer, BufferAddress, BufferUsages, CommandEncoder, CommandEncoderDescriptor,
+    Device, DeviceDescriptor, Features, InstanceDescriptor, LoadOp, Operations, Queue,
+    RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor,
+    RequestAdapterOptions, StoreOp, Surface, SurfaceConfiguration, TextureView,
+    TextureViewDescriptor, VertexBufferLayout, VertexStepMode,
     util::{BufferInitDescriptor, DeviceExt},
     vertex_attr_array,
 };
@@ -26,7 +20,8 @@ use winit::{dpi::PhysicalSize, window::Window};
 use crate::{
     block::Block,
     camera::{Camera, CameraUniform},
-    model::{DrawModel, Model},
+    model::Model,
+    shader::{ShaderPipeline, ShaderPipelineLayout},
     texture::Texture,
 };
 
@@ -41,7 +36,7 @@ pub struct Vertex {
 
 impl Vertex {
     /// Describes the memory layout of the vector buffer for the GPU
-    const LAYOUT: VertexBufferLayout<'static> = VertexBufferLayout {
+    pub const LAYOUT: VertexBufferLayout<'static> = VertexBufferLayout {
         array_stride: std::mem::size_of::<Self>() as BufferAddress,
         step_mode: VertexStepMode::Vertex,
         attributes: &vertex_attr_array![
@@ -69,12 +64,12 @@ impl Instance {
 /// GPU buffer version of Instance
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
-struct InstanceRaw {
+pub struct InstanceRaw {
     model: [[f32; 4]; 4],
 }
 
 impl InstanceRaw {
-    const LAYOUT: VertexBufferLayout<'static> = VertexBufferLayout {
+    pub const LAYOUT: VertexBufferLayout<'static> = VertexBufferLayout {
         array_stride: std::mem::size_of::<Self>() as BufferAddress,
         step_mode: VertexStepMode::Instance,
         attributes: &vertex_attr_array![
@@ -95,7 +90,7 @@ pub struct RenderState<'a> {
     queue: Queue,
     pub config: SurfaceConfiguration,
     // Shader stuff
-    render_pipeline: ShaderPipeline,
+    shader_pipeline: ShaderPipeline,
     instances: Vec<Instance>,
     instance_buffer: Buffer,
     // Texture stuff
@@ -129,7 +124,7 @@ impl RenderState<'_> {
         let (camera_uniform, camera_buffer) = RenderState::init_camera(&device);
 
         // Render Pipeline
-        let render_pipeline = shader.init(&device, &config.format, &camera_buffer);
+        let shader_pipeline = shader.init(&device, &config.format, &camera_buffer);
 
         // Text
         let brush = BrushBuilder::using_font_bytes(include_bytes!(
@@ -166,7 +161,7 @@ impl RenderState<'_> {
             device,
             queue,
             config,
-            render_pipeline,
+            shader_pipeline,
             obj_model,
             camera,
             camera_uniform,
@@ -306,19 +301,20 @@ impl RenderState<'_> {
                 ..Default::default()
             });
 
-            // Render the triangle with the shader
-            render_pass.set_pipeline(&self.render_pipeline.pipeline);
-            render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+            // Draw our mesh cubes
+            render_pass.set_pipeline(&self.shader_pipeline.render_pipeline);
 
-            // Draw our mesh cube
             let mesh = &self.obj_model.meshes[0];
             let material = &self.obj_model.materials[mesh.material];
-            render_pass.draw_mesh_instanced(
-                mesh,
-                material,
-                0..self.instances.len() as u32,
-                &self.render_pipeline.camera_bind_group,
+            self.shader_pipeline.setup_rendering_pass(
+                &mut render_pass,
+                &mesh.vertex_buffer,
+                &mesh.index_buffer,
+                &material.bind_group,
             );
+
+            render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+            render_pass.draw_indexed(0..mesh.num_elements, 0, 0..self.instances.len() as u32);
         }
 
         let end_time = time::Instant::now();
@@ -366,152 +362,4 @@ impl RenderState<'_> {
             self.brush.draw(&mut render_pass);
         }
     }
-}
-
-/// A shader template without data buffers linked
-struct ShaderPipelineLayout {
-    texture_layout: BindGroupLayout,
-    camera_layout: BindGroupLayout,
-    pipeline_layout: PipelineLayout,
-    shader: ShaderModule,
-}
-
-impl ShaderPipelineLayout {
-    ///
-    /// group 0: Fragment
-    ///     binding 0: Texture
-    ///     binding 1: Sampler
-    /// group 1: Vertex
-    ///     binding 0: Camera Uniform
-    ///
-    fn create(device: &Device) -> Self {
-        let shader = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("./shaders/shader.wgsl").into()),
-        });
-
-        let texture_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("Texture Bind Group Layout"),
-            entries: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Texture {
-                        sample_type: TextureSampleType::Float { filterable: true },
-                        view_dimension: TextureViewDimension::D2,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
-                    count: None,
-                },
-            ],
-        });
-
-        let camera_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("Camera Bind Group Layout"),
-            entries: &[BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::VERTEX,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-        });
-
-        let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[&texture_layout, &camera_layout],
-            push_constant_ranges: &[],
-        });
-
-        Self {
-            texture_layout,
-            camera_layout,
-            pipeline_layout,
-            shader,
-        }
-    }
-
-    fn init(
-        self,
-        device: &Device,
-        texture_format: &TextureFormat,
-        camera_buffer: &Buffer,
-    ) -> ShaderPipeline {
-        let camera_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Camera Bind Group"),
-            layout: &self.camera_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: camera_buffer.as_entire_binding(),
-            }],
-        });
-
-        let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: Some("Render Pipeline"),
-            layout: Some(&self.pipeline_layout),
-            // Vertex - the corners of the triangle
-            vertex: VertexState {
-                module: &self.shader,
-                entry_point: Some("vs_main"),
-                buffers: &[Vertex::LAYOUT, InstanceRaw::LAYOUT],
-                compilation_options: PipelineCompilationOptions::default(),
-            },
-            // Fragment - The inside of the triangle
-            fragment: Some(FragmentState {
-                module: &self.shader,
-                entry_point: Some("fs_main"),
-                // How the colour will be applied to the screen
-                targets: &[Some(ColorTargetState {
-                    format: *texture_format,
-                    blend: Some(BlendState::REPLACE),
-                    write_mask: ColorWrites::ALL,
-                })],
-                compilation_options: PipelineCompilationOptions::default(),
-            }),
-            // How the triangle will be created & displayed
-            primitive: PrimitiveState {
-                topology: PrimitiveTopology::TriangleList,
-                front_face: FrontFace::Cw,
-                cull_mode: Some(Face::Back),
-                ..Default::default()
-            },
-            depth_stencil: Some(DepthStencilState {
-                format: Texture::DEPTH_FORMAT,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less,
-                stencil: StencilState::default(),
-                bias: DepthBiasState::default(),
-            }),
-            // Rest of stuff is just defaults
-            multisample: MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
-            multiview: None,
-            cache: None,
-        });
-
-        ShaderPipeline {
-            layouts: self,
-            camera_bind_group,
-            pipeline,
-        }
-    }
-}
-
-/// An instantiated shader ready to go for rendering
-struct ShaderPipeline {
-    layouts: ShaderPipelineLayout,
-    camera_bind_group: BindGroup,
-    pipeline: wgpu::RenderPipeline,
 }
