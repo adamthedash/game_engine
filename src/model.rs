@@ -33,6 +33,7 @@ pub struct Mesh {
 }
 
 impl Model {
+    /// Load a model from an OBJ file, optionally with a material
     pub fn load_model(
         path: &Path,
         device: &Device,

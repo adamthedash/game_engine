@@ -30,6 +30,7 @@ use crate::{
     texture::Texture,
 };
 
+/// Represents a vertex on the GPU
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct Vertex {
@@ -195,15 +196,17 @@ impl RenderState<'_> {
         .build(&device, config.width, config.height, config.format);
 
         // Instances - 4x4 grid of blocks
-        let blocks = (0..16)
+        let blocks = (0..64)
             .flat_map(|z| {
-                (0..16).flat_map(move |x| {
-                    (0..16).map(move |y| Block {
-                        world_pos: (x, y, z),
+                (0..64).flat_map(move |x| {
+                    (0..64).map(move |y| {
+                        Block {
+                            world_pos: (x, y, z),
+                        }
+                        .to_instance()
                     })
                 })
             })
-            .flat_map(|b| b.to_instances())
             .collect::<Vec<_>>();
 
         let instance_data = blocks.iter().map(Instance::to_raw).collect::<Vec<_>>();
@@ -434,6 +437,12 @@ impl RenderState<'_> {
             );
         }
 
+        let end_time = time::Instant::now();
+        println!(
+            "RenderState.render(): {:?}",
+            end_time.duration_since(start_time)
+        );
+
         // Text needs a separate render pass because it doesn't like the depth buffer
         let camera_debug_text = format!("{:#?}", self.camera);
         let text = glyph_brush::Section::default().add_text(Text::new(&camera_debug_text));
@@ -463,11 +472,5 @@ impl RenderState<'_> {
 
         // Show the new output to the screen
         output.present();
-
-        let end_time = time::Instant::now();
-        println!(
-            "RenderState.render(): {:?}",
-            end_time.duration_since(start_time)
-        );
     }
 }

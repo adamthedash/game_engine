@@ -47,7 +47,7 @@ impl ApplicationHandler for App<'_> {
             );
             // Initial position of the camera/player
             let camera = Camera {
-                pos: (0., 1., 2.).into(),
+                pos: (-10., 10., -10.).into(),
                 yaw: Rad(0.),
                 pitch: Rad(0.),
                 aspect: 1.,
