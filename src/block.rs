@@ -1,11 +1,6 @@
-use cgmath::{Deg, One, Quaternion, Rotation3, Vector3};
+use cgmath::{One, Quaternion, Vector3};
 
 use crate::render::Instance;
-
-pub const BLOCK_INDICES: &[u16] = &[
-    0, 1, 3, //
-    0, 3, 2, //
-];
 
 pub struct Block {
     pub world_pos: (i32, i32, i32),

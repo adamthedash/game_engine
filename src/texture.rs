@@ -18,7 +18,7 @@ pub struct Texture {
 impl Texture {
     pub const DEPTH_FORMAT: TextureFormat = TextureFormat::Depth32Float;
 
-    /// Creates a textre on the GPU from the given image file
+    /// Creates a texture on the GPU from the given image file
     pub fn from_image(path: &Path, device: &Device, queue: &Queue, label: &str) -> Result<Self> {
         let image = ImageReader::open(path)?.decode()?.to_rgba8();
 

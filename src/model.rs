@@ -13,6 +13,7 @@ use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
 };
 
+/// Represents a single model mesh / material. Eg. a single block type
 pub struct Model {
     pub meshes: Vec<Mesh>,
     pub materials: Vec<Material>,
@@ -29,7 +30,7 @@ pub struct Mesh {
     pub vertex_buffer: wgpu::Buffer,
     pub index_buffer: wgpu::Buffer,
     pub num_elements: u32,
-    pub material: usize,
+    pub material: usize, // Index of material
 }
 
 impl Model {
@@ -115,7 +116,6 @@ impl Model {
                         normals: n,
                     })
                     .collect::<Vec<_>>();
-                println!("verts: {}", vertices.len());
 
                 let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
                     label: Some(&format!("Vertex Buffer: {:?}", path)),
