@@ -15,9 +15,9 @@ use winit::{
 mod block;
 mod camera;
 mod chunk;
+mod model;
 mod render;
 mod texture;
-mod model;
 
 struct App<'a> {
     runtime: Runtime,
@@ -70,7 +70,9 @@ impl ApplicationHandler for App<'_> {
         _window_id: WindowId,
         event: WindowEvent,
     ) {
-        println!("Event: {:?}", event);
+        if !matches!(event, WindowEvent::RedrawRequested) {
+            println!("Event: {:?}", event);
+        }
 
         match event {
             WindowEvent::CloseRequested => {

@@ -5,15 +5,15 @@ use cgmath::{Matrix4, Quaternion, Vector3};
 use wgpu::{
     Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState, Buffer,
-    BufferAddress, BufferBindingType, BufferUsages, ColorTargetState, ColorWrites,
+    BufferAddress, BufferBindingType, BufferUsages, ColorTargetState, ColorWrites, CommandEncoder,
     CommandEncoderDescriptor, DepthBiasState, DepthStencilState, Device, DeviceDescriptor, Face,
     Features, FragmentState, FrontFace, InstanceDescriptor, LoadOp, MultisampleState, Operations,
     PipelineCompilationOptions, PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, Queue,
     RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor,
     RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType,
     ShaderModuleDescriptor, ShaderStages, StencilState, StoreOp, Surface, SurfaceConfiguration,
-    TextureSampleType, TextureViewDescriptor, TextureViewDimension, VertexBufferLayout,
-    VertexState, VertexStepMode,
+    TextureSampleType, TextureView, TextureViewDescriptor, TextureViewDimension,
+    VertexBufferLayout, VertexState, VertexStepMode,
     util::{BufferInitDescriptor, DeviceExt},
     vertex_attr_array,
 };
@@ -438,14 +438,29 @@ impl RenderState<'_> {
         }
 
         let end_time = time::Instant::now();
-        println!(
-            "RenderState.render(): {:?}",
-            end_time.duration_since(start_time)
-        );
 
+        let debug_text = [
+            format!("{:#?}", self.camera),
+            format!("Render pass: {:?}", end_time.duration_since(start_time)),
+        ];
+        self.debug_render(&debug_text, &mut encoder, &view);
+
+        // Actually run the operations on the GPU
+        self.queue.submit(std::iter::once(encoder.finish()));
+
+        // Show the new output to the screen
+        output.present();
+    }
+
+    /// Displays the debug text overlay
+    fn debug_render(&mut self, texts: &[String], encoder: &mut CommandEncoder, view: &TextureView) {
         // Text needs a separate render pass because it doesn't like the depth buffer
-        let camera_debug_text = format!("{:#?}", self.camera);
-        let text = glyph_brush::Section::default().add_text(Text::new(&camera_debug_text));
+
+        let text = texts
+            .iter()
+            .fold(glyph_brush::Section::default(), |acc, t| {
+                acc.add_text(Text::new(t))
+            });
         self.brush
             .queue(&self.device, &self.queue, [&text])
             .unwrap();
@@ -454,7 +469,7 @@ impl RenderState<'_> {
             let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(RenderPassColorAttachment {
-                    view: &view,
+                    view,
                     resolve_target: None,
                     ops: Operations {
                         load: LoadOp::Load,
@@ -466,11 +481,5 @@ impl RenderState<'_> {
 
             self.brush.draw(&mut render_pass);
         }
-
-        // Actually run the operations on the GPU
-        self.queue.submit(std::iter::once(encoder.finish()));
-
-        // Show the new output to the screen
-        output.present();
     }
 }
