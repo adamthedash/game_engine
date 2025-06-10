@@ -1,19 +1,19 @@
-use std::{path::PathBuf, str::FromStr, sync::Arc, time};
+use std::{path::Path, sync::Arc, time};
 
 use bytemuck::{Pod, Zeroable};
 use cgmath::{Matrix4, Quaternion, Vector3};
 use wgpu::{
     Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendState,
-    Buffer, BufferAddress, BufferBindingType, BufferUsages, ColorTargetState, ColorWrites,
+    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState, Buffer,
+    BufferAddress, BufferBindingType, BufferUsages, ColorTargetState, ColorWrites,
     CommandEncoderDescriptor, DepthBiasState, DepthStencilState, Device, DeviceDescriptor, Face,
-    Features, FragmentState, FrontFace, IndexFormat, InstanceDescriptor, LoadOp, MultisampleState,
-    Operations, PipelineCompilationOptions, PipelineLayoutDescriptor, PrimitiveState,
-    PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDepthStencilAttachment,
-    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions,
-    SamplerBindingType, ShaderModuleDescriptor, ShaderStages, StencilState, StoreOp, Surface,
-    SurfaceConfiguration, TextureSampleType, TextureViewDescriptor, TextureViewDimension,
-    VertexBufferLayout, VertexState, VertexStepMode,
+    Features, FragmentState, FrontFace, InstanceDescriptor, LoadOp, MultisampleState, Operations,
+    PipelineCompilationOptions, PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, Queue,
+    RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor,
+    RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType,
+    ShaderModuleDescriptor, ShaderStages, StencilState, StoreOp, Surface, SurfaceConfiguration,
+    TextureSampleType, TextureViewDescriptor, TextureViewDimension, VertexBufferLayout,
+    VertexState, VertexStepMode,
     util::{BufferInitDescriptor, DeviceExt},
     vertex_attr_array,
 };
@@ -24,8 +24,9 @@ use wgpu_text::{
 use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{
-    block::{BLOCK_INDICES, BLOCK_VERTICES, Block},
+    block::{BLOCK_INDICES, Block},
     camera::{Camera, CameraUniform},
+    model::{DrawModel, Model},
     texture::Texture,
 };
 
@@ -34,6 +35,7 @@ use crate::{
 pub struct Vertex {
     pub position: [f32; 3],       // XYZ in NDC, CCW order
     pub texture_coords: [f32; 2], // XY, origin top-left
+    pub normals: [f32; 3],
 }
 
 impl Vertex {
@@ -90,16 +92,14 @@ pub struct RenderState<'a> {
     gpu_handle: wgpu::Instance,
     device: Device,
     queue: Queue,
-    config: SurfaceConfiguration,
+    pub config: SurfaceConfiguration,
     // Shader stuff
     render_pipeline: RenderPipeline,
-    vertex_buffer: Buffer,
-    index_buffer: Buffer,
     num_indices: u32,
     instances: Vec<Instance>,
     instance_buffer: Buffer,
     // Texture stuff
-    texture_bind_group: BindGroup,
+    obj_model: Model,
     depth_texture: Texture,
     // Camera stuff
     pub camera: Camera,
@@ -120,20 +120,16 @@ impl RenderState<'_> {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("./shaders/shader.wgsl").into()),
         });
-        let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(BLOCK_VERTICES),
-            usage: BufferUsages::VERTEX,
-        });
-        let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(BLOCK_INDICES),
-            usage: BufferUsages::INDEX,
-        });
 
         // Texture
-        let (texture_bind_group_layout, texture_bind_group, depth_texture) =
-            RenderState::init_texture(&device, &queue, &config);
+        let texture_bind_group_layout = RenderState::init_texture(&device, &queue, &config);
+        let depth_texture = Texture::create_depth_texture(&device, &config, "Depth Texture");
+
+        // Mesh
+        let obj_path = Path::new(env!("OUT_DIR")).join("res/meshes/block.obj");
+        println!("{:?}", obj_path);
+        let obj_model =
+            Model::load_model(&obj_path, &device, &queue, &texture_bind_group_layout).unwrap();
 
         // Camera
         let (camera_uniform, camera_buffer, camera_bind_group_layout, camera_bind_group) =
@@ -170,7 +166,7 @@ impl RenderState<'_> {
             // How the triangle will be created & displayed
             primitive: PrimitiveState {
                 topology: PrimitiveTopology::TriangleList,
-                front_face: FrontFace::Ccw,
+                front_face: FrontFace::Cw,
                 cull_mode: Some(Face::Back),
                 ..Default::default()
             },
@@ -225,10 +221,8 @@ impl RenderState<'_> {
             queue,
             config,
             render_pipeline,
-            vertex_buffer,
-            index_buffer,
             num_indices: BLOCK_INDICES.len() as u32,
-            texture_bind_group,
+            obj_model,
             camera,
             camera_uniform,
             camera_buffer,
@@ -284,57 +278,28 @@ impl RenderState<'_> {
         device: &Device,
         queue: &Queue,
         config: &SurfaceConfiguration,
-    ) -> (BindGroupLayout, BindGroup, Texture) {
-        // Textures
-        let texture = Texture::from_image(
-            &PathBuf::from_str("res/images/image.png").unwrap(),
-            device,
-            queue,
-            "smiley",
-        )
-        .expect("Failed to load texture");
-
-        let texture_bind_group_layout =
-            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: Some("Texture Bind Group Layout"),
-                entries: &[
-                    BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Texture {
-                            sample_type: TextureSampleType::Float { filterable: true },
-                            view_dimension: TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
-                    },
-                    BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                ],
-            });
-        let texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Texture Binding Group"),
-            layout: &texture_bind_group_layout,
+    ) -> BindGroupLayout {
+        device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("Texture Bind Group Layout"),
             entries: &[
-                BindGroupEntry {
+                BindGroupLayoutEntry {
                     binding: 0,
-                    resource: BindingResource::TextureView(&texture.view),
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
                 },
-                BindGroupEntry {
+                BindGroupLayoutEntry {
                     binding: 1,
-                    resource: BindingResource::Sampler(&texture.sampler),
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                    count: None,
                 },
             ],
-        });
-
-        // Depth
-        let depth_texture = Texture::create_depth_texture(device, config, "Depth Texture");
-
-        (texture_bind_group_layout, texture_bind_group, depth_texture)
+        })
     }
 
     async fn init_gpu<'a>(
@@ -391,7 +356,7 @@ impl RenderState<'_> {
         self.surface.configure(&self.device, &self.config);
 
         self.depth_texture =
-            Texture::create_depth_texture(&self.device, &self.config, "Depth Texture");
+            Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
 
         self.camera.aspect = size.width as f32 / size.height as f32;
         self.update_camera_buffer();
@@ -456,15 +421,17 @@ impl RenderState<'_> {
 
             // Render the triangle with the shader
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
-            render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
-
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
 
-            render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
-
-            render_pass.draw_indexed(0..self.num_indices, 0, 0..self.instances.len() as u32);
+            // Draw our mesh cube
+            let mesh = &self.obj_model.meshes[0];
+            let material = &self.obj_model.materials[mesh.material];
+            render_pass.draw_mesh_instanced(
+                mesh,
+                material,
+                0..self.instances.len() as u32,
+                &self.camera_bind_group,
+            );
         }
 
         // Text needs a separate render pass because it doesn't like the depth buffer
@@ -499,7 +466,7 @@ impl RenderState<'_> {
 
         let end_time = time::Instant::now();
         println!(
-            "RenderState.render(): {:?}ms",
+            "RenderState.render(): {:?}",
             end_time.duration_since(start_time)
         );
     }

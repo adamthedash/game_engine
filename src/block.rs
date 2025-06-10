@@ -2,24 +2,24 @@ use cgmath::{Deg, Quaternion, Rotation3, Vector3};
 
 use crate::render::{Instance, Vertex};
 
-pub const BLOCK_VERTICES: &[Vertex] = &[
-    Vertex {
-        position: [0., 0., 0.],
-        texture_coords: [0., 1.],
-    },
-    Vertex {
-        position: [1., 0., 0.],
-        texture_coords: [1., 1.],
-    },
-    Vertex {
-        position: [0., 1., 0.],
-        texture_coords: [0., 0.],
-    },
-    Vertex {
-        position: [1., 1., 0.],
-        texture_coords: [1., 0.],
-    },
-];
+// pub const BLOCK_VERTICES: &[Vertex] = &[
+//     Vertex {
+//         position: [0., 0., 0.],
+//         texture_coords: [0., 1.],
+//     },
+//     Vertex {
+//         position: [1., 0., 0.],
+//         texture_coords: [1., 1.],
+//     },
+//     Vertex {
+//         position: [0., 1., 0.],
+//         texture_coords: [0., 0.],
+//     },
+//     Vertex {
+//         position: [1., 1., 0.],
+//         texture_coords: [1., 0.],
+//     },
+// ];
 
 pub const BLOCK_INDICES: &[u16] = &[
     0, 1, 3, //

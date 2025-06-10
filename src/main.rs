@@ -1,5 +1,6 @@
 use crate::render::RenderState;
-use std::sync::Arc;
+use cgmath::{Deg, Rad};
+use std::{f32, sync::Arc};
 
 use camera::{Camera, CameraController};
 use tokio::runtime::Runtime;
@@ -8,7 +9,7 @@ use winit::{
     event::{KeyEvent, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
-    window::{CursorGrabMode, Window, WindowId},
+    window::{Window, WindowId},
 };
 
 mod block;
@@ -16,11 +17,13 @@ mod camera;
 mod chunk;
 mod render;
 mod texture;
+mod model;
 
 struct App<'a> {
     runtime: Runtime,
     render_state: Option<RenderState<'a>>,
     camera_controller: CameraController,
+    prev_cursor_pos: (Option<f32>, Option<f32>),
 }
 
 impl App<'_> {
@@ -28,7 +31,8 @@ impl App<'_> {
         Self {
             runtime: Runtime::new().unwrap(),
             render_state: None,
-            camera_controller: CameraController::new(0.2, 0.2),
+            camera_controller: CameraController::new(0.2, 2. * f32::consts::PI * 1.),
+            prev_cursor_pos: (None, None),
         }
     }
 }
@@ -44,18 +48,18 @@ impl ApplicationHandler for App<'_> {
             // Initial position of the camera/player
             let camera = Camera {
                 pos: (0., 1., 2.).into(),
-                forward: cgmath::Vector3::unit_x(),
-                up: cgmath::Vector3::unit_y(),
+                yaw: Rad(0.),
+                pitch: Rad(0.),
                 aspect: 1.,
-                fovy: 45.,
+                fovy: Deg(45.),
                 znear: 0.1,
                 zfar: 100.,
             };
             let render_state = self.runtime.block_on(RenderState::new(window, camera));
-            render_state
-                .window
-                .set_cursor_grab(CursorGrabMode::Confined)
-                .unwrap();
+            // render_state
+            //     .window
+            //     .set_cursor_grab(CursorGrabMode::Confined)
+            //     .unwrap();
             self.render_state = Some(render_state);
         }
     }
@@ -63,7 +67,7 @@ impl ApplicationHandler for App<'_> {
     fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,
-        window_id: WindowId,
+        _window_id: WindowId,
         event: WindowEvent,
     ) {
         println!("Event: {:?}", event);
@@ -91,8 +95,7 @@ impl ApplicationHandler for App<'_> {
             }
             WindowEvent::KeyboardInput {
                 event:
-                    KeyEvent {
-                        state,
+                    event @ KeyEvent {
                         physical_key: PhysicalKey::Code(key),
                         ..
                     },
@@ -102,10 +105,34 @@ impl ApplicationHandler for App<'_> {
                     println!("Closing");
                     event_loop.exit();
                 }
-
-                self.camera_controller.handle_keypress(key, state);
+                self.camera_controller.handle_keypress(&event);
             }
-            WindowEvent::AxisMotion { axis, value, .. } => {}
+            WindowEvent::AxisMotion { axis, value, .. } => {
+                if let Some(render_state) = &mut self.render_state {
+                    let value = value as f32;
+                    let normalised = match axis {
+                        0 => {
+                            let cur = value / render_state.config.width as f32;
+                            let prev = self.prev_cursor_pos.0.unwrap_or(cur);
+                            self.prev_cursor_pos.0 = Some(cur);
+                            cur - prev
+                        }
+                        1 => {
+                            let cur = value / render_state.config.height as f32;
+                            let prev = self.prev_cursor_pos.1.unwrap_or(cur);
+                            self.prev_cursor_pos.1 = Some(cur);
+                            cur - prev
+                        }
+                        _ => panic!("Unknown axis"),
+                    };
+
+                    self.camera_controller.handle_mouse_move(
+                        axis,
+                        normalised,
+                        &mut render_state.camera,
+                    );
+                }
+            }
             _ => {}
         }
     }
