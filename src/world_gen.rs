@@ -71,27 +71,20 @@ impl ChunkGenerator {
     }
 
     pub fn generate_chunk(&self, origin: (i32, i32, i32)) -> Chunk {
-        // First determine the main block type
-        let block_type = match self
-            .rng
-            .sample(origin.0 as f64, origin.1 as f64, origin.2 as f64)
-        {
-            -1_f64..0. => BlockType::Dirt,
-            0_f64..=1. => BlockType::Stone,
-            _ => panic!("Sample out of -1 .. 1 range!"),
-        };
-
-        // Next determine which will be air or solid
         // TODO: Perf - uninit array
         let mut blocks =
             [[[BlockType::Air; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE];
         for (i, x) in (origin.0..).take(Chunk::CHUNK_SIZE).enumerate() {
             for (j, y) in (origin.1..).take(Chunk::CHUNK_SIZE).enumerate() {
                 for (k, z) in (origin.2..).take(Chunk::CHUNK_SIZE).enumerate() {
-                    let block_type = match self.rng.sample(x as f64, y as f64, z as f64) {
+                    let density = self.rng.sample(x as f64, y as f64, z as f64);
+
+                    // Treat random number as if it was density
+                    let block_type = match density {
                         -1_f64..0. => BlockType::Air,
-                        0_f64..=1. => block_type,
-                        _ => panic!("Sample out of -1 .. 1 range!"),
+                        0_f64..0.25 => BlockType::Dirt,
+                        0.25_f64..1. => BlockType::Stone,
+                        _ => unreachable!("Random number generated outside of -1 .. 1 !"),
                     };
 
                     blocks[i][j][k] = block_type;
