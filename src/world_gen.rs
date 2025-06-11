@@ -1,0 +1,133 @@
+use libnoise::{Generator, ImprovedPerlin};
+
+use crate::chunk::{BlockType, Chunk};
+
+#[derive(Debug)]
+pub struct Perlin {
+    // Perlin noise stuff
+    source: ImprovedPerlin<3>,
+    amplitudes: Vec<f64>,
+    frequencies: Vec<f64>,
+    divisor: f64,
+}
+
+impl Perlin {
+    ///
+    /// num_octaves: Number of noise layers to use
+    /// amplitude: Influence multiplier for each subsequent noise layer
+    /// persistence: Granularity multiplier for each subsequent noise layer
+    /// scale: Overall granularity multiplier
+    ///
+    pub fn new(
+        seed: u64,
+        num_octaves: usize,
+        amplitude: f64,
+        persistence: f64,
+        scale: f64,
+    ) -> Self {
+        assert!(num_octaves > 0);
+
+        // Pre-generate octave values
+        let mut amplitudes = vec![1.];
+        let mut frequencies = vec![1.];
+        for i in 0..num_octaves - 1 {
+            amplitudes.push(amplitudes[i] * amplitude);
+            frequencies.push(frequencies[i] * persistence * scale);
+        }
+        let divisor = amplitudes.iter().sum();
+
+        Self {
+            source: libnoise::Source::improved_perlin(seed),
+            amplitudes,
+            frequencies,
+            divisor,
+        }
+    }
+
+    pub fn sample(&self, x: f64, y: f64, z: f64) -> f64 {
+        self.frequencies
+            .iter()
+            .zip(&self.amplitudes)
+            .map(|(f, a)| self.source.sample([x * f, y * f, z * f]) * a)
+            .sum::<f64>()
+            / self.divisor
+    }
+}
+
+pub struct ChunkGenerator {
+    rng: Perlin,
+}
+
+impl ChunkGenerator {
+    pub fn new(rng: Perlin) -> Self {
+        Self { rng }
+    }
+
+    pub fn generate_chunk(&self, origin: (i32, i32, i32)) -> Chunk {
+        // First determine the main block type
+        let block_type = match self
+            .rng
+            .sample(origin.0 as f64, origin.1 as f64, origin.2 as f64)
+        {
+            -1_f64..0. => BlockType::Dirt,
+            0_f64..=1. => BlockType::Stone,
+            _ => panic!("Sample out of -1 .. 1 range!"),
+        };
+
+        // Next determine which will be air or solid
+        // TODO: Perf - uninit array
+        let mut blocks =
+            [[[BlockType::Air; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE];
+        for (i, x) in (origin.0..).take(Chunk::CHUNK_SIZE).enumerate() {
+            for (j, y) in (origin.1..).take(Chunk::CHUNK_SIZE).enumerate() {
+                for (k, z) in (origin.2..).take(Chunk::CHUNK_SIZE).enumerate() {
+                    let block_type = match self.rng.sample(x as f64, y as f64, z as f64) {
+                        -1_f64..0. => BlockType::Air,
+                        0_f64..=1. => block_type,
+                        _ => panic!("Sample out of -1 .. 1 range!"),
+                    };
+
+                    blocks[i][j][k] = block_type;
+                }
+            }
+        }
+
+        Chunk {
+            pos: origin,
+            blocks,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::{ChunkGenerator, Perlin};
+
+    #[test]
+    fn test_perlin() {
+        let generator = Perlin::new(42, 3, 2., 2., 1. / 16.);
+        println!("generator: {:?}", generator);
+        for x in 0..64 {
+            for z in 0..64 {
+                let val = generator.sample(x as f64, 0., z as f64);
+                let c = match val {
+                    -1_f64..0. => ".",
+                    0_f64..=1. => "#",
+                    _ => " ",
+                };
+                print!("{c}");
+            }
+            println!();
+        }
+    }
+
+    #[test]
+    fn test_chunk() {
+        let generator = Perlin::new(42, 3, 2., 2., 1. / 16.);
+        let chunk_gen = ChunkGenerator::new(generator);
+
+        let chunk = chunk_gen.generate_chunk((0, 0, 0));
+        println!("{:?}", chunk);
+    }
+}

@@ -9,17 +9,22 @@ use glob::glob;
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{Euclid, FromPrimitive, ToPrimitive};
 
-use crate::block::Block;
+use crate::{
+    block::Block,
+    world_gen::{ChunkGenerator, Perlin},
+};
 
 #[derive(FromPrimitive, ToPrimitive, Copy, Clone, Debug)]
-enum BlockType {
+pub enum BlockType {
     Air = 0,
     Dirt,
+    Stone,
 }
 
+#[derive(Debug)]
 pub struct Chunk {
-    pos: (i32, i32, i32), // Position of corner block
-    blocks: [[[BlockType; Self::CHUNK_SIZE]; Self::CHUNK_SIZE]; Self::CHUNK_SIZE], // Block type IDs
+    pub pos: (i32, i32, i32), // Position of corner block
+    pub blocks: [[[BlockType; Self::CHUNK_SIZE]; Self::CHUNK_SIZE]; Self::CHUNK_SIZE], // Block type IDs
 }
 
 impl Chunk {
@@ -73,6 +78,9 @@ impl World {
     /// Save the world data to disk
     /// 1 chunk = 1 file, block types stored as a flat array
     pub fn save(&self, folder: &Path) {
+        if folder.exists() {
+            fs::remove_dir_all(folder).expect("Failed to remove save folder");
+        }
         assert!(!folder.exists());
         fs::create_dir(folder).unwrap();
         self.chunks.iter().for_each(|((x, y, z), chunk)| {
@@ -138,15 +146,19 @@ impl World {
 
     pub fn default() -> Self {
         let mut chunks = HashMap::new();
-        chunks.entry((0, 0, 0)).insert_entry(Chunk {
-            pos: (0, 0, 0),
-            blocks: [[[BlockType::Dirt; 16]; 16]; 16],
-        });
 
-        chunks.entry((16, 16, 16)).insert_entry(Chunk {
-            pos: (16, 16, 16),
-            blocks: [[[BlockType::Air; 16]; 16]; 16],
-        });
+        let chunk_gen = ChunkGenerator::new(Perlin::new(42, 3, 2., 2., 1. / 16.));
+
+        for i in 0..4 {
+            let x = i * 16;
+            for j in 0..4 {
+                let z = j * 16;
+                chunks
+                    .entry((x, 0, z))
+                    .insert_entry(chunk_gen.generate_chunk((x, 0, z)));
+            }
+        }
+
         Self { chunks }
     }
 }

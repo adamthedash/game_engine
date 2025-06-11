@@ -20,6 +20,7 @@ mod model;
 mod render;
 mod shader;
 mod texture;
+mod world_gen;
 
 struct App<'a> {
     runtime: Runtime,
