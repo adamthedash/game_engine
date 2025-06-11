@@ -1,5 +1,8 @@
-newmtl smiley
+newmtl smiley1
 map_Kd smiley.png
 
 newmtl smiley2
 map_Kd smiley2.png
+
+newmtl smiley3
+map_Kd smiley.png

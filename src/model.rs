@@ -3,7 +3,7 @@ use std::{
     str::FromStr,
 };
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use tobj::{LoadOptions, load_obj};
 use wgpu::{
     BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindingResource, BufferUsages, Device,

@@ -14,7 +14,7 @@ use crate::{
     world_gen::{ChunkGenerator, Perlin},
 };
 
-#[derive(FromPrimitive, ToPrimitive, Copy, Clone, Debug)]
+#[derive(FromPrimitive, ToPrimitive, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum BlockType {
     Air = 0,
     Dirt,
@@ -30,11 +30,46 @@ pub struct Chunk {
 impl Chunk {
     pub const CHUNK_SIZE: usize = 16;
 
+    const ADJACENT_OFFSETS: [[i32; 3]; 6] = [
+        [-1, 0, 0],
+        [1, 0, 0],
+        [0, -1, 0],
+        [0, 1, 0],
+        [0, 0, -1],
+        [0, 0, 1],
+    ];
+
     pub fn iter_blocks(&self) -> ChunkIter<'_> {
         ChunkIter {
             chunk: self,
             pos: 0,
         }
+    }
+
+    /// Check if the given block has any side that isn't surrounded
+    pub fn is_block_exposed(&self, pos: (i32, i32, i32)) -> bool {
+        let chunk_edges = [0, Self::CHUNK_SIZE as i32 - 1];
+        let within_chunk_pos = [
+            pos.0 % Self::CHUNK_SIZE as i32,
+            pos.1 % Self::CHUNK_SIZE as i32,
+            pos.2 % Self::CHUNK_SIZE as i32,
+        ];
+        // Edges of chunk always exposed
+        if within_chunk_pos.iter().any(|p| chunk_edges.contains(p)) {
+            return true;
+        }
+
+        // Chunks that are surrounded on all sides are not exposed
+        if Self::ADJACENT_OFFSETS.iter().all(|x| {
+            self.blocks[(within_chunk_pos[0] + x[0]) as usize]
+                [(within_chunk_pos[1] + x[1]) as usize][(within_chunk_pos[2] + x[2]) as usize]
+                != BlockType::Air
+        }) {
+            return false;
+        }
+
+        // By default a block is exposed
+        true
     }
 }
 
@@ -57,13 +92,12 @@ impl<'a> Iterator for ChunkIter<'a> {
             self.chunk.pos.1 + y as i32,
             self.chunk.pos.2 + z as i32,
         );
-        let block_id = self.chunk.blocks[x][y][z].to_u32().unwrap();
 
         self.pos += 1;
 
         Some(Block {
             world_pos: block_pos,
-            block_id,
+            block_type: self.chunk.blocks[x][y][z],
         })
     }
 }
@@ -149,13 +183,13 @@ impl World {
 
         let chunk_gen = ChunkGenerator::new(Perlin::new(42, 3, 2., 2., 1. / 16.));
 
-        for i in 0..4 {
-            let x = i * 16;
-            for j in 0..4 {
-                let z = j * 16;
+        for i in 0..8 {
+            let x = i * Chunk::CHUNK_SIZE;
+            for j in 0..8 {
+                let z = j * Chunk::CHUNK_SIZE;
                 chunks
-                    .entry((x, 0, z))
-                    .insert_entry(chunk_gen.generate_chunk((x, 0, z)));
+                    .entry((x as i32, 0, z as i32))
+                    .insert_entry(chunk_gen.generate_chunk((x as i32, 0, z as i32)));
             }
         }
 

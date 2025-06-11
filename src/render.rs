@@ -19,7 +19,7 @@ use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{
     camera::{Camera, CameraUniform},
-    chunk::{Chunk, World},
+    chunk::{BlockType, Chunk, World},
     model::Model,
     shader::{ShaderPipeline, ShaderPipelineLayout},
     texture::Texture,
@@ -257,7 +257,12 @@ impl RenderState<'_> {
         let instances = world
             .chunks
             .values()
-            .flat_map(|chunk| chunk.iter_blocks())
+            .flat_map(|chunk| {
+                chunk
+                    .iter_blocks()
+                    .filter(|b| b.block_type != BlockType::Air)
+                    .filter(|b| chunk.is_block_exposed(b.world_pos))
+            })
             .map(|block| block.to_instance().to_raw())
             .collect::<Vec<_>>();
         self.queue
@@ -325,6 +330,7 @@ impl RenderState<'_> {
         let debug_text = [
             format!("{:#?}", self.camera),
             format!("Render pass: {:?}", end_time.duration_since(start_time)),
+            format!("Blocks rendered: {}", instances.len()),
         ];
         self.debug_render(&debug_text, &mut encoder, &view);
 
@@ -342,7 +348,7 @@ impl RenderState<'_> {
         let text = texts
             .iter()
             .fold(glyph_brush::Section::default(), |acc, t| {
-                acc.add_text(Text::new(t))
+                acc.add_text(Text::new(t)).add_text(Text::new("\n"))
             });
         self.brush
             .queue(&self.device, &self.queue, [&text])
