@@ -48,7 +48,14 @@ impl Perlin {
         self.frequencies
             .iter()
             .zip(&self.amplitudes)
-            .map(|(f, a)| self.source.sample([x * f, y * f, z * f]) * a)
+            .map(|(f, a)| {
+                self.source.sample([
+                    // Need to mod here to handle negatives as the libnoise crate doesn't do this internally
+                    (x * f).rem_euclid(256.),
+                    (y * f).rem_euclid(256.),
+                    (z * f).rem_euclid(256.),
+                ]) * a
+            })
             .sum::<f64>()
             / self.divisor
     }
@@ -129,5 +136,28 @@ mod tests {
 
         let chunk = chunk_gen.generate_chunk((0, 0, 0));
         println!("{:?}", chunk);
+    }
+
+    #[test]
+    fn test_perlin_image() {
+        let generator = Perlin::new(42, 3, 0.5, 2., 1. / 64.);
+
+        let xs = -128..128;
+        let zs = -128..128;
+        //let xs = 0..256;
+        //let zs = 0..256;
+
+        let mut img = image::GrayImage::new(xs.len() as u32, zs.len() as u32);
+
+        for (i, x) in xs.enumerate() {
+            for (j, z) in zs.clone().enumerate() {
+                let val = generator.sample(x as f64, 0., z as f64);
+                let val = ((val + 1.) * 128.).clamp(0., 255.) as u8;
+
+                img.put_pixel(i as u32, j as u32, image::Luma([val]));
+            }
+        }
+
+        img.save("map.png").unwrap();
     }
 }

@@ -11,7 +11,7 @@ env_logger = "0.11.8"
 glob = "0.3.2"
 image = "0.25.6"
 itertools = "0.14.0"
-libnoise = "1.2.0"
+libnoise = { version = "1.2.0"}
 num-derive = "0.4.2"
 num-traits = "0.2.19"
 tobj = "4.0.3"

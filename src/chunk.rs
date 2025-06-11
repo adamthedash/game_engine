@@ -50,9 +50,9 @@ impl Chunk {
     pub fn is_block_exposed(&self, pos: (i32, i32, i32)) -> bool {
         let chunk_edges = [0, Self::CHUNK_SIZE as i32 - 1];
         let within_chunk_pos = [
-            pos.0 % Self::CHUNK_SIZE as i32,
-            pos.1 % Self::CHUNK_SIZE as i32,
-            pos.2 % Self::CHUNK_SIZE as i32,
+            pos.0.rem_euclid(Self::CHUNK_SIZE as i32),
+            pos.1.rem_euclid(Self::CHUNK_SIZE as i32),
+            pos.2.rem_euclid(Self::CHUNK_SIZE as i32),
         ];
         // Edges of chunk always exposed
         if within_chunk_pos.iter().any(|p| chunk_edges.contains(p)) {
@@ -181,15 +181,15 @@ impl World {
     pub fn default() -> Self {
         let mut chunks = HashMap::new();
 
-        let chunk_gen = ChunkGenerator::new(Perlin::new(42, 3, 2., 2., 1. / 16.));
+        let chunk_gen = ChunkGenerator::new(Perlin::new(42, 3, 0.5, 2., 1. / 64.));
 
-        for i in 0..8 {
-            let x = i * Chunk::CHUNK_SIZE;
-            for j in 0..8 {
-                let z = j * Chunk::CHUNK_SIZE;
+        for i in -16..16 {
+            let x = i * Chunk::CHUNK_SIZE as i32;
+            for j in -16..16 {
+                let z = j * Chunk::CHUNK_SIZE as i32;
                 chunks
-                    .entry((x as i32, 0, z as i32))
-                    .insert_entry(chunk_gen.generate_chunk((x as i32, 0, z as i32)));
+                    .entry((x, 0, z))
+                    .insert_entry(chunk_gen.generate_chunk((x, 0, z)));
             }
         }
 

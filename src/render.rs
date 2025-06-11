@@ -1,7 +1,7 @@
 use std::{path::Path, sync::Arc, time};
 
 use bytemuck::{Pod, Zeroable};
-use cgmath::{Matrix4, Quaternion, Vector3};
+use cgmath::{Matrix4, MetricSpace, Quaternion, Vector3};
 use wgpu::{
     Backends, Buffer, BufferAddress, BufferDescriptor, BufferUsages, CommandEncoder,
     CommandEncoderDescriptor, Device, DeviceDescriptor, Features, InstanceDescriptor, LoadOp,
@@ -138,7 +138,7 @@ impl RenderState<'_> {
 
         // Instances of blocks
         const INSTANCE_BUFFER_MAX_SIZE: u64 =
-            (std::mem::size_of::<InstanceRaw>() * Chunk::CHUNK_SIZE.pow(3) * 16) as u64; // 16 chunks
+            (std::mem::size_of::<InstanceRaw>() * Chunk::CHUNK_SIZE.pow(3) * 64) as u64; // 64 chunks
 
         let instance_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Instance Buffer"),
@@ -257,10 +257,21 @@ impl RenderState<'_> {
         let instances = world
             .chunks
             .values()
+            // Only render chunks within vision distance of the player
+            .filter(|chunk| {
+                self.camera.pos.distance2(cgmath::Point3 {
+                    x: chunk.pos.0 as f32,
+                    y: chunk.pos.1 as f32,
+                    z: chunk.pos.2 as f32,
+                    // Extra chunk size as buffer
+                }) < ((self.camera.zfar + Chunk::CHUNK_SIZE as f32 * 3_f32.sqrt()).powi(2))
+            })
             .flat_map(|chunk| {
                 chunk
                     .iter_blocks()
+                    // Don't render air blocks
                     .filter(|b| b.block_type != BlockType::Air)
+                    // Only render exposed blocks
                     .filter(|b| chunk.is_block_exposed(b.world_pos))
             })
             .map(|block| block.to_instance().to_raw())
