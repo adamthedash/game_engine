@@ -1,4 +1,4 @@
-use std::{f32, sync::Arc};
+use std::{f32, path::Path, sync::Arc};
 
 use camera::{Camera, CameraController};
 use cgmath::{Deg, Rad};
@@ -11,7 +11,7 @@ use winit::{
     window::{Window, WindowId},
 };
 
-use crate::render::RenderState;
+use crate::{chunk::World, render::RenderState};
 
 mod block;
 mod camera;
@@ -26,6 +26,7 @@ struct App<'a> {
     render_state: Option<RenderState<'a>>,
     camera_controller: CameraController,
     prev_cursor_pos: (Option<f32>, Option<f32>),
+    world: World,
 }
 
 impl App<'_> {
@@ -35,6 +36,7 @@ impl App<'_> {
             render_state: None,
             camera_controller: CameraController::new(0.2, 2. * f32::consts::PI * 1.),
             prev_cursor_pos: (None, None),
+            world: World::default(),
         }
     }
 }
@@ -89,7 +91,7 @@ impl ApplicationHandler for App<'_> {
                         .update_camera(&mut render_state.camera);
                     render_state.update_camera_buffer();
 
-                    render_state.render();
+                    render_state.render(&self.world);
                 }
             }
             WindowEvent::Resized(size) => {
@@ -107,6 +109,7 @@ impl ApplicationHandler for App<'_> {
             } => {
                 if key == KeyCode::F4 {
                     println!("Closing");
+                    self.world.save(Path::new("./saves"));
                     event_loop.exit();
                 }
                 self.camera_controller.handle_keypress(&event);

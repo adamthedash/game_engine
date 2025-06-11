@@ -7,7 +7,9 @@ use std::{
 
 use glob::glob;
 use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::{FromPrimitive, ToPrimitive};
+use num_traits::{Euclid, FromPrimitive, ToPrimitive};
+
+use crate::block::Block;
 
 #[derive(FromPrimitive, ToPrimitive, Copy, Clone, Debug)]
 enum BlockType {
@@ -15,15 +17,56 @@ enum BlockType {
     Dirt,
 }
 
-struct Chunk {
-    pos: (i32, i32, i32),                // Position of corner block
-    blocks: [[[BlockType; 16]; 16]; 16], // Block type IDs
+pub struct Chunk {
+    pos: (i32, i32, i32), // Position of corner block
+    blocks: [[[BlockType; Self::CHUNK_SIZE]; Self::CHUNK_SIZE]; Self::CHUNK_SIZE], // Block type IDs
+}
+
+impl Chunk {
+    pub const CHUNK_SIZE: usize = 16;
+
+    pub fn iter_blocks(&self) -> ChunkIter<'_> {
+        ChunkIter {
+            chunk: self,
+            pos: 0,
+        }
+    }
+}
+
+pub struct ChunkIter<'a> {
+    chunk: &'a Chunk,
+    pos: usize,
+}
+
+impl<'a> Iterator for ChunkIter<'a> {
+    type Item = Block;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.pos >= Chunk::CHUNK_SIZE.pow(3) {
+            return None;
+        }
+        let (rem, x) = self.pos.div_rem_euclid(&Chunk::CHUNK_SIZE);
+        let (z, y) = rem.div_rem_euclid(&Chunk::CHUNK_SIZE);
+        let block_pos = (
+            self.chunk.pos.0 + x as i32,
+            self.chunk.pos.1 + y as i32,
+            self.chunk.pos.2 + z as i32,
+        );
+        let block_id = self.chunk.blocks[x][y][z].to_u32().unwrap();
+
+        self.pos += 1;
+
+        Some(Block {
+            world_pos: block_pos,
+            block_id,
+        })
+    }
 }
 
 /// All of the world data
-struct World {
+pub struct World {
     // Generated chunks
-    chunks: HashMap<(i32, i32, i32), Chunk>,
+    pub chunks: HashMap<(i32, i32, i32), Chunk>,
 }
 
 impl World {
@@ -67,17 +110,17 @@ impl World {
 
                 let blocks = fs::read(&filename)
                     .unwrap()
-                    .chunks_exact(2)
+                    .chunks_exact(std::mem::size_of::<u16>())
                     .map(|c| {
                         BlockType::from_u16(u16::from_le_bytes(c.try_into().unwrap())).unwrap()
                     })
                     .collect::<Vec<_>>()
-                    .chunks_exact(16)
+                    .chunks_exact(Chunk::CHUNK_SIZE)
                     .map(|c| c.try_into().unwrap())
-                    .collect::<Vec<[_; 16]>>()
-                    .chunks_exact(16)
+                    .collect::<Vec<[_; Chunk::CHUNK_SIZE]>>()
+                    .chunks_exact(Chunk::CHUNK_SIZE)
                     .map(|c| c.try_into().unwrap())
-                    .collect::<Vec<[_; 16]>>()
+                    .collect::<Vec<[_; Chunk::CHUNK_SIZE]>>()
                     .try_into()
                     .unwrap();
                 Chunk {
@@ -91,5 +134,19 @@ impl World {
             });
 
         World { chunks }
+    }
+
+    pub fn default() -> Self {
+        let mut chunks = HashMap::new();
+        chunks.entry((0, 0, 0)).insert_entry(Chunk {
+            pos: (0, 0, 0),
+            blocks: [[[BlockType::Dirt; 16]; 16]; 16],
+        });
+
+        chunks.entry((16, 16, 16)).insert_entry(Chunk {
+            pos: (16, 16, 16),
+            blocks: [[[BlockType::Air; 16]; 16]; 16],
+        });
+        Self { chunks }
     }
 }

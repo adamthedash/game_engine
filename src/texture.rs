@@ -30,7 +30,7 @@ impl Texture {
         };
         // Set up the texture container (empty)
         let texture = device.create_texture(&TextureDescriptor {
-            label: Some(&format!("Texture: {}", label)),
+            label: Some(&format!("Texture: {label}")),
             size: texture_size,
             dimension: TextureDimension::D2,
             format: TextureFormat::Rgba8UnormSrgb,

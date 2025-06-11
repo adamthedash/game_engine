@@ -3,11 +3,11 @@ use std::{path::Path, sync::Arc, time};
 use bytemuck::{Pod, Zeroable};
 use cgmath::{Matrix4, Quaternion, Vector3};
 use wgpu::{
-    Backends, Buffer, BufferAddress, BufferUsages, CommandEncoder, CommandEncoderDescriptor,
-    Device, DeviceDescriptor, Features, InstanceDescriptor, LoadOp, Operations, Queue,
-    RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor,
-    RequestAdapterOptions, StoreOp, Surface, SurfaceConfiguration, TextureView,
-    TextureViewDescriptor, VertexBufferLayout, VertexStepMode,
+    Backends, Buffer, BufferAddress, BufferDescriptor, BufferUsages, CommandEncoder,
+    CommandEncoderDescriptor, Device, DeviceDescriptor, Features, InstanceDescriptor, LoadOp,
+    Operations, Queue, RenderPassColorAttachment, RenderPassDepthStencilAttachment,
+    RenderPassDescriptor, RequestAdapterOptions, StoreOp, Surface, SurfaceConfiguration,
+    TextureView, TextureViewDescriptor, VertexBufferLayout, VertexStepMode,
     util::{BufferInitDescriptor, DeviceExt},
     vertex_attr_array,
 };
@@ -18,8 +18,8 @@ use wgpu_text::{
 use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{
-    block::Block,
     camera::{Camera, CameraUniform},
+    chunk::{Chunk, World},
     model::Model,
     shader::{ShaderPipeline, ShaderPipelineLayout},
     texture::Texture,
@@ -95,7 +95,6 @@ pub struct RenderState<'a> {
     pub config: SurfaceConfiguration,
     // Shader stuff
     shader_pipeline: ShaderPipeline,
-    instances: Vec<Instance>,
     instance_buffer: Buffer,
     // Texture stuff
     obj_model: Model,
@@ -137,26 +136,15 @@ impl RenderState<'_> {
         .unwrap()
         .build(&device, config.width, config.height, config.format);
 
-        // Instances - 4x4 grid of blocks
-        let blocks = (0..64)
-            .flat_map(|z| {
-                (0..64).flat_map(move |x| {
-                    (0..64).map(move |y| {
-                        Block {
-                            world_pos: (x, y, z),
-                            block_id: (x + y + z) as u32 % 2,
-                        }
-                        .to_instance()
-                    })
-                })
-            })
-            .collect::<Vec<_>>();
+        // Instances of blocks
+        const INSTANCE_BUFFER_MAX_SIZE: u64 =
+            (std::mem::size_of::<InstanceRaw>() * Chunk::CHUNK_SIZE.pow(3) * 16) as u64; // 16 chunks
 
-        let instance_data = blocks.iter().map(Instance::to_raw).collect::<Vec<_>>();
-        let instance_buffer = device.create_buffer_init(&BufferInitDescriptor {
+        let instance_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Instance Buffer"),
-            contents: bytemuck::cast_slice(&instance_data),
-            usage: BufferUsages::VERTEX,
+            size: INSTANCE_BUFFER_MAX_SIZE,
+            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
         });
 
         Self {
@@ -172,7 +160,6 @@ impl RenderState<'_> {
             camera_uniform,
             camera_buffer,
             brush,
-            instances: blocks,
             instance_buffer,
             depth_texture,
         }
@@ -263,8 +250,19 @@ impl RenderState<'_> {
     }
 
     /// Perform the actual rendering to the screen
-    pub fn render(&mut self) {
+    pub fn render(&mut self, world: &World) {
         let start_time = time::Instant::now();
+
+        // Generate instances using the world blocks
+        let instances = world
+            .chunks
+            .values()
+            .flat_map(|chunk| chunk.iter_blocks())
+            .map(|block| block.to_instance().to_raw())
+            .collect::<Vec<_>>();
+        self.queue
+            .write_buffer(&self.instance_buffer, 0, bytemuck::cast_slice(&instances));
+
         // Get a view on the surface texture that we'll draw to
         let output = self.surface.get_current_texture().unwrap();
         let view = output
@@ -319,7 +317,7 @@ impl RenderState<'_> {
             );
 
             render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-            render_pass.draw_indexed(0..mesh.num_elements, 0, 0..self.instances.len() as u32);
+            render_pass.draw_indexed(0..mesh.num_elements, 0, 0..instances.len() as u32);
         }
 
         let end_time = time::Instant::now();
