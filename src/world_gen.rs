@@ -16,7 +16,7 @@ impl Perlin {
     /// num_octaves: Number of noise layers to use
     /// amplitude: Influence multiplier for each subsequent noise layer
     /// persistence: Granularity multiplier for each subsequent noise layer
-    /// scale: Overall granularity multiplier
+    /// scale: Overall granularity multiplier, Bigger == more granular
     ///
     pub fn new(
         seed: u64,
@@ -29,10 +29,10 @@ impl Perlin {
 
         // Pre-generate octave values
         let mut amplitudes = vec![1.];
-        let mut frequencies = vec![1.];
+        let mut frequencies = vec![1. * scale];
         for i in 0..num_octaves - 1 {
             amplitudes.push(amplitudes[i] * amplitude);
-            frequencies.push(frequencies[i] * persistence * scale);
+            frequencies.push(frequencies[i] * persistence);
         }
         let divisor = amplitudes.iter().sum();
 
