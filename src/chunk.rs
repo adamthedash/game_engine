@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     fs::{self, File},
     io::{BufWriter, Write},
     path::Path,
@@ -8,6 +7,7 @@ use std::{
 use glob::glob;
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{Euclid, FromPrimitive, ToPrimitive};
+use rustc_hash::FxHashMap;
 
 use crate::{
     block::Block,
@@ -46,30 +46,13 @@ impl Chunk {
         }
     }
 
-    /// Check if the given block has any side that isn't surrounded
-    pub fn is_block_exposed(&self, pos: (i32, i32, i32)) -> bool {
-        let chunk_edges = [0, Self::CHUNK_SIZE as i32 - 1];
-        let within_chunk_pos = [
-            pos.0.rem_euclid(Self::CHUNK_SIZE as i32),
-            pos.1.rem_euclid(Self::CHUNK_SIZE as i32),
-            pos.2.rem_euclid(Self::CHUNK_SIZE as i32),
-        ];
-        // Edges of chunk always exposed
-        if within_chunk_pos.iter().any(|p| chunk_edges.contains(p)) {
-            return true;
-        }
+    /// Get a reference to a block in this chunk
+    pub fn get_block(&self, pos: (i32, i32, i32)) -> &BlockType {
+        assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.0));
+        assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.1));
+        assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.2));
 
-        // Chunks that are surrounded on all sides are not exposed
-        if Self::ADJACENT_OFFSETS.iter().all(|x| {
-            self.blocks[(within_chunk_pos[0] + x[0]) as usize]
-                [(within_chunk_pos[1] + x[1]) as usize][(within_chunk_pos[2] + x[2]) as usize]
-                != BlockType::Air
-        }) {
-            return false;
-        }
-
-        // By default a block is exposed
-        true
+        &self.blocks[pos.0 as usize][pos.1 as usize][pos.2 as usize]
     }
 }
 
@@ -105,7 +88,7 @@ impl<'a> Iterator for ChunkIter<'a> {
 /// All of the world data
 pub struct World {
     // Generated chunks
-    pub chunks: HashMap<(i32, i32, i32), Chunk>,
+    pub chunks: FxHashMap<(i32, i32, i32), Chunk>,
 }
 
 impl World {
@@ -170,7 +153,7 @@ impl World {
                     blocks,
                 }
             })
-            .fold(HashMap::new(), |mut hm, chunk| {
+            .fold(FxHashMap::default(), |mut hm, chunk| {
                 hm.insert(chunk.pos, chunk);
                 hm
             });
@@ -179,7 +162,7 @@ impl World {
     }
 
     pub fn default() -> Self {
-        let mut chunks = HashMap::new();
+        let mut chunks = FxHashMap::default();
 
         let chunk_gen = ChunkGenerator::new(Perlin::new(42, 3, 0.5, 2., 1. / 64.));
 
@@ -194,5 +177,41 @@ impl World {
         }
 
         Self { chunks }
+    }
+
+    pub fn world_to_chunk_pos(pos: (i32, i32, i32)) -> ((i32, i32, i32), (i32, i32, i32)) {
+        let chunk_index = (
+            pos.0.div_euclid(Chunk::CHUNK_SIZE as i32),
+            pos.1.div_euclid(Chunk::CHUNK_SIZE as i32),
+            pos.2.div_euclid(Chunk::CHUNK_SIZE as i32),
+        );
+        let within_chunk_pos = (
+            pos.0.rem_euclid(Chunk::CHUNK_SIZE as i32),
+            pos.1.rem_euclid(Chunk::CHUNK_SIZE as i32),
+            pos.2.rem_euclid(Chunk::CHUNK_SIZE as i32),
+        );
+
+        (chunk_index, within_chunk_pos)
+    }
+
+    /// Check if the given block has any side that isn't surrounded
+    pub fn is_block_exposed(&self, pos: (i32, i32, i32)) -> bool {
+        Chunk::ADJACENT_OFFSETS.iter().any(|o| {
+            let (chunk_index, within_chunk_pos) =
+                Self::world_to_chunk_pos((pos.0 + o[0], pos.1 + o[1], pos.2 + o[2]));
+            let chunk_origin = (
+                chunk_index.0 * Chunk::CHUNK_SIZE as i32,
+                chunk_index.1 * Chunk::CHUNK_SIZE as i32,
+                chunk_index.2 * Chunk::CHUNK_SIZE as i32,
+            );
+
+            if let Some(chunk) = self.chunks.get(&chunk_origin) {
+                // If adjacent block is air, it's exposed
+                *chunk.get_block(within_chunk_pos) == BlockType::Air
+            } else {
+                // If adjacent chunk hasn't been generated yet, it's exposed.
+                true
+            }
+        })
     }
 }

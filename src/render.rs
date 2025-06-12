@@ -272,7 +272,7 @@ impl RenderState<'_> {
                     // Don't render air blocks
                     .filter(|b| b.block_type != BlockType::Air)
                     // Only render exposed blocks
-                    .filter(|b| chunk.is_block_exposed(b.world_pos))
+                    .filter(|b| world.is_block_exposed(b.world_pos))
             })
             .map(|block| block.to_instance().to_raw())
             .collect::<Vec<_>>();
