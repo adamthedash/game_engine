@@ -97,6 +97,8 @@ impl ChunkGenerator {
             chunk_pos,
             world_pos,
             blocks,
+            // WARN: exposed_blocks must be populated elsewhere as chunk-to-chunk info is needed
+            exposed_blocks: Default::default(),
         }
     }
 }

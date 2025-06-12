@@ -100,10 +100,12 @@ pub struct Chunk {
     pub chunk_pos: ChunkPos, // Position of chunk in chunk space
     pub world_pos: BlockPos, // Position of corner block in world space
     pub blocks: [[[BlockType; Self::CHUNK_SIZE]; Self::CHUNK_SIZE]; Self::CHUNK_SIZE], // Block type IDs
+    pub exposed_blocks: [[[bool; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE],
 }
 
 impl Chunk {
     pub const CHUNK_SIZE: usize = 16;
+    pub const BLOCKS_PER_CHUNK: usize = const { Self::CHUNK_SIZE.pow(3) };
 
     /// Relative offsets in cardinal directions
     pub const ADJACENT_OFFSETS: [[i32; 3]; 6] = [
@@ -140,6 +142,14 @@ impl Chunk {
 
         &mut self.blocks[pos.0 as usize][pos.1 as usize][pos.2 as usize]
     }
+
+    pub fn is_block_exposed(&self, pos: (i32, i32, i32)) -> bool {
+        assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.0));
+        assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.1));
+        assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.2));
+
+        self.exposed_blocks[pos.0 as usize][pos.1 as usize][pos.2 as usize]
+    }
 }
 
 pub struct ChunkIter<'a> {
@@ -151,7 +161,7 @@ impl<'a> Iterator for ChunkIter<'a> {
     type Item = Block;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.index >= Chunk::CHUNK_SIZE.pow(3) {
+        if self.index >= Chunk::BLOCKS_PER_CHUNK {
             return None;
         }
 
@@ -239,6 +249,7 @@ impl World {
                     world_pos: chunk_pos.to_world_pos(),
                     chunk_pos,
                     blocks,
+                    exposed_blocks: Default::default(),
                 }
             })
             .fold(FxHashMap::default(), |mut hm, chunk| {
@@ -246,13 +257,14 @@ impl World {
                 hm
             });
 
-        unimplemented!();
         let chunk_gen = ChunkGenerator::new(Perlin::new(42, 3, 0.5, 2., 1. / 64.));
 
-        World {
+        let mut world = World {
             chunks,
             generator: chunk_gen,
-        }
+        };
+        world.update_all_exposed_blocks();
+        world
     }
 
     pub fn default() -> Self {
@@ -264,26 +276,65 @@ impl World {
         }
     }
 
-    /// Check if the given block has any side that isn't surrounded
-    pub fn is_block_exposed(&self, pos: &BlockPos) -> bool {
-        Chunk::ADJACENT_OFFSETS.iter().any(|o| {
-            let (chunk_pos, within_chunk_pos) =
-                BlockPos::new(pos.0.x + o[0], pos.0.y + o[1], pos.0.z + o[2]).to_chunk_offset();
-
-            if let Some(chunk) = self.chunks.get(&chunk_pos) {
-                // If adjacent block is air, it's exposed
-                *chunk.get_block(within_chunk_pos) == BlockType::Air
-            } else {
-                // If adjacent chunk hasn't been generated yet, it's exposed.
-                true
-            }
-        })
+    fn update_all_exposed_blocks(&mut self) {
+        let chunks_to_update = self.chunks.keys().cloned().collect::<Vec<_>>();
+        chunks_to_update
+            .iter()
+            .for_each(|pos| self.update_exposed_blocks(pos));
     }
 
-    pub fn get_or_generate_chunk(&mut self, pos: &ChunkPos) -> &Chunk {
+    /// Propogate exposure information to the cache
+    pub fn update_exposed_blocks(&mut self, chunk_pos: &ChunkPos) {
+        let blocks_to_update = self
+            .chunks
+            .get(chunk_pos)
+            .expect("Chunk doesn't exist!")
+            .iter_blocks()
+            .filter(|b| b.block_type == BlockType::Air)
+            .collect::<Vec<_>>();
+
+        blocks_to_update.iter().for_each(|b| {
+            Chunk::ADJACENT_OFFSETS.iter().for_each(|o| {
+                let (chunk_pos, (x, y, z)) =
+                    BlockPos(b.world_pos.0 + Vector3::new(o[0], o[1], o[2])).to_chunk_offset();
+
+                if let Some(chunk) = self.chunks.get_mut(&chunk_pos) {
+                    chunk.exposed_blocks[x as usize][y as usize][z as usize] = true;
+                }
+            });
+        });
+    }
+
+    /// Check if the given block has any side that isn't surrounded
+    pub fn is_block_exposed(&self, pos: &BlockPos) -> bool {
+        let (chunk_pos, (x, y, z)) = pos.to_chunk_offset();
         self.chunks
-            .entry(pos.clone())
-            .or_insert_with(|| self.generator.generate_chunk(pos.to_world_pos()))
+            .get(&chunk_pos)
+            .expect("Chunk doesn't exist!")
+            .exposed_blocks[x as usize][y as usize][z as usize]
+    }
+
+    /// Returns a reference to a chunk, or generates if it doesn't exist
+    pub fn get_or_generate_chunk(&mut self, pos: &ChunkPos) -> &Chunk {
+        if !self.chunks.contains_key(pos) {
+            // Create a new chunk
+            let new_chunk = self.generator.generate_chunk(pos.to_world_pos());
+            self.chunks.insert(pos.clone(), new_chunk);
+
+            // Add exposed block cache
+            self.update_exposed_blocks(pos);
+
+            // Also need to re-run adjacent exposure tests
+            let chunks_to_update = Chunk::ADJACENT_OFFSETS
+                .iter()
+                .map(|o| ChunkPos(pos.0 + Vector3::new(o[0], o[1], o[2])))
+                .filter(|pos| self.chunks.contains_key(pos))
+                .collect::<Vec<_>>();
+            chunks_to_update.iter().for_each(|pos| {
+                self.update_exposed_blocks(pos);
+            });
+        }
+        self.chunks.get(pos).unwrap()
     }
 
     pub fn get_block(&self, pos: &BlockPos) -> Option<Block> {

@@ -1,2 +1,4 @@
 /target
 /saves
+flamegraph.svg
+perf.*

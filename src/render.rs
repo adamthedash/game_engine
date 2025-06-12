@@ -85,6 +85,11 @@ impl InstanceRaw {
     };
 }
 
+/// Maximum number of block instances we can render at once
+const INSTANCE_BUFFER_MAX_SIZE: u64 =
+    (std::mem::size_of::<InstanceRaw>() * Chunk::BLOCKS_PER_CHUNK * 512) as u64;
+const VERTICAL_CHUNKS: usize = 100;
+
 /// Holds all of the stuff related to rendering the game window.
 pub struct RenderState<'a> {
     pub window: Arc<Window>,
@@ -137,8 +142,6 @@ impl RenderState<'_> {
         .build(&device, config.width, config.height, config.format);
 
         // Instances of blocks
-        const INSTANCE_BUFFER_MAX_SIZE: u64 =
-            (std::mem::size_of::<InstanceRaw>() * Chunk::CHUNK_SIZE.pow(3) * 512) as u64; // 512 chunks
 
         let instance_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Instance Buffer"),
@@ -260,7 +263,7 @@ impl RenderState<'_> {
         player_chunk
             .chunks_within(player_vision_chunks + 1)
             // Only generate chunks within vision distance of the player
-            .filter(|pos| pos.0.y.abs_diff(player_chunk.0.y) <= 1)
+            .filter(|pos| pos.0.y.abs_diff(player_chunk.0.y) <= VERTICAL_CHUNKS as u32)
             .for_each(|chunk_pos| {
                 world.get_or_generate_chunk(&chunk_pos);
             });
@@ -270,13 +273,19 @@ impl RenderState<'_> {
             // Only render chunks within vision distance of the player (plus 1 chunk buffer)
             .chunks_within(player_vision_chunks + 1)
             // Only render +/- one layer vertically
-            .filter(|pos| pos.0.y.abs_diff(player_chunk.0.y) <= 1)
+            .filter(|pos| pos.0.y.abs_diff(player_chunk.0.y) <= VERTICAL_CHUNKS as u32)
             .flat_map(|pos| world.chunks.get(&pos))
-            .flat_map(|chunk| chunk.iter_blocks())
-            // Don't render air blocks
-            .filter(|b| b.block_type != BlockType::Air)
-            // Only render exposed blocks
-            .filter(|b| world.is_block_exposed(&b.world_pos))
+            .flat_map(|chunk| {
+                chunk
+                    .iter_blocks()
+                    // Don't render air blocks
+                    .filter(|b| b.block_type != BlockType::Air)
+                    // Only render exposed blocks
+                    .filter(|b| {
+                        let (_, block_pos) = b.world_pos.to_chunk_offset();
+                        chunk.is_block_exposed(block_pos)
+                    })
+            })
             .map(|block| block.to_instance().to_raw())
             .collect::<Vec<_>>();
         self.queue
