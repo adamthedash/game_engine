@@ -1,10 +1,13 @@
 use cgmath::{One, Quaternion, Vector3};
 use num_traits::ToPrimitive;
 
-use crate::{chunk::BlockType, render::Instance};
+use crate::{
+    chunk::{BlockType, WorldPos},
+    render::Instance,
+};
 
 pub struct Block {
-    pub world_pos: (i32, i32, i32),
+    pub world_pos: WorldPos,
     pub block_type: BlockType,
 }
 

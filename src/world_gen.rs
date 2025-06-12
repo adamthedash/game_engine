@@ -1,6 +1,6 @@
 use libnoise::{Generator, ImprovedPerlin};
 
-use crate::chunk::{BlockType, Chunk};
+use crate::chunk::{BlockType, Chunk, WorldPos};
 
 #[derive(Debug)]
 pub struct Perlin {
@@ -70,13 +70,13 @@ impl ChunkGenerator {
         Self { rng }
     }
 
-    pub fn generate_chunk(&self, origin: (i32, i32, i32)) -> Chunk {
+    pub fn generate_chunk(&self, world_pos: WorldPos) -> Chunk {
         // TODO: Perf - uninit array
         let mut blocks =
             [[[BlockType::Air; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE];
-        for (i, x) in (origin.0..).take(Chunk::CHUNK_SIZE).enumerate() {
-            for (j, y) in (origin.1..).take(Chunk::CHUNK_SIZE).enumerate() {
-                for (k, z) in (origin.2..).take(Chunk::CHUNK_SIZE).enumerate() {
+        for (i, x) in (world_pos.0..).take(Chunk::CHUNK_SIZE).enumerate() {
+            for (j, y) in (world_pos.1..).take(Chunk::CHUNK_SIZE).enumerate() {
+                for (k, z) in (world_pos.2..).take(Chunk::CHUNK_SIZE).enumerate() {
                     let density = self.rng.sample(x as f64, y as f64, z as f64);
 
                     // Treat random number as if it was density
@@ -92,8 +92,10 @@ impl ChunkGenerator {
             }
         }
 
+        let (chunk_pos, _) = world_pos.to_chunk_offset();
         Chunk {
-            pos: origin,
+            chunk_pos,
+            world_pos,
             blocks,
         }
     }
@@ -103,6 +105,7 @@ impl ChunkGenerator {
 mod tests {
 
     use super::{ChunkGenerator, Perlin};
+    use crate::chunk::WorldPos;
 
     #[test]
     fn test_perlin() {
@@ -127,7 +130,7 @@ mod tests {
         let generator = Perlin::new(42, 3, 2., 2., 1. / 16.);
         let chunk_gen = ChunkGenerator::new(generator);
 
-        let chunk = chunk_gen.generate_chunk((0, 0, 0));
+        let chunk = chunk_gen.generate_chunk(WorldPos(0, 0, 0));
         println!("{:?}", chunk);
     }
 

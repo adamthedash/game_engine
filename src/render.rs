@@ -260,9 +260,9 @@ impl RenderState<'_> {
             // Only render chunks within vision distance of the player
             .filter(|chunk| {
                 self.camera.pos.distance2(cgmath::Point3 {
-                    x: chunk.pos.0 as f32,
-                    y: chunk.pos.1 as f32,
-                    z: chunk.pos.2 as f32,
+                    x: chunk.world_pos.0 as f32,
+                    y: chunk.world_pos.1 as f32,
+                    z: chunk.world_pos.2 as f32,
                     // Extra chunk size as buffer
                 }) < ((self.camera.zfar + Chunk::CHUNK_SIZE as f32 * 3_f32.sqrt()).powi(2))
             })
@@ -272,7 +272,7 @@ impl RenderState<'_> {
                     // Don't render air blocks
                     .filter(|b| b.block_type != BlockType::Air)
                     // Only render exposed blocks
-                    .filter(|b| world.is_block_exposed(b.world_pos))
+                    .filter(|b| world.is_block_exposed(&b.world_pos))
             })
             .map(|block| block.to_instance().to_raw())
             .collect::<Vec<_>>();
