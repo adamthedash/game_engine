@@ -264,7 +264,7 @@ impl RenderState<'_> {
         let player_vision_chunks = (self.camera.zfar as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
         player_chunk
             .chunks_within(player_vision_chunks + 1)
-            // Only render chunks within vision distance of the player
+            // Only generate chunks within vision distance of the player
             .filter(|pos| pos.1.abs_diff(player_chunk.1) <= 1)
             .for_each(|chunk_pos| {
                 world.get_or_generate_chunk(&chunk_pos);
@@ -272,17 +272,16 @@ impl RenderState<'_> {
 
         // Generate instances using the world blocks
         let instances = player_chunk
+            // Only render chunks within vision distance of the player (plus 1 chunk buffer)
             .chunks_within(player_vision_chunks + 1)
+            // Only render +/- one layer vertically
             .filter(|pos| pos.1.abs_diff(player_chunk.1) <= 1)
             .flat_map(|pos| world.chunks.get(&pos))
-            .flat_map(|chunk| {
-                chunk
-                    .iter_blocks()
-                    // Don't render air blocks
-                    .filter(|b| b.block_type != BlockType::Air)
-                    // Only render exposed blocks
-                    .filter(|b| world.is_block_exposed(&b.world_pos))
-            })
+            .flat_map(|chunk| chunk.iter_blocks())
+            // Don't render air blocks
+            .filter(|b| b.block_type != BlockType::Air)
+            // Only render exposed blocks
+            .filter(|b| world.is_block_exposed(&b.world_pos))
             .map(|block| block.to_instance().to_raw())
             .collect::<Vec<_>>();
         self.queue
