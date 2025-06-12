@@ -4,7 +4,7 @@ use std::{
     path::Path,
 };
 
-use cgmath::Point3;
+use cgmath::{InnerSpace, Point3, Vector3};
 use glob::glob;
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{Euclid, FromPrimitive, ToPrimitive};
@@ -17,15 +17,15 @@ use crate::{
 
 // Represents the position of a chunk in chunk-space (1 unit moves 1 chunk length)
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub struct ChunkPos(pub i32, pub i32, pub i32);
+pub struct ChunkPos(pub Point3<i32>);
 
 impl ChunkPos {
+    pub fn new(x: i32, y: i32, z: i32) -> Self {
+        Self(Point3::new(x, y, z))
+    }
+
     pub fn to_world_pos(&self) -> BlockPos {
-        BlockPos::new(
-            self.0 * Chunk::CHUNK_SIZE as i32,
-            self.1 * Chunk::CHUNK_SIZE as i32,
-            self.2 * Chunk::CHUNK_SIZE as i32,
-        )
+        BlockPos(self.0 * Chunk::CHUNK_SIZE as i32)
     }
 
     /// Iterates over all chunk positions within a given circular distance
@@ -35,11 +35,12 @@ impl ChunkPos {
 
         let offsets = (-num_chunks..=num_chunks)
             .flat_map(move |x| {
-                (-num_chunks..=num_chunks)
-                    .flat_map(move |y| (-num_chunks..=num_chunks).map(move |z| (x, y, z)))
+                (-num_chunks..=num_chunks).flat_map(move |y| {
+                    (-num_chunks..=num_chunks).map(move |z| Vector3::new(x, y, z))
+                })
             })
-            .filter(move |(x, y, z)| x * x + y * y + z * z <= dist2);
-        offsets.map(move |(x, y, z)| ChunkPos(self.0 + x, self.1 + y, self.2 + z))
+            .filter(move |offset| offset.magnitude2() <= dist2);
+        offsets.map(move |offset| ChunkPos(self.0 + offset))
     }
 }
 
@@ -53,7 +54,7 @@ impl BlockPos {
     }
 
     pub fn to_chunk_offset(&self) -> (ChunkPos, (i32, i32, i32)) {
-        let chunk_index = ChunkPos(
+        let chunk_index = ChunkPos::new(
             self.0.x.div_euclid(Chunk::CHUNK_SIZE as i32),
             self.0.y.div_euclid(Chunk::CHUNK_SIZE as i32),
             self.0.z.div_euclid(Chunk::CHUNK_SIZE as i32),
@@ -181,7 +182,7 @@ impl World {
         }
         assert!(!folder.exists());
         fs::create_dir(folder).unwrap();
-        self.chunks.iter().for_each(|(ChunkPos(x, y, z), chunk)| {
+        self.chunks.iter().for_each(|(pos, chunk)| {
             let serialised = chunk
                 .blocks
                 .iter()
@@ -190,7 +191,7 @@ impl World {
                 .flat_map(|x| x.to_u16().unwrap().to_le_bytes())
                 .collect::<Vec<_>>();
 
-            let filename = folder.join(format!("{x}_{y}_{z}.chunk"));
+            let filename = folder.join(format!("{}_{}_{}.chunk", pos.0.x, pos.0.y, pos.0.z));
             let mut writer =
                 BufWriter::new(File::create_new(&filename).expect("Failed to create file"));
             writer.write_all(&serialised).unwrap();
@@ -213,7 +214,7 @@ impl World {
                     .collect::<Vec<_>>()
                     .try_into()
                     .unwrap();
-                let chunk_pos = ChunkPos(x, y, z);
+                let chunk_pos = ChunkPos::new(x, y, z);
 
                 let blocks = fs::read(&filename)
                     .unwrap()

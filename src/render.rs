@@ -22,7 +22,7 @@ use crate::{
     model::Model,
     shader::{ShaderPipeline, ShaderPipelineLayout},
     texture::Texture,
-    world::{BlockPos, BlockType, Chunk, World},
+    world::{BlockType, Chunk, World},
 };
 
 /// Represents a vertex on the GPU
@@ -260,7 +260,7 @@ impl RenderState<'_> {
         player_chunk
             .chunks_within(player_vision_chunks + 1)
             // Only generate chunks within vision distance of the player
-            .filter(|pos| pos.1.abs_diff(player_chunk.1) <= 1)
+            .filter(|pos| pos.0.y.abs_diff(player_chunk.0.y) <= 1)
             .for_each(|chunk_pos| {
                 world.get_or_generate_chunk(&chunk_pos);
             });
@@ -270,7 +270,7 @@ impl RenderState<'_> {
             // Only render chunks within vision distance of the player (plus 1 chunk buffer)
             .chunks_within(player_vision_chunks + 1)
             // Only render +/- one layer vertically
-            .filter(|pos| pos.1.abs_diff(player_chunk.1) <= 1)
+            .filter(|pos| pos.0.y.abs_diff(player_chunk.0.y) <= 1)
             .flat_map(|pos| world.chunks.get(&pos))
             .flat_map(|chunk| chunk.iter_blocks())
             // Don't render air blocks
