@@ -74,9 +74,9 @@ impl ChunkGenerator {
         // TODO: Perf - uninit array
         let mut blocks =
             [[[BlockType::Air; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE];
-        for (i, x) in (world_pos.0..).take(Chunk::CHUNK_SIZE).enumerate() {
-            for (j, y) in (world_pos.1..).take(Chunk::CHUNK_SIZE).enumerate() {
-                for (k, z) in (world_pos.2..).take(Chunk::CHUNK_SIZE).enumerate() {
+        for (i, x) in (world_pos.0.x..).take(Chunk::CHUNK_SIZE).enumerate() {
+            for (j, y) in (world_pos.0.y..).take(Chunk::CHUNK_SIZE).enumerate() {
+                for (k, z) in (world_pos.0.z..).take(Chunk::CHUNK_SIZE).enumerate() {
                     let density = self.rng.sample(x as f64, y as f64, z as f64);
 
                     // Treat random number as if it was density
@@ -130,7 +130,7 @@ mod tests {
         let generator = Perlin::new(42, 3, 2., 2., 1. / 16.);
         let chunk_gen = ChunkGenerator::new(generator);
 
-        let chunk = chunk_gen.generate_chunk(BlockPos(0, 0, 0));
+        let chunk = chunk_gen.generate_chunk(BlockPos::new(0, 0, 0));
         println!("{:?}", chunk);
     }
 

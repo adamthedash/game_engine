@@ -90,7 +90,7 @@ impl ApplicationHandler for App<'_> {
         // }
 
         // Debug block
-        if let Some(block) = self.world.get_block_mut(&BlockPos(-4, 23, -5)) {
+        if let Some(block) = self.world.get_block_mut(&BlockPos::new(-4, 23, -5)) {
             *block = BlockType::Smiley;
         };
 

@@ -4,7 +4,7 @@ use std::{
     path::Path,
 };
 
-use cgmath::{Point3, Vector3};
+use cgmath::Point3;
 use glob::glob;
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{Euclid, FromPrimitive, ToPrimitive};
@@ -21,7 +21,7 @@ pub struct ChunkPos(pub i32, pub i32, pub i32);
 
 impl ChunkPos {
     pub fn to_world_pos(&self) -> BlockPos {
-        BlockPos(
+        BlockPos::new(
             self.0 * Chunk::CHUNK_SIZE as i32,
             self.1 * Chunk::CHUNK_SIZE as i32,
             self.2 * Chunk::CHUNK_SIZE as i32,
@@ -45,19 +45,23 @@ impl ChunkPos {
 
 // Represents the position of a block in block-space (1 unit moves 1 block length)
 #[derive(Debug, Clone)]
-pub struct BlockPos(pub i32, pub i32, pub i32);
+pub struct BlockPos(pub Point3<i32>);
 
 impl BlockPos {
+    pub fn new(x: i32, y: i32, z: i32) -> Self {
+        Self(Point3::new(x, y, z))
+    }
+
     pub fn to_chunk_offset(&self) -> (ChunkPos, (i32, i32, i32)) {
         let chunk_index = ChunkPos(
-            self.0.div_euclid(Chunk::CHUNK_SIZE as i32),
-            self.1.div_euclid(Chunk::CHUNK_SIZE as i32),
-            self.2.div_euclid(Chunk::CHUNK_SIZE as i32),
+            self.0.x.div_euclid(Chunk::CHUNK_SIZE as i32),
+            self.0.y.div_euclid(Chunk::CHUNK_SIZE as i32),
+            self.0.z.div_euclid(Chunk::CHUNK_SIZE as i32),
         );
         let within_chunk_pos = (
-            self.0.rem_euclid(Chunk::CHUNK_SIZE as i32),
-            self.1.rem_euclid(Chunk::CHUNK_SIZE as i32),
-            self.2.rem_euclid(Chunk::CHUNK_SIZE as i32),
+            self.0.x.rem_euclid(Chunk::CHUNK_SIZE as i32),
+            self.0.y.rem_euclid(Chunk::CHUNK_SIZE as i32),
+            self.0.z.rem_euclid(Chunk::CHUNK_SIZE as i32),
         );
 
         (chunk_index, within_chunk_pos)
@@ -70,7 +74,7 @@ pub struct WorldPos(pub Point3<f32>);
 
 impl WorldPos {
     pub fn to_block_pos(&self) -> BlockPos {
-        BlockPos(
+        BlockPos::new(
             self.0.x.floor() as i32,
             self.0.y.floor() as i32,
             self.0.z.floor() as i32,
@@ -146,10 +150,10 @@ impl<'a> Iterator for ChunkIter<'a> {
         }
         let (rem, x) = self.index.div_rem_euclid(&Chunk::CHUNK_SIZE);
         let (z, y) = rem.div_rem_euclid(&Chunk::CHUNK_SIZE);
-        let block_pos = BlockPos(
-            self.chunk.world_pos.0 + x as i32,
-            self.chunk.world_pos.1 + y as i32,
-            self.chunk.world_pos.2 + z as i32,
+        let block_pos = BlockPos::new(
+            self.chunk.world_pos.0.x + x as i32,
+            self.chunk.world_pos.0.y + y as i32,
+            self.chunk.world_pos.0.z + z as i32,
         );
 
         self.index += 1;
@@ -260,7 +264,7 @@ impl World {
     pub fn is_block_exposed(&self, pos: &BlockPos) -> bool {
         Chunk::ADJACENT_OFFSETS.iter().any(|o| {
             let (chunk_pos, within_chunk_pos) =
-                BlockPos(pos.0 + o[0], pos.1 + o[1], pos.2 + o[2]).to_chunk_offset();
+                BlockPos::new(pos.0.x + o[0], pos.0.y + o[1], pos.0.z + o[2]).to_chunk_offset();
 
             if let Some(chunk) = self.chunks.get(&chunk_pos) {
                 // If adjacent block is air, it's exposed

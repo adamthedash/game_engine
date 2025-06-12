@@ -1,8 +1,7 @@
 use std::f32::consts::FRAC_PI_2;
 
 use cgmath::{
-    Angle, Deg, ElementWise, InnerSpace, Matrix4, Point3, Rad, SquareMatrix, Vector3, Vector4,
-    perspective,
+    Angle, Deg, ElementWise, InnerSpace, Matrix4, Rad, SquareMatrix, Vector3, Vector4, perspective,
 };
 use winit::{event::KeyEvent, keyboard::PhysicalKey};
 
@@ -218,53 +217,29 @@ impl CameraController {
 
         // TODO: See if we can clean this up a bit
         if movement_vector.x < 0.
-            && colliding_with(&BlockPos(
-                player_block_pos.0 - 1,
-                player_block_pos.1,
-                player_block_pos.2,
-            ))
+            && colliding_with(&BlockPos(player_block_pos.0 - Vector3::unit_x()))
         {
             movement_vector.x = 0.;
         } else if movement_vector.x > 0.
-            && colliding_with(&BlockPos(
-                player_block_pos.0 + 1,
-                player_block_pos.1,
-                player_block_pos.2,
-            ))
+            && colliding_with(&BlockPos(player_block_pos.0 + Vector3::unit_x()))
         {
             movement_vector.x = 0.;
         }
         if movement_vector.y < 0.
-            && colliding_with(&BlockPos(
-                player_block_pos.0,
-                player_block_pos.1 - 1,
-                player_block_pos.2,
-            ))
+            && colliding_with(&BlockPos(player_block_pos.0 - Vector3::unit_y()))
         {
             movement_vector.y = 0.;
         } else if movement_vector.y > 0.
-            && colliding_with(&BlockPos(
-                player_block_pos.0,
-                player_block_pos.1 + 1,
-                player_block_pos.2,
-            ))
+            && colliding_with(&BlockPos(player_block_pos.0 + Vector3::unit_y()))
         {
             movement_vector.y = 0.;
         }
         if movement_vector.z < 0.
-            && colliding_with(&BlockPos(
-                player_block_pos.0,
-                player_block_pos.1,
-                player_block_pos.2 - 1,
-            ))
+            && colliding_with(&BlockPos(player_block_pos.0 - Vector3::unit_z()))
         {
             movement_vector.z = 0.;
         } else if movement_vector.z > 0.
-            && colliding_with(&BlockPos(
-                player_block_pos.0,
-                player_block_pos.1,
-                player_block_pos.2 + 1,
-            ))
+            && colliding_with(&BlockPos(player_block_pos.0 + Vector3::unit_z()))
         {
             movement_vector.z = 0.;
         }
