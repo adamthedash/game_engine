@@ -15,7 +15,7 @@ use crate::{
     world_gen::{ChunkGenerator, Perlin},
 };
 
-// Represents the position of a chunk in chunk-space (1 unit moves 1 chunk length)
+/// Represents the position of a chunk in chunk-space (1 unit moves 1 chunk length)
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct ChunkPos(pub Point3<i32>);
 
@@ -24,6 +24,7 @@ impl ChunkPos {
         Self(Point3::new(x, y, z))
     }
 
+    /// Convert to the position of the chunk's origin block
     pub fn to_world_pos(&self) -> BlockPos {
         BlockPos(self.0 * Chunk::CHUNK_SIZE as i32)
     }
@@ -44,7 +45,7 @@ impl ChunkPos {
     }
 }
 
-// Represents the position of a block in block-space (1 unit moves 1 block length)
+/// Represents the position of a block in block-space (1 unit moves 1 block length)
 #[derive(Debug, Clone)]
 pub struct BlockPos(pub Point3<i32>);
 
@@ -53,6 +54,7 @@ impl BlockPos {
         Self(Point3::new(x, y, z))
     }
 
+    /// Convert to a chunk position and the block position relative to the chunk
     pub fn to_chunk_offset(&self) -> (ChunkPos, (i32, i32, i32)) {
         let chunk_index = ChunkPos::new(
             self.0.x.div_euclid(Chunk::CHUNK_SIZE as i32),
@@ -74,6 +76,7 @@ impl BlockPos {
 pub struct WorldPos(pub Point3<f32>);
 
 impl WorldPos {
+    /// Convert to a block position, rounding down
     pub fn to_block_pos(&self) -> BlockPos {
         BlockPos::new(
             self.0.x.floor() as i32,
@@ -102,6 +105,7 @@ pub struct Chunk {
 impl Chunk {
     pub const CHUNK_SIZE: usize = 16;
 
+    /// Relative offsets in cardinal directions
     pub const ADJACENT_OFFSETS: [[i32; 3]; 6] = [
         [-1, 0, 0], // left
         [1, 0, 0],  // right
@@ -111,6 +115,7 @@ impl Chunk {
         [0, 0, 1],  // forwards
     ];
 
+    /// Iterate over the blocks in this chunk
     pub fn iter_blocks(&self) -> ChunkIter<'_> {
         ChunkIter {
             chunk: self,
@@ -149,13 +154,11 @@ impl<'a> Iterator for ChunkIter<'a> {
         if self.index >= Chunk::CHUNK_SIZE.pow(3) {
             return None;
         }
+
+        // Convert the iterator index into the corresponding block position
         let (rem, x) = self.index.div_rem_euclid(&Chunk::CHUNK_SIZE);
         let (z, y) = rem.div_rem_euclid(&Chunk::CHUNK_SIZE);
-        let block_pos = BlockPos::new(
-            self.chunk.world_pos.0.x + x as i32,
-            self.chunk.world_pos.0.y + y as i32,
-            self.chunk.world_pos.0.z + z as i32,
-        );
+        let block_pos = BlockPos(self.chunk.world_pos.0 + Vector3::new(x, y, z).cast().unwrap());
 
         self.index += 1;
 

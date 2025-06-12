@@ -215,31 +215,24 @@ impl CameraController {
             }
         };
 
-        // TODO: See if we can clean this up a bit
-        if movement_vector.x < 0.
-            && colliding_with(&BlockPos(player_block_pos.0 - Vector3::unit_x()))
-        {
-            movement_vector.x = 0.;
-        } else if movement_vector.x > 0.
-            && colliding_with(&BlockPos(player_block_pos.0 + Vector3::unit_x()))
+        if movement_vector.x != 0.
+            && colliding_with(&BlockPos(
+                player_block_pos.0 + movement_vector.x.signum() as i32 * Vector3::unit_x(),
+            ))
         {
             movement_vector.x = 0.;
         }
-        if movement_vector.y < 0.
-            && colliding_with(&BlockPos(player_block_pos.0 - Vector3::unit_y()))
-        {
-            movement_vector.y = 0.;
-        } else if movement_vector.y > 0.
-            && colliding_with(&BlockPos(player_block_pos.0 + Vector3::unit_y()))
+        if movement_vector.y != 0.
+            && colliding_with(&BlockPos(
+                player_block_pos.0 + movement_vector.y.signum() as i32 * Vector3::unit_y(),
+            ))
         {
             movement_vector.y = 0.;
         }
-        if movement_vector.z < 0.
-            && colliding_with(&BlockPos(player_block_pos.0 - Vector3::unit_z()))
-        {
-            movement_vector.z = 0.;
-        } else if movement_vector.z > 0.
-            && colliding_with(&BlockPos(player_block_pos.0 + Vector3::unit_z()))
+        if movement_vector.z != 0.
+            && colliding_with(&BlockPos(
+                player_block_pos.0 + movement_vector.z.signum() as i32 * Vector3::unit_z(),
+            ))
         {
             movement_vector.z = 0.;
         }
