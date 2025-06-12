@@ -26,6 +26,20 @@ impl ChunkPos {
             self.2 * Chunk::CHUNK_SIZE as i32,
         )
     }
+
+    /// Iterates over all chunk positions within a given circular distance
+    pub fn chunks_within(&self, num_chunks: u32) -> impl Iterator<Item = ChunkPos> {
+        let num_chunks = num_chunks as i32;
+        let dist2 = num_chunks * num_chunks;
+
+        let offsets = (-num_chunks..=num_chunks)
+            .flat_map(move |x| {
+                (-num_chunks..=num_chunks)
+                    .flat_map(move |y| (-num_chunks..=num_chunks).map(move |z| (x, y, z)))
+            })
+            .filter(move |(x, y, z)| x * x + y * y + z * z <= dist2);
+        offsets.map(move |(x, y, z)| ChunkPos(self.0 + x, self.1 + y, self.2 + z))
+    }
 }
 
 // Represents the position of a block in world-space (1 unit moves 1 block length)
@@ -125,6 +139,7 @@ impl<'a> Iterator for ChunkIter<'a> {
 pub struct World {
     // Generated chunks
     pub chunks: FxHashMap<ChunkPos, Chunk>,
+    pub generator: ChunkGenerator,
 }
 
 impl World {
@@ -197,26 +212,22 @@ impl World {
                 hm
             });
 
-        World { chunks }
+        unimplemented!();
+        let chunk_gen = ChunkGenerator::new(Perlin::new(42, 3, 0.5, 2., 1. / 64.));
+
+        World {
+            chunks,
+            generator: chunk_gen,
+        }
     }
 
     pub fn default() -> Self {
-        let mut chunks = FxHashMap::default();
-
         let chunk_gen = ChunkGenerator::new(Perlin::new(42, 3, 0.5, 2., 1. / 64.));
 
-        for x in -16..16 {
-            for z in -16..16 {
-                let chunk_pos = ChunkPos(x, 0, z);
-                let world_pos = chunk_pos.to_world_pos();
-
-                chunks
-                    .entry(chunk_pos)
-                    .insert_entry(chunk_gen.generate_chunk(world_pos));
-            }
+        Self {
+            chunks: Default::default(),
+            generator: chunk_gen,
         }
-
-        Self { chunks }
     }
 
     /// Check if the given block has any side that isn't surrounded
@@ -233,5 +244,11 @@ impl World {
                 true
             }
         })
+    }
+
+    pub fn get_or_generate_chunk(&mut self, pos: &ChunkPos) -> &Chunk {
+        self.chunks
+            .entry(pos.clone())
+            .or_insert_with(|| self.generator.generate_chunk(pos.to_world_pos()))
     }
 }

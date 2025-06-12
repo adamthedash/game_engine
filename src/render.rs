@@ -19,7 +19,7 @@ use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{
     camera::{Camera, CameraUniform},
-    chunk::{BlockType, Chunk, World},
+    chunk::{BlockType, Chunk, ChunkPos, World, WorldPos},
     model::Model,
     shader::{ShaderPipeline, ShaderPipelineLayout},
     texture::Texture,
@@ -250,22 +250,31 @@ impl RenderState<'_> {
     }
 
     /// Perform the actual rendering to the screen
-    pub fn render(&mut self, world: &World) {
+    pub fn render(&mut self, world: &mut World) {
         let start_time = time::Instant::now();
 
-        // Generate instances using the world blocks
-        let instances = world
-            .chunks
-            .values()
+        // Generate chunks around the player
+        // TODO: do this in an update loop instead of render
+        let (player_chunk, _) = WorldPos(
+            self.camera.pos.x as i32,
+            self.camera.pos.y as i32,
+            self.camera.pos.z as i32,
+        )
+        .to_chunk_offset();
+        let player_vision_chunks = (self.camera.zfar as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
+        player_chunk
+            .chunks_within(player_vision_chunks + 1)
             // Only render chunks within vision distance of the player
-            .filter(|chunk| {
-                self.camera.pos.distance2(cgmath::Point3 {
-                    x: chunk.world_pos.0 as f32,
-                    y: chunk.world_pos.1 as f32,
-                    z: chunk.world_pos.2 as f32,
-                    // Extra chunk size as buffer
-                }) < ((self.camera.zfar + Chunk::CHUNK_SIZE as f32 * 3_f32.sqrt()).powi(2))
-            })
+            .filter(|pos| pos.1.abs_diff(player_chunk.1) <= 1)
+            .for_each(|chunk_pos| {
+                world.get_or_generate_chunk(&chunk_pos);
+            });
+
+        // Generate instances using the world blocks
+        let instances = player_chunk
+            .chunks_within(player_vision_chunks + 1)
+            .filter(|pos| pos.1.abs_diff(player_chunk.1) <= 1)
+            .flat_map(|pos| world.chunks.get(&pos))
             .flat_map(|chunk| {
                 chunk
                     .iter_blocks()

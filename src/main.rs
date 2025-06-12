@@ -1,3 +1,4 @@
+#![feature(int_roundings)]
 use std::{f32, path::Path, sync::Arc};
 
 use camera::{Camera, CameraController};
@@ -92,7 +93,7 @@ impl ApplicationHandler for App<'_> {
                         .update_camera(&mut render_state.camera);
                     render_state.update_camera_buffer();
 
-                    render_state.render(&self.world);
+                    render_state.render(&mut self.world);
                 }
             }
             WindowEvent::Resized(size) => {
