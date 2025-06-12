@@ -8,7 +8,7 @@ use winit::{event::KeyEvent, keyboard::PhysicalKey};
 
 use crate::{
     bbox::AABB,
-    chunk::{BlockType, World, WorldPos},
+    world::{BlockPos, BlockType, World, WorldPos},
 };
 
 /// Matrix used to convert from OpenGL to WebGPU NCD
@@ -22,7 +22,7 @@ const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::from_cols(
 /// Holds the current state of the camera
 #[derive(Debug)]
 pub struct Camera {
-    pub pos: Point3<f32>,
+    pub pos: WorldPos,
     pub yaw: Rad<f32>,
     pub pitch: Rad<f32>,
     pub aspect: f32,
@@ -37,7 +37,7 @@ impl Camera {
         let (sin_yaw, cos_yaw) = self.yaw.0.sin_cos();
 
         let view = Matrix4::look_to_rh(
-            self.pos,
+            self.pos.0,
             Vector3::new(cos_pitch * cos_yaw, sin_pitch, cos_pitch * sin_yaw).normalize(),
             Vector3::unit_y(),
         );
@@ -198,17 +198,13 @@ impl CameraController {
         movement_vector = movement_vector.normalize();
 
         // Step 2: Figure out if we're colliding with any blocks
-        let player_block_pos = WorldPos(
-            camera.pos.x.floor() as i32,
-            camera.pos.y.floor() as i32,
-            camera.pos.z.floor() as i32,
-        );
+        let player_block_pos = camera.pos.to_block_pos();
         let player_aabb = AABB::new(
-            &camera.pos.add_element_wise(-0.4),
-            &camera.pos.add_element_wise(0.4),
+            &camera.pos.0.add_element_wise(-0.4),
+            &camera.pos.0.add_element_wise(0.4),
         );
 
-        let colliding_with = |pos: &WorldPos| {
+        let colliding_with = |pos: &BlockPos| {
             if let Some(block) = world.get_block(pos) {
                 if block.block_type == BlockType::Air {
                     false
@@ -222,7 +218,7 @@ impl CameraController {
 
         // TODO: See if we can clean this up a bit
         if movement_vector.x < 0.
-            && colliding_with(&WorldPos(
+            && colliding_with(&BlockPos(
                 player_block_pos.0 - 1,
                 player_block_pos.1,
                 player_block_pos.2,
@@ -230,7 +226,7 @@ impl CameraController {
         {
             movement_vector.x = 0.;
         } else if movement_vector.x > 0.
-            && colliding_with(&WorldPos(
+            && colliding_with(&BlockPos(
                 player_block_pos.0 + 1,
                 player_block_pos.1,
                 player_block_pos.2,
@@ -239,7 +235,7 @@ impl CameraController {
             movement_vector.x = 0.;
         }
         if movement_vector.y < 0.
-            && colliding_with(&WorldPos(
+            && colliding_with(&BlockPos(
                 player_block_pos.0,
                 player_block_pos.1 - 1,
                 player_block_pos.2,
@@ -247,7 +243,7 @@ impl CameraController {
         {
             movement_vector.y = 0.;
         } else if movement_vector.y > 0.
-            && colliding_with(&WorldPos(
+            && colliding_with(&BlockPos(
                 player_block_pos.0,
                 player_block_pos.1 + 1,
                 player_block_pos.2,
@@ -256,7 +252,7 @@ impl CameraController {
             movement_vector.y = 0.;
         }
         if movement_vector.z < 0.
-            && colliding_with(&WorldPos(
+            && colliding_with(&BlockPos(
                 player_block_pos.0,
                 player_block_pos.1,
                 player_block_pos.2 - 1,
@@ -264,7 +260,7 @@ impl CameraController {
         {
             movement_vector.z = 0.;
         } else if movement_vector.z > 0.
-            && colliding_with(&WorldPos(
+            && colliding_with(&BlockPos(
                 player_block_pos.0,
                 player_block_pos.1,
                 player_block_pos.2 + 1,
@@ -274,7 +270,7 @@ impl CameraController {
         }
 
         // Apply the movement vector
-        camera.pos += movement_vector * self.move_speed;
+        camera.pos.0 += movement_vector * self.move_speed;
     }
 }
 

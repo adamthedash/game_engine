@@ -4,6 +4,7 @@ use std::{
     path::Path,
 };
 
+use cgmath::{Point3, Vector3};
 use glob::glob;
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{Euclid, FromPrimitive, ToPrimitive};
@@ -19,8 +20,8 @@ use crate::{
 pub struct ChunkPos(pub i32, pub i32, pub i32);
 
 impl ChunkPos {
-    pub fn to_world_pos(&self) -> WorldPos {
-        WorldPos(
+    pub fn to_world_pos(&self) -> BlockPos {
+        BlockPos(
             self.0 * Chunk::CHUNK_SIZE as i32,
             self.1 * Chunk::CHUNK_SIZE as i32,
             self.2 * Chunk::CHUNK_SIZE as i32,
@@ -42,11 +43,11 @@ impl ChunkPos {
     }
 }
 
-// Represents the position of a block in world-space (1 unit moves 1 block length)
+// Represents the position of a block in block-space (1 unit moves 1 block length)
 #[derive(Debug, Clone)]
-pub struct WorldPos(pub i32, pub i32, pub i32);
+pub struct BlockPos(pub i32, pub i32, pub i32);
 
-impl WorldPos {
+impl BlockPos {
     pub fn to_chunk_offset(&self) -> (ChunkPos, (i32, i32, i32)) {
         let chunk_index = ChunkPos(
             self.0.div_euclid(Chunk::CHUNK_SIZE as i32),
@@ -63,6 +64,20 @@ impl WorldPos {
     }
 }
 
+/// Represents any position in the world in block-space (1 unit moves 1 block length)
+#[derive(Debug)]
+pub struct WorldPos(pub Point3<f32>);
+
+impl WorldPos {
+    pub fn to_block_pos(&self) -> BlockPos {
+        BlockPos(
+            self.0.x.floor() as i32,
+            self.0.y.floor() as i32,
+            self.0.z.floor() as i32,
+        )
+    }
+}
+
 #[derive(FromPrimitive, ToPrimitive, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum BlockType {
     Air = 0,
@@ -75,7 +90,7 @@ pub enum BlockType {
 #[derive(Debug)]
 pub struct Chunk {
     pub chunk_pos: ChunkPos, // Position of chunk in chunk space
-    pub world_pos: WorldPos, // Position of corner block in world space
+    pub world_pos: BlockPos, // Position of corner block in world space
     pub blocks: [[[BlockType; Self::CHUNK_SIZE]; Self::CHUNK_SIZE]; Self::CHUNK_SIZE], // Block type IDs
 }
 
@@ -131,7 +146,7 @@ impl<'a> Iterator for ChunkIter<'a> {
         }
         let (rem, x) = self.index.div_rem_euclid(&Chunk::CHUNK_SIZE);
         let (z, y) = rem.div_rem_euclid(&Chunk::CHUNK_SIZE);
-        let block_pos = WorldPos(
+        let block_pos = BlockPos(
             self.chunk.world_pos.0 + x as i32,
             self.chunk.world_pos.1 + y as i32,
             self.chunk.world_pos.2 + z as i32,
@@ -242,10 +257,10 @@ impl World {
     }
 
     /// Check if the given block has any side that isn't surrounded
-    pub fn is_block_exposed(&self, pos: &WorldPos) -> bool {
+    pub fn is_block_exposed(&self, pos: &BlockPos) -> bool {
         Chunk::ADJACENT_OFFSETS.iter().any(|o| {
             let (chunk_pos, within_chunk_pos) =
-                WorldPos(pos.0 + o[0], pos.1 + o[1], pos.2 + o[2]).to_chunk_offset();
+                BlockPos(pos.0 + o[0], pos.1 + o[1], pos.2 + o[2]).to_chunk_offset();
 
             if let Some(chunk) = self.chunks.get(&chunk_pos) {
                 // If adjacent block is air, it's exposed
@@ -263,7 +278,7 @@ impl World {
             .or_insert_with(|| self.generator.generate_chunk(pos.to_world_pos()))
     }
 
-    pub fn get_block(&self, pos: &WorldPos) -> Option<Block> {
+    pub fn get_block(&self, pos: &BlockPos) -> Option<Block> {
         let (chunk_pos, offset) = pos.to_chunk_offset();
         self.chunks.get(&chunk_pos).map(|chunk| Block {
             world_pos: pos.clone(),
@@ -271,7 +286,7 @@ impl World {
         })
     }
 
-    pub fn get_block_mut(&mut self, pos: &WorldPos) -> Option<&mut BlockType> {
+    pub fn get_block_mut(&mut self, pos: &BlockPos) -> Option<&mut BlockType> {
         let (chunk_pos, offset) = pos.to_chunk_offset();
         self.chunks
             .get_mut(&chunk_pos)

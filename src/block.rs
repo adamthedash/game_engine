@@ -3,13 +3,13 @@ use num_traits::ToPrimitive;
 
 use crate::{
     bbox::AABB,
-    chunk::{BlockType, WorldPos},
     render::Instance,
+    world::{BlockPos, BlockType},
 };
 
 #[derive(Debug)]
 pub struct Block {
-    pub world_pos: WorldPos,
+    pub world_pos: BlockPos,
     pub block_type: BlockType,
 }
 

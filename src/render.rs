@@ -19,10 +19,10 @@ use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{
     camera::{Camera, CameraUniform},
-    chunk::{BlockType, Chunk, World, WorldPos},
     model::Model,
     shader::{ShaderPipeline, ShaderPipelineLayout},
     texture::Texture,
+    world::{BlockPos, BlockType, Chunk, World},
 };
 
 /// Represents a vertex on the GPU
@@ -255,12 +255,7 @@ impl RenderState<'_> {
 
         // Generate chunks around the player
         // TODO: do this in an update loop instead of render
-        let (player_chunk, _) = WorldPos(
-            self.camera.pos.x.floor() as i32,
-            self.camera.pos.y.floor() as i32,
-            self.camera.pos.z.floor() as i32,
-        )
-        .to_chunk_offset();
+        let (player_chunk, _) = self.camera.pos.to_block_pos().to_chunk_offset();
         let player_vision_chunks = (self.camera.zfar as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
         player_chunk
             .chunks_within(player_vision_chunks + 1)

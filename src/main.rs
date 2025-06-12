@@ -13,18 +13,18 @@ use winit::{
 };
 
 use crate::{
-    chunk::{BlockType, World, WorldPos},
     render::RenderState,
+    world::{BlockPos, BlockType, World, WorldPos},
 };
 
 mod bbox;
 mod block;
 mod camera;
-mod chunk;
 mod model;
 mod render;
 mod shader;
 mod texture;
+mod world;
 mod world_gen;
 
 struct App<'a> {
@@ -57,7 +57,7 @@ impl ApplicationHandler for App<'_> {
             );
             // Initial position of the camera/player
             let camera = Camera {
-                pos: (0., 10., -10.).into(),
+                pos: WorldPos((0., 10., -10.).into()),
                 yaw: Rad(0.),
                 pitch: Rad(0.),
                 aspect: 1.,
@@ -89,8 +89,8 @@ impl ApplicationHandler for App<'_> {
         //     println!("Event: {event:?}");
         // }
 
-        // println!("{:?}", self.world.get_block(&WorldPos(-4, 23, -5)));
-        if let Some(block) = self.world.get_block_mut(&WorldPos(-4, 23, -5)) {
+        // Debug block
+        if let Some(block) = self.world.get_block_mut(&BlockPos(-4, 23, -5)) {
             *block = BlockType::Smiley;
         };
 
