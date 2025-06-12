@@ -8,7 +8,7 @@ Collision detection.
 
 **World**  
 Multiple block types (now with some nicer textures).  
-Basic world gen using Perlin noise.  
+Basic world gen using Perlin noise (now infinite in all 3 directions).  
 Dynamic world gen as player moves around.
 
 **Rendering**  
