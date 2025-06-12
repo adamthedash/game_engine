@@ -303,7 +303,7 @@ impl RenderState<'_> {
                         load: LoadOp::Clear(wgpu::Color {
                             r: 0.1,
                             g: 0.1,
-                            b: 0.1,
+                            b: 0.8,
                             a: 1.0,
                         }),
                         store: StoreOp::Store,

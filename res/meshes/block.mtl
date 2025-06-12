@@ -1,8 +1,8 @@
-newmtl smiley1
-map_Kd smiley.png
+newmtl dirt
+map_Kd dirt.png
 
-newmtl smiley2
-map_Kd smiley2.png
+newmtl dirt
+map_Kd dirt.png
 
-newmtl smiley3
-map_Kd smiley.png
+newmtl stone
+map_Kd stone.png
