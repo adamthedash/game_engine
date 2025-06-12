@@ -747,7 +747,6 @@ dependencies = [
  "libnoise",
  "num-derive",
  "num-traits",
- "rayon",
  "rustc-hash 2.1.1",
  "tobj",
  "tokio",

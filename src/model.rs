@@ -125,12 +125,12 @@ impl Model {
                     .collect::<Vec<_>>();
 
                 let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
-                    label: Some(&format!("Vertex Buffer: {:?}", path)),
+                    label: Some(&format!("Vertex Buffer: {path:?}")),
                     contents: bytemuck::cast_slice(&vertices),
                     usage: BufferUsages::VERTEX,
                 });
                 let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
-                    label: Some(&format!("Index Buffer: {:?}", path)),
+                    label: Some(&format!("Index Buffer: {path:?}")),
                     contents: bytemuck::cast_slice(&m.mesh.indices),
                     usage: BufferUsages::INDEX,
                 });

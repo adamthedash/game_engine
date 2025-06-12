@@ -1,7 +1,7 @@
 use std::{path::Path, sync::Arc, time};
 
 use bytemuck::{Pod, Zeroable};
-use cgmath::{Matrix4, MetricSpace, Quaternion, Vector3};
+use cgmath::{Matrix4, Quaternion, Vector3};
 use wgpu::{
     Backends, Buffer, BufferAddress, BufferDescriptor, BufferUsages, CommandEncoder,
     CommandEncoderDescriptor, Device, DeviceDescriptor, Features, InstanceDescriptor, LoadOp,
@@ -19,7 +19,7 @@ use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{
     camera::{Camera, CameraUniform},
-    chunk::{BlockType, Chunk, ChunkPos, World, WorldPos},
+    chunk::{BlockType, Chunk, World, WorldPos},
     model::Model,
     shader::{ShaderPipeline, ShaderPipelineLayout},
     texture::Texture,
@@ -138,7 +138,7 @@ impl RenderState<'_> {
 
         // Instances of blocks
         const INSTANCE_BUFFER_MAX_SIZE: u64 =
-            (std::mem::size_of::<InstanceRaw>() * Chunk::CHUNK_SIZE.pow(3) * 64) as u64; // 64 chunks
+            (std::mem::size_of::<InstanceRaw>() * Chunk::CHUNK_SIZE.pow(3) * 512) as u64; // 512 chunks
 
         let instance_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Instance Buffer"),

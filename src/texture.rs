@@ -58,7 +58,7 @@ impl Texture {
 
         let view = texture.create_view(&TextureViewDescriptor::default());
         let sampler = device.create_sampler(&SamplerDescriptor {
-            label: Some(&format!("Sampler: {}", label)),
+            label: Some(&format!("Sampler: {label}")),
             ..Default::default()
         });
 
@@ -95,7 +95,7 @@ impl Texture {
         };
         // Set up the texture container (empty)
         let texture = device.create_texture(&TextureDescriptor {
-            label: Some(&format!("Texture: {}", label)),
+            label: Some(&format!("Texture: {label}")),
             size: texture_size,
             dimension: TextureDimension::D2,
             format: TextureFormat::Rgba8UnormSrgb,
@@ -129,7 +129,7 @@ impl Texture {
 
         let view = texture.create_view(&TextureViewDescriptor::default());
         let sampler = device.create_sampler(&SamplerDescriptor {
-            label: Some(&format!("Sampler: {}", label)),
+            label: Some(&format!("Sampler: {label}")),
             ..Default::default()
         });
 
@@ -146,7 +146,7 @@ impl Texture {
         label: &str,
     ) -> Self {
         let texture = device.create_texture(&TextureDescriptor {
-            label: Some(&format!("Texture: {}", label)),
+            label: Some(&format!("Texture: {label}")),
             size: Extent3d {
                 width: config.width,
                 height: config.height,
@@ -162,7 +162,7 @@ impl Texture {
 
         let view = texture.create_view(&TextureViewDescriptor::default());
         let sampler = device.create_sampler(&SamplerDescriptor {
-            label: Some(&format!("Sampler: {}", label)),
+            label: Some(&format!("Sampler: {label}")),
             mag_filter: FilterMode::Linear,
             min_filter: FilterMode::Linear,
             lod_min_clamp: 0.,

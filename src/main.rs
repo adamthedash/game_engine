@@ -77,7 +77,7 @@ impl ApplicationHandler for App<'_> {
         event: WindowEvent,
     ) {
         if !matches!(event, WindowEvent::RedrawRequested) {
-            println!("Event: {:?}", event);
+            println!("Event: {event:?}");
         }
 
         match event {
