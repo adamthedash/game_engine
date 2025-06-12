@@ -43,7 +43,7 @@ impl ChunkPos {
 }
 
 // Represents the position of a block in world-space (1 unit moves 1 block length)
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WorldPos(pub i32, pub i32, pub i32);
 
 impl WorldPos {
@@ -68,6 +68,8 @@ pub enum BlockType {
     Air = 0,
     Dirt,
     Stone,
+    Smiley,
+    Smiley2,
 }
 
 #[derive(Debug)]
@@ -80,13 +82,13 @@ pub struct Chunk {
 impl Chunk {
     pub const CHUNK_SIZE: usize = 16;
 
-    const ADJACENT_OFFSETS: [[i32; 3]; 6] = [
-        [-1, 0, 0],
-        [1, 0, 0],
-        [0, -1, 0],
-        [0, 1, 0],
-        [0, 0, -1],
-        [0, 0, 1],
+    pub const ADJACENT_OFFSETS: [[i32; 3]; 6] = [
+        [-1, 0, 0], // left
+        [1, 0, 0],  // right
+        [0, -1, 0], // down
+        [0, 1, 0],  // up
+        [0, 0, -1], // backwards
+        [0, 0, 1],  // forwards
     ];
 
     pub fn iter_blocks(&self) -> ChunkIter<'_> {
@@ -103,6 +105,15 @@ impl Chunk {
         assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.2));
 
         &self.blocks[pos.0 as usize][pos.1 as usize][pos.2 as usize]
+    }
+
+    /// Get a reference to a block in this chunk
+    pub fn get_block_mut(&mut self, pos: (i32, i32, i32)) -> &mut BlockType {
+        assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.0));
+        assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.1));
+        assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.2));
+
+        &mut self.blocks[pos.0 as usize][pos.1 as usize][pos.2 as usize]
     }
 }
 
@@ -250,5 +261,20 @@ impl World {
         self.chunks
             .entry(pos.clone())
             .or_insert_with(|| self.generator.generate_chunk(pos.to_world_pos()))
+    }
+
+    pub fn get_block(&self, pos: &WorldPos) -> Option<Block> {
+        let (chunk_pos, offset) = pos.to_chunk_offset();
+        self.chunks.get(&chunk_pos).map(|chunk| Block {
+            world_pos: pos.clone(),
+            block_type: *chunk.get_block(offset),
+        })
+    }
+
+    pub fn get_block_mut(&mut self, pos: &WorldPos) -> Option<&mut BlockType> {
+        let (chunk_pos, offset) = pos.to_chunk_offset();
+        self.chunks
+            .get_mut(&chunk_pos)
+            .map(|chunk| chunk.get_block_mut(offset))
     }
 }

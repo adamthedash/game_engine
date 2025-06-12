@@ -256,9 +256,9 @@ impl RenderState<'_> {
         // Generate chunks around the player
         // TODO: do this in an update loop instead of render
         let (player_chunk, _) = WorldPos(
-            self.camera.pos.x as i32,
-            self.camera.pos.y as i32,
-            self.camera.pos.z as i32,
+            self.camera.pos.x.floor() as i32,
+            self.camera.pos.y.floor() as i32,
+            self.camera.pos.z.floor() as i32,
         )
         .to_chunk_offset();
         let player_vision_chunks = (self.camera.zfar as u32).div_ceil(Chunk::CHUNK_SIZE as u32);

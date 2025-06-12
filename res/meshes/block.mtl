@@ -1,4 +1,4 @@
-newmtl dirt
+newmtl air
 map_Kd dirt.png
 
 newmtl dirt
@@ -6,3 +6,9 @@ map_Kd dirt.png
 
 newmtl stone
 map_Kd stone.png
+
+newmtl smiley
+map_Kd smiley.png
+
+newmtl smiley2
+map_Kd smiley2.png

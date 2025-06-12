@@ -1,8 +1,15 @@
-use cgmath::{
-    Angle, Deg, InnerSpace, Matrix4, Point3, Rad, SquareMatrix, Vector3, Vector4, perspective,
-};
 use std::f32::consts::FRAC_PI_2;
+
+use cgmath::{
+    Angle, Deg, ElementWise, InnerSpace, Matrix4, Point3, Rad, SquareMatrix, Vector3, Vector4,
+    perspective,
+};
 use winit::{event::KeyEvent, keyboard::PhysicalKey};
+
+use crate::{
+    bbox::AABB,
+    chunk::{BlockType, World, WorldPos},
+};
 
 /// Matrix used to convert from OpenGL to WebGPU NCD
 const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::from_cols(
@@ -148,46 +155,131 @@ impl CameraController {
     }
 
     /// Update the camera position
-    pub fn update_camera(&self, camera: &mut Camera) {
+    pub fn update_camera(&self, camera: &mut Camera, world: &World) {
         if !self.enabled {
             return;
         }
 
+        // Step 1: figure out the direction vector the player wants to move in
         let forward = angles_to_vec3(camera.yaw, camera.pitch);
         let right = forward.cross(Vector3::unit_y()).normalize();
 
+        let mut movement_vector = Vector3::new(0., 0., 0.);
         match (self.left_pressed, self.right_pressed) {
             (true, false) => {
-                camera.pos -= right * self.move_speed;
+                movement_vector -= right;
             }
             (false, true) => {
-                camera.pos += right * self.move_speed;
+                movement_vector += right;
             }
             _ => {}
         }
         match (self.forward_pressed, self.backwards_pressed) {
             (true, false) => {
-                camera.pos += forward * self.move_speed;
+                movement_vector += forward;
             }
             (false, true) => {
-                camera.pos -= forward * self.move_speed;
+                movement_vector -= forward;
             }
             _ => {}
         }
         match (self.up_pressed, self.down_pressed) {
             (true, false) => {
-                camera.pos.y += self.move_speed;
+                movement_vector.y += 1.;
             }
             (false, true) => {
-                camera.pos.y -= self.move_speed;
+                movement_vector.y -= 1.;
             }
             _ => {}
         }
+        if movement_vector.magnitude2() == 0. {
+            return;
+        }
+        movement_vector = movement_vector.normalize();
+
+        // Step 2: Figure out if we're colliding with any blocks
+        let player_block_pos = WorldPos(
+            camera.pos.x.floor() as i32,
+            camera.pos.y.floor() as i32,
+            camera.pos.z.floor() as i32,
+        );
+        let player_aabb = AABB::new(
+            &camera.pos.add_element_wise(-0.4),
+            &camera.pos.add_element_wise(0.4),
+        );
+
+        let colliding_with = |pos: &WorldPos| {
+            if let Some(block) = world.get_block(pos) {
+                if block.block_type == BlockType::Air {
+                    false
+                } else {
+                    player_aabb.intersects(&block.aabb().to_f32())
+                }
+            } else {
+                false
+            }
+        };
+
+        // TODO: See if we can clean this up a bit
+        if movement_vector.x < 0.
+            && colliding_with(&WorldPos(
+                player_block_pos.0 - 1,
+                player_block_pos.1,
+                player_block_pos.2,
+            ))
+        {
+            movement_vector.x = 0.;
+        } else if movement_vector.x > 0.
+            && colliding_with(&WorldPos(
+                player_block_pos.0 + 1,
+                player_block_pos.1,
+                player_block_pos.2,
+            ))
+        {
+            movement_vector.x = 0.;
+        }
+        if movement_vector.y < 0.
+            && colliding_with(&WorldPos(
+                player_block_pos.0,
+                player_block_pos.1 - 1,
+                player_block_pos.2,
+            ))
+        {
+            movement_vector.y = 0.;
+        } else if movement_vector.y > 0.
+            && colliding_with(&WorldPos(
+                player_block_pos.0,
+                player_block_pos.1 + 1,
+                player_block_pos.2,
+            ))
+        {
+            movement_vector.y = 0.;
+        }
+        if movement_vector.z < 0.
+            && colliding_with(&WorldPos(
+                player_block_pos.0,
+                player_block_pos.1,
+                player_block_pos.2 - 1,
+            ))
+        {
+            movement_vector.z = 0.;
+        } else if movement_vector.z > 0.
+            && colliding_with(&WorldPos(
+                player_block_pos.0,
+                player_block_pos.1,
+                player_block_pos.2 + 1,
+            ))
+        {
+            movement_vector.z = 0.;
+        }
+
+        // Apply the movement vector
+        camera.pos += movement_vector * self.move_speed;
     }
 }
 
 fn angles_to_vec3(yaw: Rad<f32>, pitch: Rad<f32>) -> Vector3<f32> {
-    let y = pitch.sin();
+    let (y, verticality) = pitch.sin_cos();
     let (z, x) = yaw.sin_cos();
-    Vector3::new(x, y, z).normalize()
+    Vector3::new(x * verticality, y, z * verticality).normalize()
 }

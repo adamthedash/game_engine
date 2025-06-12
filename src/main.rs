@@ -12,8 +12,12 @@ use winit::{
     window::{Window, WindowId},
 };
 
-use crate::{chunk::World, render::RenderState};
+use crate::{
+    chunk::{BlockType, World, WorldPos},
+    render::RenderState,
+};
 
+mod bbox;
 mod block;
 mod camera;
 mod chunk;
@@ -53,7 +57,7 @@ impl ApplicationHandler for App<'_> {
             );
             // Initial position of the camera/player
             let camera = Camera {
-                pos: (-10., 10., -10.).into(),
+                pos: (0., 10., -10.).into(),
                 yaw: Rad(0.),
                 pitch: Rad(0.),
                 aspect: 1.,
@@ -76,9 +80,19 @@ impl ApplicationHandler for App<'_> {
         _window_id: WindowId,
         event: WindowEvent,
     ) {
-        if !matches!(event, WindowEvent::RedrawRequested) {
-            println!("Event: {event:?}");
-        }
+        // if !matches!(
+        //     event,
+        //     WindowEvent::RedrawRequested
+        //         | WindowEvent::Moved { .. }
+        //         | WindowEvent::AxisMotion { .. }
+        // ) {
+        //     println!("Event: {event:?}");
+        // }
+
+        // println!("{:?}", self.world.get_block(&WorldPos(-4, 23, -5)));
+        if let Some(block) = self.world.get_block_mut(&WorldPos(-4, 23, -5)) {
+            *block = BlockType::Smiley;
+        };
 
         match event {
             WindowEvent::CloseRequested => {
@@ -90,7 +104,7 @@ impl ApplicationHandler for App<'_> {
                     render_state.window.request_redraw();
 
                     self.camera_controller
-                        .update_camera(&mut render_state.camera);
+                        .update_camera(&mut render_state.camera, &self.world);
                     render_state.update_camera_buffer();
 
                     render_state.render(&mut self.world);
