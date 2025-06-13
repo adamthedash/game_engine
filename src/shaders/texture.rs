@@ -14,25 +14,28 @@ use crate::{
 };
 
 /// A shader template without data buffers linked
-pub struct ShaderPipelineLayout {
+pub struct TextureShaderPipelineLayout {
     pub texture_layout: BindGroupLayout,
     camera_layout: BindGroupLayout,
+    lighting_layout: BindGroupLayout,
     pipeline_layout: PipelineLayout,
     shader: ShaderModule,
 }
 
-impl ShaderPipelineLayout {
+impl TextureShaderPipelineLayout {
     ///
-    /// group 0: Fragment
+    /// group 0: Texture (Fragment)
     ///     binding 0: Texture
     ///     binding 1: Sampler
-    /// group 1: Vertex
+    /// group 1: Camera (Vertex)
     ///     binding 0: Camera Uniform
+    /// group 2: Lighting (Vertex + Fragment)
+    ///     binding 0: Lighting Uniform
     ///
-    pub fn create(device: &Device) -> Self {
+    pub fn new(device: &Device) -> Self {
         let shader = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("./shaders/shader.wgsl").into()),
+            label: Some("Texture Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("./texture.wgsl").into()),
         });
 
         let texture_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -71,9 +74,23 @@ impl ShaderPipelineLayout {
             }],
         });
 
+        let lighting_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("Lighting Bind Group Layout"),
+            entries: &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[&texture_layout, &camera_layout],
+            label: Some("Texture Render Pipeline Layout"),
+            bind_group_layouts: &[&texture_layout, &camera_layout, &lighting_layout],
             push_constant_ranges: &[],
         });
 
@@ -82,6 +99,7 @@ impl ShaderPipelineLayout {
             camera_layout,
             pipeline_layout,
             shader,
+            lighting_layout,
         }
     }
 
@@ -90,7 +108,8 @@ impl ShaderPipelineLayout {
         device: &Device,
         texture_format: &TextureFormat,
         camera_buffer: &Buffer,
-    ) -> ShaderPipeline {
+        lighting_buffer: &Buffer,
+    ) -> TextureShaderPipeline {
         let camera_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("Camera Bind Group"),
             layout: &self.camera_layout,
@@ -99,9 +118,17 @@ impl ShaderPipelineLayout {
                 resource: camera_buffer.as_entire_binding(),
             }],
         });
+        let lighting_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Lighting Bind Group"),
+            layout: &self.lighting_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: lighting_buffer.as_entire_binding(),
+            }],
+        });
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: Some("Render Pipeline"),
+            label: Some("Texture Render Pipeline"),
             layout: Some(&self.pipeline_layout),
             // Vertex - the corners of the triangle
             vertex: VertexState {
@@ -146,22 +173,24 @@ impl ShaderPipelineLayout {
             cache: None,
         });
 
-        ShaderPipeline {
+        TextureShaderPipeline {
             layouts: self,
             camera_bind_group,
             render_pipeline: pipeline,
+            lighting_bind_group,
         }
     }
 }
 
 /// An instantiated shader ready to go for rendering
-pub struct ShaderPipeline {
-    layouts: ShaderPipelineLayout,
+pub struct TextureShaderPipeline {
+    layouts: TextureShaderPipelineLayout,
     camera_bind_group: BindGroup,
+    lighting_bind_group: BindGroup,
     pub render_pipeline: wgpu::RenderPipeline,
 }
 
-impl ShaderPipeline {
+impl TextureShaderPipeline {
     /// Loads the data buffers into the right slots in the GPU
     pub fn setup_rendering_pass(
         &self,
@@ -174,5 +203,6 @@ impl ShaderPipeline {
         render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         render_pass.set_bind_group(0, texture_bind_group, &[]);
         render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+        render_pass.set_bind_group(2, &self.lighting_bind_group, &[]);
     }
 }

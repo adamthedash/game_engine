@@ -1,7 +1,7 @@
 use std::{path::Path, sync::Arc, time};
 
 use bytemuck::{Pod, Zeroable};
-use cgmath::{Matrix4, Quaternion, Vector3};
+use cgmath::{Matrix3, Matrix4, Quaternion, Vector3};
 use wgpu::{
     Backends, Buffer, BufferAddress, BufferDescriptor, BufferUsages, CommandEncoder,
     CommandEncoderDescriptor, Device, DeviceDescriptor, Features, InstanceDescriptor, LoadOp,
@@ -19,8 +19,12 @@ use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{
     camera::{Camera, CameraUniform},
+    light::LightingUniform,
     model::Model,
-    shader::{ShaderPipeline, ShaderPipelineLayout},
+    shaders::{
+        lighting::{LightingShaderPipeline, LightingShaderPipelineLayout},
+        texture::{TextureShaderPipeline, TextureShaderPipelineLayout},
+    },
     texture::Texture,
     world::{BlockType, Chunk, World},
 };
@@ -42,6 +46,7 @@ impl Vertex {
         attributes: &vertex_attr_array![
             0 => Float32x3,
             1 => Float32x2,
+            2 => Float32x3,
         ],
     };
 }
@@ -59,6 +64,7 @@ impl Instance {
         InstanceRaw {
             model: (Matrix4::from_translation(self.pos) * Matrix4::from(self.rotation)).into(),
             texture_index: self.texture_index,
+            normal: Matrix3::from(self.rotation).into(),
         }
     }
 }
@@ -69,6 +75,7 @@ impl Instance {
 pub struct InstanceRaw {
     model: [[f32; 4]; 4],
     texture_index: u32,
+    normal: [[f32; 3]; 3],
 }
 
 impl InstanceRaw {
@@ -81,6 +88,9 @@ impl InstanceRaw {
             7 => Float32x4,
             8 => Float32x4,
             9 => Uint32,
+            10 => Float32x3,
+            11 => Float32x3,
+            12 => Float32x3,
         ],
     };
 }
@@ -99,7 +109,7 @@ pub struct RenderState<'a> {
     queue: Queue,
     pub config: SurfaceConfiguration,
     // Shader stuff
-    shader_pipeline: ShaderPipeline,
+    texture_shader_pipeline: TextureShaderPipeline,
     instance_buffer: Buffer,
     // Texture stuff
     obj_model: Model,
@@ -110,6 +120,10 @@ pub struct RenderState<'a> {
     camera_buffer: Buffer,
     // Text stuff
     brush: TextBrush<FontRef<'a>>,
+    // Lighting stuff
+    lighting_uniform: LightingUniform,
+    lighting_buffer: Buffer,
+    lighting_shader_pipeline: LightingShaderPipeline,
 }
 
 impl RenderState<'_> {
@@ -118,7 +132,8 @@ impl RenderState<'_> {
             RenderState::init_gpu(window.clone()).await;
 
         // Shaders
-        let shader = ShaderPipelineLayout::create(&device);
+        let texture_shader = TextureShaderPipelineLayout::new(&device);
+        let light_shader = LightingShaderPipelineLayout::new(&device);
 
         // Texture
         let depth_texture = Texture::create_depth_texture(&device, &config, "Depth Texture");
@@ -126,13 +141,17 @@ impl RenderState<'_> {
         // Mesh
         let obj_path = Path::new(env!("OUT_DIR")).join("res/meshes/block.obj");
         let obj_model =
-            Model::load_model(&obj_path, &device, &queue, &shader.texture_layout).unwrap();
+            Model::load_model(&obj_path, &device, &queue, &texture_shader.texture_layout).unwrap();
 
         // Camera
         let (camera_uniform, camera_buffer) = RenderState::init_camera(&device);
+        let (lighting_uniform, lighting_buffer) = RenderState::init_lighting(&device);
 
         // Render Pipeline
-        let shader_pipeline = shader.init(&device, &config.format, &camera_buffer);
+        let texture_shader_pipeline =
+            texture_shader.init(&device, &config.format, &camera_buffer, &lighting_buffer);
+        let lighting_shader_pipeline =
+            light_shader.init(&device, &config.format, &camera_buffer, &lighting_buffer);
 
         // Text
         let brush = BrushBuilder::using_font_bytes(include_bytes!(
@@ -142,7 +161,6 @@ impl RenderState<'_> {
         .build(&device, config.width, config.height, config.format);
 
         // Instances of blocks
-
         let instance_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Instance Buffer"),
             size: INSTANCE_BUFFER_MAX_SIZE,
@@ -157,7 +175,7 @@ impl RenderState<'_> {
             device,
             queue,
             config,
-            shader_pipeline,
+            texture_shader_pipeline,
             obj_model,
             camera,
             camera_uniform,
@@ -165,18 +183,32 @@ impl RenderState<'_> {
             brush,
             instance_buffer,
             depth_texture,
+            lighting_uniform,
+            lighting_buffer,
+            lighting_shader_pipeline,
         }
     }
 
     fn init_camera(device: &Device) -> (CameraUniform, Buffer) {
-        let camera_uniform = CameraUniform::new();
-        let camera_buffer = device.create_buffer_init(&BufferInitDescriptor {
+        let uniform = CameraUniform::new();
+        let buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Camera Buffer"),
-            contents: bytemuck::cast_slice(&[camera_uniform]),
+            contents: bytemuck::cast_slice(&[uniform]),
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
         });
 
-        (camera_uniform, camera_buffer)
+        (uniform, buffer)
+    }
+
+    fn init_lighting(device: &Device) -> (LightingUniform, Buffer) {
+        let uniform = LightingUniform::new([1., 9., -16.], [1., 1., 1.]);
+        let buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Lighting Buffer"),
+            contents: bytemuck::cast_slice(&[uniform]),
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+        });
+
+        (uniform, buffer)
     }
 
     async fn init_gpu<'a>(
@@ -305,7 +337,7 @@ impl RenderState<'_> {
             });
 
         {
-            // Clear the screen and fill it with grey
+            // Clear the screen and fill it with blue
             let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(RenderPassColorAttachment {
@@ -333,11 +365,11 @@ impl RenderState<'_> {
             });
 
             // Draw our mesh cubes
-            render_pass.set_pipeline(&self.shader_pipeline.render_pipeline);
+            render_pass.set_pipeline(&self.texture_shader_pipeline.render_pipeline);
 
             let mesh = &self.obj_model.meshes[0];
             let material = &self.obj_model.materials[0];
-            self.shader_pipeline.setup_rendering_pass(
+            self.texture_shader_pipeline.setup_rendering_pass(
                 &mut render_pass,
                 &mesh.vertex_buffer,
                 &mesh.index_buffer,
@@ -346,13 +378,27 @@ impl RenderState<'_> {
 
             render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
             render_pass.draw_indexed(0..mesh.num_elements, 0, 0..instances.len() as u32);
+
+            // Draw the light object
+            render_pass.set_pipeline(&self.lighting_shader_pipeline.render_pipeline);
+            self.lighting_shader_pipeline.setup_rendering_pass(
+                &mut render_pass,
+                &mesh.vertex_buffer,
+                &mesh.index_buffer,
+            );
+            render_pass.draw_indexed(0..mesh.num_elements, 0, 0..1);
         }
 
         let end_time = time::Instant::now();
+        let time_taken = end_time.duration_since(start_time);
 
         let debug_text = [
             format!("{:#?}", self.camera),
-            format!("Render pass: {:?}", end_time.duration_since(start_time)),
+            format!(
+                "Render pass: {:?} ({} FPS)",
+                time_taken,
+                1000. / time_taken.as_millis() as f32
+            ),
             format!("Blocks rendered: {}", instances.len()),
         ];
         self.debug_render(&debug_text, &mut encoder, &view);

@@ -20,9 +20,10 @@ use crate::{
 mod bbox;
 mod block;
 mod camera;
+mod light;
 mod model;
 mod render;
-mod shader;
+mod shaders;
 mod texture;
 mod world;
 mod world_gen;
