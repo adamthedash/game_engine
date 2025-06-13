@@ -1,8 +1,10 @@
 #![feature(int_roundings)]
-use std::{f32, path::Path, sync::Arc};
+use std::{f32, path::Path, sync::Arc, time::Instant};
 
 use camera::{Camera, CameraController};
 use cgmath::{Deg, Rad};
+use game::GameState;
+use player::Player;
 use tokio::runtime::Runtime;
 use winit::{
     application::ApplicationHandler,
@@ -31,17 +33,35 @@ struct App<'a> {
     render_state: Option<RenderState<'a>>,
     camera_controller: CameraController,
     prev_cursor_pos: (Option<f32>, Option<f32>),
-    world: World,
+    game_state: GameState,
+    last_update: Option<Instant>,
 }
 
 impl App<'_> {
     fn new() -> Self {
+        let mut game_state = GameState {
+            world: World::default(),
+            player: Player {
+                camera: Camera {
+                    pos: WorldPos((0., 10., -10.).into()),
+                    yaw: Rad(0.),
+                    pitch: Rad(0.),
+                    aspect: 1.,
+                    fovy: Deg(45.),
+                    znear: 0.1,
+                    zfar: 100.,
+                },
+            },
+        };
+        game_state.init();
+
         Self {
             runtime: Runtime::new().unwrap(),
             render_state: None,
-            camera_controller: CameraController::new(0.2, 2. * f32::consts::PI * 1.),
+            camera_controller: CameraController::new(5., 2. * f32::consts::PI * 1.),
             prev_cursor_pos: (None, None),
-            world: World::default(),
+            game_state,
+            last_update: None,
         }
     }
 }
@@ -54,17 +74,7 @@ impl ApplicationHandler for App<'_> {
                     .create_window(Window::default_attributes())
                     .unwrap(),
             );
-            // Initial position of the camera/player
-            let camera = Camera {
-                pos: WorldPos((0., 10., -10.).into()),
-                yaw: Rad(0.),
-                pitch: Rad(0.),
-                aspect: 1.,
-                fovy: Deg(45.),
-                znear: 0.1,
-                zfar: 100.,
-            };
-            let render_state = self.runtime.block_on(RenderState::new(window, camera));
+            let render_state = self.runtime.block_on(RenderState::new(window));
             // render_state
             //     .window
             //     .set_cursor_grab(CursorGrabMode::Confined)
@@ -89,7 +99,11 @@ impl ApplicationHandler for App<'_> {
         // }
 
         // Debug block
-        if let Some(block) = self.world.get_block_mut(&BlockPos::new(-4, 23, -5)) {
+        if let Some(block) = self
+            .game_state
+            .world
+            .get_block_mut(&BlockPos::new(-4, 23, -5))
+        {
             *block = BlockType::Smiley;
         };
 
@@ -99,19 +113,30 @@ impl ApplicationHandler for App<'_> {
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
+                // Game update pass
+                if let Some(last_updated) = self.last_update {
+                    let duration = Instant::now().duration_since(last_updated);
+                    self.camera_controller.update_camera(
+                        &mut self.game_state.player.camera,
+                        &self.game_state.world,
+                        &duration,
+                    );
+                    self.game_state.update(&duration);
+                }
+                self.last_update = Some(Instant::now());
+
+                // Render pass
                 if let Some(render_state) = &mut self.render_state {
                     render_state.window.request_redraw();
 
-                    self.camera_controller
-                        .update_camera(&mut render_state.camera, &self.world);
-                    render_state.update_camera_buffer();
+                    render_state.update_camera_buffer(&self.game_state.player.camera);
 
-                    render_state.render(&mut self.world);
+                    render_state.render(&self.game_state);
                 }
             }
             WindowEvent::Resized(size) => {
                 if let Some(render_state) = &mut self.render_state {
-                    render_state.resize(size);
+                    render_state.resize(size, &mut self.game_state.player.camera);
                 }
             }
             WindowEvent::KeyboardInput {
@@ -124,10 +149,11 @@ impl ApplicationHandler for App<'_> {
             } => {
                 if key == KeyCode::F4 {
                     println!("Closing");
-                    self.world.save(Path::new("./saves"));
+                    self.game_state.world.save(Path::new("./saves"));
                     event_loop.exit();
                 }
                 self.camera_controller.handle_keypress(&event);
+                self.game_state.handle_keypress(&event);
             }
             WindowEvent::AxisMotion { axis, value, .. } => {
                 if let Some(render_state) = &mut self.render_state {
@@ -151,7 +177,7 @@ impl ApplicationHandler for App<'_> {
                     self.camera_controller.handle_mouse_move(
                         axis,
                         normalised,
-                        &mut render_state.camera,
+                        &mut self.game_state.player.camera,
                     );
                 }
             }

@@ -1,4 +1,4 @@
-use std::f32::consts::FRAC_PI_2;
+use std::{f32::consts::FRAC_PI_2, time::Duration};
 
 use cgmath::{
     Angle, Deg, ElementWise, InnerSpace, Matrix4, Rad, SquareMatrix, Vector3, Vector4, perspective,
@@ -154,7 +154,7 @@ impl CameraController {
     }
 
     /// Update the camera position
-    pub fn update_camera(&self, camera: &mut Camera, world: &World) {
+    pub fn update_camera(&self, camera: &mut Camera, world: &World, duration: &Duration) {
         if !self.enabled {
             return;
         }
@@ -238,7 +238,7 @@ impl CameraController {
         }
 
         // Apply the movement vector
-        camera.pos.0 += movement_vector * self.move_speed;
+        camera.pos.0 += movement_vector * self.move_speed * duration.as_secs_f32();
     }
 }
 
