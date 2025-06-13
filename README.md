@@ -3,7 +3,8 @@ Experimenting with a 3D rendering / game engine. Currently aiming towards someth
 
 ### Current status
 **Player**  
-Camera & flying movement.  
+Mincraft creative mode-style flying movement.
+Space-like interia flying movement.
 Collision detection.
 
 **World**  
