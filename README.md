@@ -15,5 +15,6 @@ Dynamic world gen as player moves around.
 Mesh based rendering with multiple textures.  
 Dynamic culling for non-exposed blocks and chunks too far from the camera.  
 Pre-generated block exposure information so it's not on the hot path
+Basic lighting.
 
 ![](./github/screenshot.png)
