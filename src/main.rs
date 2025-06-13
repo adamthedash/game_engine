@@ -2,7 +2,8 @@
 use std::{f32, path::Path, sync::Arc, time::Instant};
 
 use camera::{
-    Camera, space_flight::SpaceFlightCameraController,
+    Camera, basic_flight::BasicFlightCameraController, space_flight::SpaceFlightCameraController,
+    walking::WalkingCameraController,
 };
 use cgmath::{Deg, Rad};
 use game::GameState;
@@ -40,13 +41,13 @@ struct App<'a, C: CameraController> {
     last_update: Option<Instant>,
 }
 
-impl App<'_, SpaceFlightCameraController> {
+impl App<'_, WalkingCameraController> {
     fn new() -> Self {
         let mut game_state = GameState {
             world: World::default(),
             player: Player {
                 camera: Camera {
-                    pos: WorldPos((0., 10., -10.).into()),
+                    pos: WorldPos((-7., -20., -14.).into()),
                     yaw: Rad(0.),
                     pitch: Rad(0.),
                     aspect: 1.,
@@ -62,12 +63,13 @@ impl App<'_, SpaceFlightCameraController> {
             runtime: Runtime::new().unwrap(),
             render_state: None,
             //camera_controller: BasicFlightCameraController::new(5., 2. * f32::consts::PI * 1.),
-            camera_controller: SpaceFlightCameraController::new(
-                25.,
-                2. * f32::consts::PI * 1.,
-                Some(5.),
-                0.25,
-            ),
+            camera_controller: WalkingCameraController::new(5., 2. * f32::consts::PI * 1., 5., 1.),
+            //camera_controller: SpaceFlightCameraController::new(
+            //    25.,
+            //    2. * f32::consts::PI * 1.,
+            //    Some(5.),
+            //    0.25,
+            //),
             prev_cursor_pos: (None, None),
             game_state,
             last_update: None,

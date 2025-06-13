@@ -1,10 +1,13 @@
 pub mod basic_flight;
 pub mod space_flight;
 pub mod traits;
+pub mod walking;
 
-use cgmath::{Angle, Deg, InnerSpace, Matrix4, Rad, SquareMatrix, Vector3, Vector4, perspective};
+use cgmath::{
+    Angle, Deg, ElementWise, InnerSpace, Matrix4, Rad, SquareMatrix, Vector3, Vector4, perspective,
+};
 
-use crate::world::WorldPos;
+use crate::{bbox::AABB, world::WorldPos};
 
 /// Matrix used to convert from OpenGL to WebGPU NCD
 const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::from_cols(
@@ -39,6 +42,15 @@ impl Camera {
         let proj = perspective(self.fovy, self.aspect, self.znear, self.zfar);
 
         OPENGL_TO_WGPU_MATRIX * proj * view
+    }
+
+    /// Return the bounding box of the camera
+    pub fn aabb(&self) -> AABB<f32> {
+        let bbox_size = 0.4;
+        AABB::new(
+            &self.pos.0.add_element_wise(-bbox_size),
+            &self.pos.0.add_element_wise(bbox_size),
+        )
     }
 }
 

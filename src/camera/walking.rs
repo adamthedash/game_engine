@@ -10,38 +10,44 @@ use crate::{
 };
 
 /// Handles user input to adjust camera
-pub struct BasicFlightCameraController {
+pub struct WalkingCameraController {
     move_speed: f32,
     turn_speed: f32,
+    gravity: f32,
+    jump_force: f32,
     // Stateful variables
     left_pressed: bool,
     right_pressed: bool,
     up_pressed: bool,
-    down_pressed: bool,
     forward_pressed: bool,
     backwards_pressed: bool,
     pub enabled: bool,
+    vertical_velocity: f32,
 }
 
-impl BasicFlightCameraController {
-    pub fn new(move_speed: f32, turn_speed: f32) -> Self {
-        assert!(move_speed > 0.);
-        assert!(turn_speed > 0.);
+impl WalkingCameraController {
+    pub fn new(move_speed: f32, turn_speed: f32, gravity: f32, jump_force: f32) -> Self {
+        assert!(move_speed >= 0.);
+        assert!(turn_speed >= 0.);
+        assert!(gravity >= 0.);
+        assert!(jump_force >= 0.);
         Self {
             move_speed,
             turn_speed,
+            gravity,
+            jump_force,
             left_pressed: false,
             right_pressed: false,
             up_pressed: false,
-            down_pressed: false,
             forward_pressed: false,
             backwards_pressed: false,
             enabled: true,
+            vertical_velocity: 0.,
         }
     }
 }
 
-impl CameraController for BasicFlightCameraController {
+impl CameraController for WalkingCameraController {
     /// Update the movement state based on user key presses
     fn handle_keypress(&mut self, event: &KeyEvent) {
         if let KeyEvent {
@@ -69,7 +75,6 @@ impl CameraController for BasicFlightCameraController {
                 KeyA => self.left_pressed = state.is_pressed(),
                 KeyD => self.right_pressed = state.is_pressed(),
                 Space => self.up_pressed = state.is_pressed(),
-                KeyZ => self.down_pressed = state.is_pressed(),
                 _ => {}
             }
         }
@@ -90,7 +95,6 @@ impl CameraController for BasicFlightCameraController {
             // Camera
             1 => {
                 camera.pitch -= Rad(self.turn_speed * delta);
-                // camera.pitch = camera.pitch.normalize();
                 // Clip just under fully vertical to avoid weirdness
                 camera.pitch.0 = camera.pitch.0.clamp(-FRAC_PI_2 * 0.99, FRAC_PI_2 * 0.99);
             }
@@ -105,7 +109,7 @@ impl CameraController for BasicFlightCameraController {
         }
 
         // Step 1: figure out the direction vector the player wants to move in
-        let forward = angles_to_vec3(camera.yaw, camera.pitch);
+        let forward = angles_to_vec3(camera.yaw, Rad(0.));
         let right = forward.cross(Vector3::unit_y()).normalize();
 
         let mut movement_vector = Vector3::new(0., 0., 0.);
@@ -127,19 +131,9 @@ impl CameraController for BasicFlightCameraController {
             }
             _ => {}
         }
-        match (self.up_pressed, self.down_pressed) {
-            (true, false) => {
-                movement_vector.y += 1.;
-            }
-            (false, true) => {
-                movement_vector.y -= 1.;
-            }
-            _ => {}
+        if movement_vector.magnitude2() > 0. {
+            movement_vector = movement_vector.normalize();
         }
-        if movement_vector.magnitude2() == 0. {
-            return;
-        }
-        movement_vector = movement_vector.normalize();
 
         // Step 2: Figure out if we're colliding with any blocks
         let player_block_pos = camera.pos.to_block_pos();
@@ -163,13 +157,6 @@ impl CameraController for BasicFlightCameraController {
         {
             movement_vector.x = 0.;
         }
-        if movement_vector.y != 0.
-            && colliding_with(&BlockPos(
-                player_block_pos.0 + movement_vector.y.signum() as i32 * Vector3::unit_y(),
-            ))
-        {
-            movement_vector.y = 0.;
-        }
         if movement_vector.z != 0.
             && colliding_with(&BlockPos(
                 player_block_pos.0 + movement_vector.z.signum() as i32 * Vector3::unit_z(),
@@ -177,6 +164,33 @@ impl CameraController for BasicFlightCameraController {
         {
             movement_vector.z = 0.;
         }
+
+        // Step 3: Verical
+        if self.vertical_velocity > 0.
+            && colliding_with(&BlockPos(player_block_pos.0 + Vector3::unit_y()))
+        {
+            // Hit our head on the roof
+            self.vertical_velocity = 0.;
+        }
+
+        let on_floor = colliding_with(&BlockPos(player_block_pos.0 - Vector3::unit_y()));
+        if !on_floor {
+            // Apply gravity
+            self.vertical_velocity -= self.gravity * duration.as_secs_f32();
+        } else if self.vertical_velocity < 0. {
+            // Land on the floor
+            self.vertical_velocity = 0.;
+        }
+
+        // Step 3: Jumping
+        if self.up_pressed && on_floor && self.vertical_velocity <= 0. {
+            self.vertical_velocity += self.jump_force;
+        }
+
+        movement_vector.y = self.vertical_velocity;
+
+        // TODO: Need to do correct collision detection at high speeds so we don't get stuck inside
+        // walls
 
         // Apply the movement vector
         camera.pos.0 += movement_vector * self.move_speed * duration.as_secs_f32();

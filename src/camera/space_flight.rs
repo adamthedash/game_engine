@@ -1,13 +1,10 @@
 use std::f32::consts::FRAC_PI_2;
 
-use cgmath::{Angle, ElementWise, InnerSpace, Rad, Vector3, Zero};
+use cgmath::{Angle, InnerSpace, Rad, Vector3, Zero};
 use winit::{event::KeyEvent, keyboard::PhysicalKey};
 
 use super::{Camera, angles_to_vec3, traits::CameraController};
-use crate::{
-    bbox::AABB,
-    world::{BlockPos, BlockType},
-};
+use crate::world::{BlockPos, BlockType};
 
 pub struct SpaceFlightCameraController {
     acceleration: f32,
@@ -180,10 +177,7 @@ impl CameraController for SpaceFlightCameraController {
 
         // Step 4: Figure out if we're colliding with any blocks
         let player_block_pos = camera.pos.to_block_pos();
-        let player_aabb = AABB::new(
-            &camera.pos.0.add_element_wise(-0.4),
-            &camera.pos.0.add_element_wise(0.4),
-        );
+        let player_aabb = camera.aabb();
 
         let colliding_with = |pos: &BlockPos| {
             if let Some(block) = world.get_block(pos) {
