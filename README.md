@@ -5,6 +5,7 @@ Experimenting with a 3D rendering / game engine. Currently aiming towards someth
 **Player**  
 Mincraft creative mode-style flying movement.
 Space-like interia flying movement.
+Walking around movement with gravity.
 Collision detection.
 
 **World**  
