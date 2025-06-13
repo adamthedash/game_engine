@@ -11,7 +11,7 @@ use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
 };
 
-use crate::{render::Vertex, texture::Texture};
+use crate::render::{state::Vertex, texture::Texture};
 
 /// Represents a single model mesh / material. Eg. a single block type
 pub struct Model {

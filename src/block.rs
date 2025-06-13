@@ -3,7 +3,7 @@ use num_traits::ToPrimitive;
 
 use crate::{
     bbox::AABB,
-    render::Instance,
+    render::state::Instance,
     world::{BlockPos, BlockType},
 };
 

@@ -13,18 +13,16 @@ use winit::{
 };
 
 use crate::{
-    render::RenderState,
+    render::state::RenderState,
     world::{BlockPos, BlockType, World, WorldPos},
 };
 
 mod bbox;
 mod block;
 mod camera;
-mod light;
-mod model;
+mod game;
+mod player;
 mod render;
-mod shaders;
-mod texture;
 mod world;
 mod world_gen;
 

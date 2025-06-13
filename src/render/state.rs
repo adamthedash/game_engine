@@ -19,13 +19,15 @@ use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{
     camera::{Camera, CameraUniform},
-    light::LightingUniform,
-    model::Model,
-    shaders::{
-        lighting::{LightingShaderPipeline, LightingShaderPipelineLayout},
-        texture::{TextureShaderPipeline, TextureShaderPipelineLayout},
+    render::{
+        light::LightingUniform,
+        model::Model,
+        shaders::{
+            lighting::{LightingShaderPipeline, LightingShaderPipelineLayout},
+            texture::{TextureShaderPipeline, TextureShaderPipelineLayout},
+        },
+        texture::Texture,
     },
-    texture::Texture,
     world::{BlockType, Chunk, World},
 };
 
@@ -155,7 +157,7 @@ impl RenderState<'_> {
 
         // Text
         let brush = BrushBuilder::using_font_bytes(include_bytes!(
-            "../res/fonts/JetBrainsMono-Regular.ttf"
+            "../../res/fonts/JetBrainsMono-Regular.ttf"
         ))
         .unwrap()
         .build(&device, config.width, config.height, config.format);
