@@ -1,7 +1,9 @@
 #![feature(int_roundings)]
 use std::{f32, path::Path, sync::Arc, time::Instant};
 
-use camera::{Camera, CameraController};
+use camera::{
+    Camera, space_flight::SpaceFlightCameraController,
+};
 use cgmath::{Deg, Rad};
 use game::GameState;
 use player::Player;
@@ -15,6 +17,7 @@ use winit::{
 };
 
 use crate::{
+    camera::traits::CameraController,
     render::state::RenderState,
     world::{BlockPos, BlockType, World, WorldPos},
 };
@@ -28,16 +31,16 @@ mod render;
 mod world;
 mod world_gen;
 
-struct App<'a> {
+struct App<'a, C: CameraController> {
     runtime: Runtime,
     render_state: Option<RenderState<'a>>,
-    camera_controller: CameraController,
+    camera_controller: C,
     prev_cursor_pos: (Option<f32>, Option<f32>),
     game_state: GameState,
     last_update: Option<Instant>,
 }
 
-impl App<'_> {
+impl App<'_, SpaceFlightCameraController> {
     fn new() -> Self {
         let mut game_state = GameState {
             world: World::default(),
@@ -58,7 +61,13 @@ impl App<'_> {
         Self {
             runtime: Runtime::new().unwrap(),
             render_state: None,
-            camera_controller: CameraController::new(5., 2. * f32::consts::PI * 1.),
+            //camera_controller: BasicFlightCameraController::new(5., 2. * f32::consts::PI * 1.),
+            camera_controller: SpaceFlightCameraController::new(
+                25.,
+                2. * f32::consts::PI * 1.,
+                Some(5.),
+                0.25,
+            ),
             prev_cursor_pos: (None, None),
             game_state,
             last_update: None,
@@ -66,7 +75,7 @@ impl App<'_> {
     }
 }
 
-impl ApplicationHandler for App<'_> {
+impl<C: CameraController> ApplicationHandler for App<'_, C> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.render_state.is_none() {
             let window = Arc::new(
@@ -89,14 +98,14 @@ impl ApplicationHandler for App<'_> {
         _window_id: WindowId,
         event: WindowEvent,
     ) {
-        // if !matches!(
-        //     event,
-        //     WindowEvent::RedrawRequested
-        //         | WindowEvent::Moved { .. }
-        //         | WindowEvent::AxisMotion { .. }
-        // ) {
-        //     println!("Event: {event:?}");
-        // }
+        //if !matches!(
+        //    event,
+        //    WindowEvent::RedrawRequested
+        //        | WindowEvent::Moved { .. }
+        //        | WindowEvent::AxisMotion { .. }
+        //) {
+        //    println!("Event: {event:?}");
+        //}
 
         // Debug block
         if let Some(block) = self
