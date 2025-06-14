@@ -49,6 +49,23 @@ impl SpaceFlightCameraController {
 }
 
 impl CameraController for SpaceFlightCameraController {
+    fn toggle(&mut self) {
+        if self.enabled {
+            // Un-press any buttons
+            self.left_pressed = false;
+            self.right_pressed = false;
+            self.up_pressed = false;
+            self.down_pressed = false;
+            self.forward_pressed = false;
+            self.backwards_pressed = false;
+        }
+        self.enabled ^= true;
+    }
+
+    fn enabled(&self) -> bool {
+        self.enabled
+    }
+
     fn handle_keypress(&mut self, event: &winit::event::KeyEvent) {
         if let KeyEvent {
             state,
@@ -58,10 +75,6 @@ impl CameraController for SpaceFlightCameraController {
         } = *event
         {
             use winit::keyboard::KeyCode::*;
-            // Toggle
-            if state.is_pressed() && key == Escape && !repeat {
-                self.enabled ^= true;
-            }
 
             // Don't process anything else if we toggled off
             if !self.enabled {

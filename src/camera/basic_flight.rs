@@ -42,6 +42,23 @@ impl BasicFlightCameraController {
 }
 
 impl CameraController for BasicFlightCameraController {
+    fn toggle(&mut self) {
+        if self.enabled {
+            // Un-press any buttons
+            self.left_pressed = false;
+            self.right_pressed = false;
+            self.up_pressed = false;
+            self.down_pressed = false;
+            self.forward_pressed = false;
+            self.backwards_pressed = false;
+        }
+        self.enabled ^= true;
+    }
+
+    fn enabled(&self) -> bool {
+        self.enabled
+    }
+
     /// Update the movement state based on user key presses
     fn handle_keypress(&mut self, event: &KeyEvent) {
         if let KeyEvent {
@@ -52,10 +69,6 @@ impl CameraController for BasicFlightCameraController {
         } = *event
         {
             use winit::keyboard::KeyCode::*;
-            // Toggle
-            if state.is_pressed() && key == Escape && !repeat {
-                self.enabled ^= true;
-            }
 
             // Don't process anything else if we toggled off
             if !self.enabled {

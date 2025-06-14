@@ -10,4 +10,7 @@ pub trait CameraController {
     fn handle_mouse_move(&mut self, delta: (f32, f32), camera: &mut Camera);
 
     fn update_camera(&mut self, camera: &mut Camera, world: &World, duration: &Duration);
+
+    fn toggle(&mut self);
+    fn enabled(&self) -> bool;
 }

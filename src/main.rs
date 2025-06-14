@@ -93,7 +93,7 @@ impl<C: CameraController> ApplicationHandler for App<'_, C> {
                 .window
                 .set_cursor_grab(CursorGrabMode::Confined)
                 .unwrap();
-            // render_state.window.set_cursor_visible(false);
+            render_state.window.set_cursor_visible(false);
             self.render_state = Some(render_state);
         }
     }
@@ -159,6 +159,8 @@ impl<C: CameraController> ApplicationHandler for App<'_, C> {
                 event:
                     event @ KeyEvent {
                         physical_key: PhysicalKey::Code(key),
+                        repeat,
+                        state,
                         ..
                     },
                 ..
@@ -168,6 +170,27 @@ impl<C: CameraController> ApplicationHandler for App<'_, C> {
                     self.game_state.world.save(Path::new("./saves"));
                     event_loop.exit();
                 }
+                if key == KeyCode::Escape && !repeat && state.is_pressed() {
+                    self.camera_controller.toggle();
+
+                    // Toggle window cursor locking
+                    if let Some(render_state) = &mut self.render_state {
+                        if self.camera_controller.enabled() {
+                            render_state
+                                .window
+                                .set_cursor_grab(CursorGrabMode::Confined)
+                                .unwrap();
+                            render_state.window.set_cursor_visible(false);
+                        } else {
+                            render_state
+                                .window
+                                .set_cursor_grab(CursorGrabMode::None)
+                                .unwrap();
+                            render_state.window.set_cursor_visible(true);
+                        }
+                    }
+                }
+
                 self.camera_controller.handle_keypress(&event);
                 self.game_state.handle_keypress(&event);
             }

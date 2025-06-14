@@ -50,6 +50,23 @@ impl WalkingCameraController {
 }
 
 impl CameraController for WalkingCameraController {
+    fn toggle(&mut self) {
+        if self.enabled {
+            // Un-press any buttons
+            self.left_pressed = false;
+            self.right_pressed = false;
+            self.up_pressed = false;
+            self.forward_pressed = false;
+            self.backwards_pressed = false;
+        }
+
+        self.enabled ^= true;
+    }
+
+    fn enabled(&self) -> bool {
+        self.enabled
+    }
+
     /// Update the movement state based on user key presses
     fn handle_keypress(&mut self, event: &KeyEvent) {
         if let KeyEvent {
@@ -60,12 +77,7 @@ impl CameraController for WalkingCameraController {
         } = *event
         {
             use winit::keyboard::KeyCode::*;
-            // Toggle
-            if state.is_pressed() && key == Escape && !repeat {
-                self.enabled ^= true;
-            }
 
-            // Don't process anything else if we toggled off
             if !self.enabled {
                 return;
             }
@@ -98,10 +110,6 @@ impl CameraController for WalkingCameraController {
 
     /// Update the camera position
     fn update_camera(&mut self, camera: &mut Camera, world: &World, duration: &Duration) {
-        if !self.enabled {
-            return;
-        }
-
         // Step 1: figure out the direction vector the player wants to move in
         let forward = angles_to_vec3(camera.yaw, Rad(0.));
         let right = forward.cross(Vector3::unit_y()).normalize();
