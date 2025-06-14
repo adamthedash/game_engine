@@ -26,11 +26,13 @@ pub struct WalkingCameraController {
 }
 
 impl WalkingCameraController {
-    pub fn new(move_speed: f32, turn_speed: f32, gravity: f32, jump_force: f32) -> Self {
+    pub fn new(move_speed: f32, turn_speed: f32, gravity: f32, jump_height: f32) -> Self {
         assert!(move_speed >= 0.);
         assert!(turn_speed >= 0.);
         assert!(gravity >= 0.);
-        assert!(jump_force >= 0.);
+        assert!(jump_height >= 0.);
+
+        let jump_force = (2. * gravity * jump_height).sqrt();
         Self {
             move_speed,
             turn_speed,
@@ -132,7 +134,7 @@ impl CameraController for WalkingCameraController {
             _ => {}
         }
         if movement_vector.magnitude2() > 0. {
-            movement_vector = movement_vector.normalize();
+            movement_vector = movement_vector.normalize_to(self.move_speed);
         }
 
         // Step 2: Figure out if we're colliding with any blocks
@@ -193,6 +195,6 @@ impl CameraController for WalkingCameraController {
         // walls
 
         // Apply the movement vector
-        camera.pos.0 += movement_vector * self.move_speed * duration.as_secs_f32();
+        camera.pos.0 += movement_vector * duration.as_secs_f32();
     }
 }

@@ -63,7 +63,12 @@ impl App<'_, WalkingCameraController> {
             runtime: Runtime::new().unwrap(),
             render_state: None,
             //camera_controller: BasicFlightCameraController::new(5., 2. * f32::consts::PI * 1.),
-            camera_controller: WalkingCameraController::new(5., 2. * f32::consts::PI * 1., 5., 1.),
+            camera_controller: WalkingCameraController::new(
+                5.,
+                2. * f32::consts::PI * 1.,
+                10.,
+                1.5,
+            ),
             //camera_controller: SpaceFlightCameraController::new(
             //    25.,
             //    2. * f32::consts::PI * 1.,

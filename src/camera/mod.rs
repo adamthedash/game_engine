@@ -46,10 +46,16 @@ impl Camera {
 
     /// Return the bounding box of the camera
     pub fn aabb(&self) -> AABB<f32> {
-        let bbox_size = 0.4;
+        let height = 1.8;
+        let width = 0.8;
+        let head_height = 1.8;
+
+        let diff = Vector3::new(width / 2., height / 2., width / 2.);
+        let head_diff = Vector3::unit_y() * head_height / 2.;
+
         AABB::new(
-            &self.pos.0.add_element_wise(-bbox_size),
-            &self.pos.0.add_element_wise(bbox_size),
+            &(self.pos.0 - diff - head_diff),
+            &(self.pos.0 + diff - head_diff),
         )
     }
 }
