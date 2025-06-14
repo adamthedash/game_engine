@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use cgmath::MetricSpace;
 use itertools::Itertools;
-use winit::event::KeyEvent;
+use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
 
 use crate::{
     block::Block,
@@ -28,6 +28,29 @@ impl GameState {
     pub fn handle_keypress(&mut self, event: &KeyEvent) {
         // TODO: Only generate chunks if the player has moved
         self.generate_chunks();
+    }
+
+    pub fn handle_mouse_key(&mut self, event: &WindowEvent) {
+        assert!(matches!(event, WindowEvent::MouseInput { .. }));
+
+        if matches!(
+            event,
+            WindowEvent::MouseInput {
+                state: ElementState::Pressed,
+                button: MouseButton::Left,
+                ..
+            }
+        ) && let Some(target_block) = self.get_player_target_block()
+        {
+            // Break block
+            *self.world.get_block_mut(&target_block.block_pos).unwrap() = BlockType::Air;
+            println!("Breaking block: {target_block:?}");
+
+            // Update block exposure information
+            // TODO: Change to block-level updates instead of chunk level
+            let (chunk_pos, _) = target_block.block_pos.to_chunk_offset();
+            self.world.update_exposed_blocks(&chunk_pos);
+        }
     }
 
     /// Generate chunks around the player

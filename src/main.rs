@@ -104,13 +104,15 @@ impl<C: CameraController> ApplicationHandler for App<'_, C> {
         _window_id: WindowId,
         event: WindowEvent,
     ) {
-        // if !matches!(
-        //     event,
-        //     WindowEvent::RedrawRequested // | WindowEvent::Moved { .. }
-        //                                  // | WindowEvent::AxisMotion { .. }
-        // ) {
-        //     println!("Event: {event:?}");
-        // }
+        if !matches!(
+            event,
+            WindowEvent::RedrawRequested
+                | WindowEvent::Moved { .. }
+                | WindowEvent::AxisMotion { .. }
+                | WindowEvent::CursorMoved { .. }
+        ) {
+            println!("Event: {event:?}");
+        }
 
         // Debug block
         if let Some(block) = self
@@ -169,10 +171,10 @@ impl<C: CameraController> ApplicationHandler for App<'_, C> {
                 self.camera_controller.handle_keypress(&event);
                 self.game_state.handle_keypress(&event);
             }
-            WindowEvent::CursorMoved {
-                device_id,
-                position,
-            } => {
+            event @ WindowEvent::MouseInput { .. } => {
+                self.game_state.handle_mouse_key(&event);
+            }
+            WindowEvent::CursorMoved { position, .. } => {
                 if let Some(render_state) = &mut self.render_state {
                     let cur = (
                         position.x as f32 / render_state.config.width as f32,
