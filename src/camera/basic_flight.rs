@@ -76,26 +76,17 @@ impl CameraController for BasicFlightCameraController {
     }
 
     /// Turn the camera. delta is in normalised screen coordinates -1 to 1
-    fn handle_mouse_move(&mut self, axis: u32, delta: f32, camera: &mut Camera) {
+    fn handle_mouse_move(&mut self, delta: (f32, f32), camera: &mut Camera) {
         if !self.enabled {
             return;
         }
 
-        match axis {
-            // Horizontal
-            0 => {
-                camera.yaw += Rad(self.turn_speed * delta);
-                camera.yaw = camera.yaw.normalize();
-            }
-            // Camera
-            1 => {
-                camera.pitch -= Rad(self.turn_speed * delta);
-                // camera.pitch = camera.pitch.normalize();
-                // Clip just under fully vertical to avoid weirdness
-                camera.pitch.0 = camera.pitch.0.clamp(-FRAC_PI_2 * 0.99, FRAC_PI_2 * 0.99);
-            }
-            _ => {}
-        }
+        camera.yaw += Rad(self.turn_speed * delta.0);
+        camera.yaw = camera.yaw.normalize();
+
+        camera.pitch -= Rad(self.turn_speed * delta.1);
+        // Clip just under fully vertical to avoid weirdness
+        camera.pitch.0 = camera.pitch.0.clamp(-FRAC_PI_2 * 0.99, FRAC_PI_2 * 0.99);
     }
 
     /// Update the camera position
