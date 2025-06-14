@@ -86,12 +86,9 @@ impl<C: CameraController> ApplicationHandler for App<C> {
                     .create_window(Window::default_attributes())
                     .unwrap(),
             );
+            window.set_cursor_grab(CursorGrabMode::Confined).unwrap();
+            window.set_cursor_visible(false);
             let render_state = self.runtime.block_on(RenderState::new(window));
-            render_state
-                .window
-                .set_cursor_grab(CursorGrabMode::Confined)
-                .unwrap();
-            render_state.window.set_cursor_visible(false);
             self.render_state = Some(render_state);
         }
     }
@@ -142,7 +139,7 @@ impl<C: CameraController> ApplicationHandler for App<C> {
 
                 // Render pass
                 if let Some(render_state) = &mut self.render_state {
-                    render_state.window.request_redraw();
+                    render_state.draw_context.window.request_redraw();
 
                     render_state.update_camera_buffer(&self.game_state.player.camera);
 
@@ -173,9 +170,12 @@ impl<C: CameraController> ApplicationHandler for App<C> {
                     // Toggle window cursor locking
                     if let Some(render_state) = &mut self.render_state {
                         if self.camera_controller.enabled() {
-                            render_state.grab_cursor().expect("Failed to grab cursor");
+                            render_state
+                                .draw_context
+                                .grab_cursor()
+                                .expect("Failed to grab cursor");
                         } else {
-                            render_state.ungrab_cursor();
+                            render_state.draw_context.ungrab_cursor();
                         }
                     }
                 }
@@ -190,15 +190,17 @@ impl<C: CameraController> ApplicationHandler for App<C> {
                 if let Some(render_state) = &mut self.render_state
                     && self.camera_controller.enabled()
                 {
+                    let config = &render_state.draw_context.config;
                     let delta = (
-                        position.x as f32 - (render_state.config.width / 2) as f32,
-                        position.y as f32 - (render_state.config.height / 2) as f32,
+                        position.x as f32 - (config.width / 2) as f32,
+                        position.y as f32 - (config.height / 2) as f32,
                     );
                     let normalised_delta = (
-                        delta.0 / render_state.config.width as f32,
-                        delta.1 / render_state.config.height as f32,
+                        delta.0 / config.width as f32,
+                        delta.1 / config.height as f32,
                     );
                     render_state
+                        .draw_context
                         .centre_cursor()
                         .expect("Failed to centre cursor");
 

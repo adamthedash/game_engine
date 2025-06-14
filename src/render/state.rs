@@ -2,27 +2,21 @@ use std::{path::Path, sync::Arc, time};
 
 use bytemuck::{Pod, Zeroable};
 use cgmath::{Matrix3, Matrix4, Quaternion, Vector3};
-use egui_wgpu::ScreenDescriptor;
 use wgpu::{
-    Backends, Buffer, BufferAddress, BufferDescriptor, BufferUsages, CommandEncoder,
-    CommandEncoderDescriptor, Device, DeviceDescriptor, Features, InstanceDescriptor, LoadOp,
-    Operations, Queue, RenderPassColorAttachment, RenderPassDepthStencilAttachment,
-    RenderPassDescriptor, RequestAdapterOptions, StoreOp, Surface, SurfaceConfiguration,
-    TextureFormat, TextureView, TextureViewDescriptor, VertexBufferLayout, VertexStepMode,
+    Buffer, BufferAddress, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, Device,
+    LoadOp, Operations, RenderPassColorAttachment, RenderPassDepthStencilAttachment,
+    RenderPassDescriptor, StoreOp, VertexBufferLayout, VertexStepMode,
     util::{BufferInitDescriptor, DeviceExt},
     vertex_attr_array,
 };
-use winit::{
-    dpi::{PhysicalPosition, PhysicalSize},
-    error::ExternalError,
-    window::{CursorGrabMode, Window},
-};
+use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{
     block::Block,
     camera::{Camera, CameraUniform},
     game::GameState,
     render::{
+        context::DrawContext,
         light::LightingUniform,
         model::Model,
         shaders::{
@@ -30,6 +24,7 @@ use crate::{
             texture::{TextureShaderPipeline, TextureShaderPipelineLayout},
         },
         texture::Texture,
+        ui::UI,
     },
     world::{BlockType, Chunk, ChunkPos},
 };
@@ -106,12 +101,8 @@ const INSTANCE_BUFFER_MAX_SIZE: u64 =
 
 /// Holds all of the stuff related to rendering the game window.
 pub struct RenderState {
-    pub window: Arc<Window>,
-    surface: Surface<'static>,
-    gpu_handle: wgpu::Instance,
-    device: Device,
-    queue: Queue,
-    pub config: SurfaceConfiguration,
+    // GPU and window stuff
+    pub draw_context: DrawContext,
     // Shader stuff
     texture_shader_pipeline: TextureShaderPipeline,
     instance_buffer: Buffer,
@@ -126,40 +117,54 @@ pub struct RenderState {
     lighting_buffer: Buffer,
     lighting_shader_pipeline: LightingShaderPipeline,
     // GUI stuff
-    egui_state: egui_winit::State,
-    egui_context: egui::Context,
-    egui_renderer: egui_wgpu::Renderer,
+    ui: UI,
 }
 
 impl RenderState {
     pub async fn new(window: Arc<Window>) -> Self {
-        let (surface, gpu_handle, device, queue, config) =
-            RenderState::init_gpu(window.clone()).await;
+        let draw_context = DrawContext::new(window).await;
 
         // Shaders
-        let texture_shader = TextureShaderPipelineLayout::new(&device);
-        let light_shader = LightingShaderPipelineLayout::new(&device);
+        let texture_shader = TextureShaderPipelineLayout::new(&draw_context.device);
+        let light_shader = LightingShaderPipelineLayout::new(&draw_context.device);
 
         // Texture
-        let depth_texture = Texture::create_depth_texture(&device, &config, "Depth Texture");
+        let depth_texture = Texture::create_depth_texture(
+            &draw_context.device,
+            &draw_context.config,
+            "Depth Texture",
+        );
 
         // Mesh
         let obj_path = Path::new(env!("OUT_DIR")).join("res/meshes/block.obj");
-        let obj_model =
-            Model::load_model(&obj_path, &device, &queue, &texture_shader.texture_layout).unwrap();
+        let obj_model = Model::load_model(
+            &obj_path,
+            &draw_context.device,
+            &draw_context.queue,
+            &texture_shader.texture_layout,
+        )
+        .unwrap();
 
         // Camera
-        let (camera_uniform, camera_buffer) = RenderState::init_camera(&device);
-        let (lighting_uniform, lighting_buffer) = RenderState::init_lighting(&device);
+        let (camera_uniform, camera_buffer) = RenderState::init_camera(&draw_context.device);
+        let (lighting_uniform, lighting_buffer) = RenderState::init_lighting(&draw_context.device);
 
         // Render Pipeline
-        let texture_shader_pipeline =
-            texture_shader.init(&device, &config.format, &camera_buffer, &lighting_buffer);
-        let lighting_shader_pipeline =
-            light_shader.init(&device, &config.format, &camera_buffer, &lighting_buffer);
+        let texture_shader_pipeline = texture_shader.init(
+            &draw_context.device,
+            &draw_context.config.format,
+            &camera_buffer,
+            &lighting_buffer,
+        );
+        let lighting_shader_pipeline = light_shader.init(
+            &draw_context.device,
+            &draw_context.config.format,
+            &camera_buffer,
+            &lighting_buffer,
+        );
 
         // Instances of blocks
-        let instance_buffer = device.create_buffer(&BufferDescriptor {
+        let instance_buffer = draw_context.device.create_buffer(&BufferDescriptor {
             label: Some("Instance Buffer"),
             size: INSTANCE_BUFFER_MAX_SIZE,
             usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
@@ -167,25 +172,10 @@ impl RenderState {
         });
 
         // GUI
-        let egui_renderer =
-            egui_wgpu::Renderer::new(&device, TextureFormat::Bgra8UnormSrgb, None, 1, false);
-        let egui_context = egui::Context::default();
-        let egui_state = egui_winit::State::new(
-            egui_context.clone(),
-            egui::ViewportId::ROOT,
-            &window,
-            None,
-            None,
-            None,
-        );
+        let ui = UI::new(&draw_context.device, &draw_context.window);
 
         Self {
-            window,
-            surface,
-            gpu_handle,
-            device,
-            queue,
-            config,
+            draw_context,
             texture_shader_pipeline,
             obj_model,
             camera_uniform,
@@ -195,9 +185,7 @@ impl RenderState {
             lighting_uniform,
             lighting_buffer,
             lighting_shader_pipeline,
-            egui_state,
-            egui_context,
-            egui_renderer,
+            ui,
         }
     }
 
@@ -223,64 +211,13 @@ impl RenderState {
         (uniform, buffer)
     }
 
-    async fn init_gpu<'a>(
-        window: Arc<Window>,
-    ) -> (
-        Surface<'a>,
-        wgpu::Instance,
-        Device,
-        Queue,
-        SurfaceConfiguration,
-    ) {
-        // Get handle to GPU
-        let gpu_handle = wgpu::Instance::new(&InstanceDescriptor {
-            backends: Backends::VULKAN,
-            ..Default::default()
-        });
-
-        // Create a texture surface - this is what we draw on
-        let surface = gpu_handle.create_surface(window.clone()).unwrap();
-        // Adapter is another kind of handle to GPU
-        let adapter = gpu_handle
-            .request_adapter(&RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::None,
-                compatible_surface: Some(&surface),
-                force_fallback_adapter: false,
-            })
-            .await
-            .unwrap();
-
-        // Device - Yet another GPU handle
-        // Queue - Used to send draw operations to the GPU
-        let (device, queue) = adapter
-            .request_device(
-                &DeviceDescriptor {
-                    required_features: Features::empty(),
-                    ..Default::default()
-                },
-                None,
-            )
-            .await
-            .unwrap();
-
-        // Configure the draw surface to match the window
-        let window_size = window.inner_size();
-        let config = surface
-            .get_default_config(&adapter, window_size.width, window_size.height)
-            .unwrap();
-        surface.configure(&device, &config);
-
-        (surface, gpu_handle, device, queue, config)
-    }
-
-    /// Make sure draw surface and window are tied together
+    // Resize the window
     pub fn resize(&mut self, size: PhysicalSize<u32>, camera: &mut Camera) {
-        self.config.height = size.height;
-        self.config.width = size.width;
-        self.surface.configure(&self.device, &self.config);
-
-        self.depth_texture =
-            Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
+        self.depth_texture = Texture::create_depth_texture(
+            &self.draw_context.device,
+            &self.draw_context.config,
+            "depth_texture",
+        );
 
         camera.aspect = size.width as f32 / size.height as f32;
         self.update_camera_buffer(camera);
@@ -289,7 +226,7 @@ impl RenderState {
     /// Syncs the camera state to the buffer being rendered in the GPU
     pub fn update_camera_buffer(&mut self, camera: &Camera) {
         self.camera_uniform.update_view_proj(camera);
-        self.queue.write_buffer(
+        self.draw_context.queue.write_buffer(
             &self.camera_buffer,
             0,
             bytemuck::cast_slice(&[self.camera_uniform]),
@@ -348,28 +285,29 @@ impl RenderState {
         let instances = visible_blocks
             .map(|block| block.to_instance().to_raw())
             .collect::<Vec<_>>();
-        self.queue
-            .write_buffer(&self.instance_buffer, 0, bytemuck::cast_slice(&instances));
+        self.draw_context.queue.write_buffer(
+            &self.instance_buffer,
+            0,
+            bytemuck::cast_slice(&instances),
+        );
 
         // Get a view on the surface texture that we'll draw to
-        let output = self.surface.get_current_texture().unwrap();
-        let view = output
-            .texture
-            .create_view(&TextureViewDescriptor::default());
+        let (output, texture_view) = self.draw_context.get_texture_view();
 
         // Encoder is used to send operations to the GPU queue
-        let mut encoder = self
-            .device
-            .create_command_encoder(&CommandEncoderDescriptor {
-                label: Some("Render Encoder"),
-            });
+        let mut encoder =
+            self.draw_context
+                .device
+                .create_command_encoder(&CommandEncoderDescriptor {
+                    label: Some("Render Encoder"),
+                });
 
         {
             // Clear the screen and fill it with blue
             let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(RenderPassColorAttachment {
-                    view: &view,
+                    view: &texture_view,
                     resolve_target: None,
                     ops: Operations {
                         load: LoadOp::Clear(wgpu::Color {
@@ -430,112 +368,15 @@ impl RenderState {
             format!("Blocks rendered: {}", instances.len()),
             format!("Target block: {player_target_block:?}"),
         ];
-        self.debug_render(&debug_text, &mut encoder, &view);
+        self.ui
+            .render(&self.draw_context, &mut encoder, &texture_view, &debug_text);
 
         // Actually run the operations on the GPU
-        self.queue.submit(std::iter::once(encoder.finish()));
+        self.draw_context
+            .queue
+            .submit(std::iter::once(encoder.finish()));
 
         // Show the new output to the screen
         output.present();
-    }
-
-    /// Displays the debug text overlay
-    fn debug_render(&mut self, texts: &[String], encoder: &mut CommandEncoder, view: &TextureView) {
-        let inputs = egui::RawInput::default();
-        let output = self.egui_context.run(inputs, |ctx| {
-            // UI code here
-            egui::Window::new("Inventory").show(ctx, |ui| {
-                texts.iter().for_each(|t| {
-                    ui.label(t);
-                });
-            });
-        });
-
-        let screen_descriptor = ScreenDescriptor {
-            size_in_pixels: [self.config.width, self.config.height],
-            pixels_per_point: self.window.scale_factor() as f32,
-        };
-
-        // Prepare triangles
-        let primitives = self
-            .egui_context
-            .tessellate(output.shapes, screen_descriptor.pixels_per_point);
-
-        // Send new changed textures to GPU
-        output
-            .textures_delta
-            .set
-            .iter()
-            .for_each(|(id, image_delta)| {
-                self.egui_renderer
-                    .update_texture(&self.device, &self.queue, *id, image_delta);
-            });
-
-        self.egui_renderer.update_buffers(
-            &self.device,
-            &self.queue,
-            encoder,
-            &primitives,
-            &screen_descriptor,
-        );
-
-        {
-            // Create a render pass for the UI
-            let mut render_pass = encoder
-                .begin_render_pass(&RenderPassDescriptor {
-                    label: Some("UI Render Pass"),
-                    color_attachments: &[Some(RenderPassColorAttachment {
-                        view,
-                        resolve_target: None,
-                        ops: Operations {
-                            load: LoadOp::Load,
-                            store: StoreOp::Store,
-                        },
-                    })],
-                    ..Default::default()
-                })
-                .forget_lifetime();
-
-            // Draw the UI
-            self.egui_renderer
-                .render(&mut render_pass, &primitives, &screen_descriptor);
-        }
-
-        // Clean up and un-needed textures
-        output.textures_delta.free.iter().for_each(|id| {
-            self.egui_renderer.free_texture(id);
-        });
-    }
-
-    /// Grab cursor control so the camera can be moved around
-    pub fn grab_cursor(&self) -> Result<(), ExternalError> {
-        self.window.set_cursor_grab(CursorGrabMode::Confined)?;
-        self.window.set_cursor_visible(false);
-
-        // Centre the cursor in the window
-        self.centre_cursor()
-    }
-
-    /// Unlock the cursor so the player can interact with UI
-    pub fn ungrab_cursor(&self) {
-        self.window.set_cursor_grab(CursorGrabMode::None).unwrap();
-        self.window.set_cursor_visible(true);
-    }
-
-    /// Set the cursor's position, position is in pixel space
-    pub fn set_cursor_pos(&self, position: &PhysicalPosition<u32>) -> Result<(), ExternalError> {
-        // On Wayland we need to lock it first
-        self.window.set_cursor_grab(CursorGrabMode::Locked)?;
-        self.window.set_cursor_position(*position)?;
-        self.window.set_cursor_grab(CursorGrabMode::Confined)?;
-        Ok(())
-    }
-
-    /// Centre the cursor on the screen
-    pub fn centre_cursor(&self) -> Result<(), ExternalError> {
-        self.set_cursor_pos(&PhysicalPosition::new(
-            self.config.width / 2,
-            self.config.height / 2,
-        ))
     }
 }
