@@ -4,11 +4,10 @@ pub mod traits;
 pub mod walking;
 
 use cgmath::{
-    Angle, Deg, InnerSpace, Matrix4, Rad, SquareMatrix, Transform, Vector3, Vector4,
-    perspective,
+    Angle, Deg, InnerSpace, Matrix4, Rad, SquareMatrix, Transform, Vector3, Vector4, perspective,
 };
 
-use crate::{bbox::AABB, world::WorldPos};
+use crate::{bbox::AABB, render::ray::Ray, world::WorldPos};
 
 /// Matrix used to convert from OpenGL to WebGPU NCD
 const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::from_cols(
@@ -67,6 +66,10 @@ impl Camera {
             &(self.pos.0 - diff - head_diff),
             &(self.pos.0 + diff - head_diff),
         )
+    }
+
+    pub fn ray(&self) -> Ray {
+        Ray::new(self.pos.0, angles_to_vec3(self.yaw, self.pitch))
     }
 }
 

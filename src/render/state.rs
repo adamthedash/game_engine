@@ -288,11 +288,11 @@ impl RenderState<'_> {
     pub fn render(&mut self, game: &GameState) {
         let start_time = time::Instant::now();
 
-        // Generate instances using the world blocks
+        // Check what blocks are candidates for rendering
         let (player_chunk, _) = game.player.camera.pos.to_block_pos().to_chunk_offset();
         let player_vision_chunks =
             (game.player.camera.zfar as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
-        let instances = player_chunk
+        let mut visible_blocks = player_chunk
             // Only render chunks within vision distance of the player (plus 1 chunk buffer)
             .chunks_within(player_vision_chunks + 1)
             // Only render chunks in the player's viewport
@@ -316,6 +316,27 @@ impl RenderState<'_> {
                         chunk.is_block_exposed(block_pos)
                     })
             })
+            .collect::<Vec<_>>();
+
+        // Check what block the player is looking at
+        let ray = game.player.camera.ray();
+        let pointing_at_block = visible_blocks
+            .iter_mut()
+            .filter_map(|b| {
+                let dist = b.aabb().to_f32().intersect_ray(&ray);
+                dist.map(|d| (d, b))
+            })
+            .min_by(|(dist1, _), (dist2, _)| dist1.total_cmp(dist2));
+        if let Some((dist, block)) = pointing_at_block
+            // Player has 5m reach
+            && dist <= 5.
+        {
+            block.block_type = BlockType::Smiley;
+        }
+
+        // Convert blocks to renderable instances
+        let instances = visible_blocks
+            .iter()
             .map(|block| block.to_instance().to_raw())
             .collect::<Vec<_>>();
         self.queue
