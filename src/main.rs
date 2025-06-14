@@ -8,6 +8,7 @@ use player::Player;
 use tokio::runtime::Runtime;
 use winit::{
     application::ApplicationHandler,
+    dpi::PhysicalPosition,
     event::{KeyEvent, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
@@ -33,7 +34,6 @@ struct App<'a, C: CameraController> {
     runtime: Runtime,
     render_state: Option<RenderState<'a>>,
     camera_controller: C,
-    prev_cursor_pos: (Option<f32>, Option<f32>),
     game_state: GameState,
     last_update: Option<Instant>,
 }
@@ -48,7 +48,7 @@ impl App<'_, WalkingCameraController> {
                     yaw: Rad(0.),
                     pitch: Rad(0.),
                     aspect: 1.,
-                    fovy: Deg(45.),
+                    fovy: Deg(90.),
                     znear: 0.1,
                     zfar: 100.,
                 },
@@ -63,7 +63,7 @@ impl App<'_, WalkingCameraController> {
             //camera_controller: BasicFlightCameraController::new(5., 2. * f32::consts::PI * 1.),
             camera_controller: WalkingCameraController::new(
                 5.,
-                2. * f32::consts::PI * 1.,
+                2. * f32::consts::PI * 0.5,
                 10.,
                 1.5,
             ),
@@ -73,7 +73,6 @@ impl App<'_, WalkingCameraController> {
             //    Some(5.),
             //    0.25,
             //),
-            prev_cursor_pos: (None, None),
             game_state,
             last_update: None,
         }
@@ -181,6 +180,9 @@ impl<C: CameraController> ApplicationHandler for App<'_, C> {
                                 .set_cursor_grab(CursorGrabMode::Confined)
                                 .unwrap();
                             render_state.window.set_cursor_visible(false);
+
+                            // Centre the cursor in the window
+                            centre_cursor(&render_state.window);
                         } else {
                             render_state
                                 .window
@@ -198,25 +200,41 @@ impl<C: CameraController> ApplicationHandler for App<'_, C> {
                 self.game_state.handle_mouse_key(&event);
             }
             WindowEvent::CursorMoved { position, .. } => {
-                if let Some(render_state) = &mut self.render_state {
-                    let cur = (
-                        position.x as f32 / render_state.config.width as f32,
-                        position.y as f32 / render_state.config.height as f32,
+                if let Some(render_state) = &mut self.render_state
+                    && self.camera_controller.enabled()
+                {
+                    let delta = (
+                        position.x as f32 - (render_state.config.width / 2) as f32,
+                        position.y as f32 - (render_state.config.height / 2) as f32,
                     );
-                    let prev = (
-                        self.prev_cursor_pos.0.unwrap_or(cur.0),
-                        self.prev_cursor_pos.1.unwrap_or(cur.1),
+                    let normalised_delta = (
+                        delta.0 / render_state.config.width as f32,
+                        delta.1 / render_state.config.height as f32,
                     );
-                    self.prev_cursor_pos = (Some(cur.0), Some(cur.1));
-                    let delta = (cur.0 - prev.0, cur.1 - prev.1);
+                    centre_cursor(&render_state.window);
 
                     self.camera_controller
-                        .handle_mouse_move(delta, &mut self.game_state.player.camera);
+                        .handle_mouse_move(normalised_delta, &mut self.game_state.player.camera);
                 }
             }
             _ => {}
         }
     }
+}
+
+fn set_cursor_pos(window: &Window, position: &PhysicalPosition<u32>) {
+    // On Wayland we need to lock it first
+    window.set_cursor_grab(CursorGrabMode::Locked).unwrap();
+    window.set_cursor_position(*position).unwrap();
+    window.set_cursor_grab(CursorGrabMode::Confined).unwrap();
+}
+
+fn centre_cursor(window: &Window) {
+    let pos = window.inner_size();
+    set_cursor_pos(
+        window,
+        &PhysicalPosition::new(pos.width / 2, pos.height / 2),
+    );
 }
 
 fn main() {
