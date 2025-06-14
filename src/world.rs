@@ -79,7 +79,7 @@ impl BlockPos {
     }
 
     pub fn to_world_pos(&self) -> WorldPos {
-        WorldPos(self.0.cast().unwrap())
+        WorldPos(self.0.cast().expect("Failed to cast BlockPos -> WorldPos"))
     }
 }
 
@@ -192,7 +192,8 @@ impl<'a> Iterator for ChunkIter<'a> {
         // Convert the iterator index into the corresponding block position
         let (rem, x) = self.index.div_rem_euclid(&Chunk::CHUNK_SIZE);
         let (z, y) = rem.div_rem_euclid(&Chunk::CHUNK_SIZE);
-        let block_pos = BlockPos(self.chunk.world_pos.0 + Vector3::new(x, y, z).cast().unwrap());
+        let block_pos =
+            BlockPos(self.chunk.world_pos.0 + Vector3::new(x as i32, y as i32, z as i32));
 
         self.index += 1;
 
@@ -218,7 +219,7 @@ impl World {
             fs::remove_dir_all(folder).expect("Failed to remove save folder");
         }
         assert!(!folder.exists());
-        fs::create_dir(folder).unwrap();
+        fs::create_dir(folder).expect("Failed to create save folder");
         self.chunks.iter().for_each(|(pos, chunk)| {
             let serialised = chunk
                 .blocks
@@ -231,7 +232,9 @@ impl World {
             let filename = folder.join(format!("{}_{}_{}.chunk", pos.0.x, pos.0.y, pos.0.z));
             let mut writer =
                 BufWriter::new(File::create_new(&filename).expect("Failed to create file"));
-            writer.write_all(&serialised).unwrap();
+            writer
+                .write_all(&serialised)
+                .expect("Failed to save chunk file");
         });
     }
 
@@ -357,7 +360,7 @@ impl World {
                 self.update_exposed_blocks(pos);
             });
         }
-        self.chunks.get(pos).unwrap()
+        self.chunks.get(pos).expect("Chunk not found!")
     }
 
     pub fn get_block(&self, pos: &BlockPos) -> Option<Block> {

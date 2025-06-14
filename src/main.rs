@@ -97,6 +97,11 @@ impl<C: CameraController> ApplicationHandler for App<'_, C> {
         }
     }
 
+    fn exiting(&mut self, event_loop: &ActiveEventLoop) {
+        println!("Saving world...");
+        self.game_state.world.save(Path::new("./saves"));
+    }
+
     fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,
@@ -123,10 +128,6 @@ impl<C: CameraController> ApplicationHandler for App<'_, C> {
         };
 
         match event {
-            WindowEvent::CloseRequested => {
-                println!("Closing");
-                event_loop.exit();
-            }
             WindowEvent::RedrawRequested => {
                 // Game update pass
                 if let Some(last_updated) = self.last_update {
@@ -165,8 +166,6 @@ impl<C: CameraController> ApplicationHandler for App<'_, C> {
                 ..
             } => {
                 if key == KeyCode::F4 {
-                    println!("Closing");
-                    self.game_state.world.save(Path::new("./saves"));
                     event_loop.exit();
                 }
                 if key == KeyCode::Escape && !repeat && state.is_pressed() {
@@ -175,20 +174,9 @@ impl<C: CameraController> ApplicationHandler for App<'_, C> {
                     // Toggle window cursor locking
                     if let Some(render_state) = &mut self.render_state {
                         if self.camera_controller.enabled() {
-                            render_state
-                                .window
-                                .set_cursor_grab(CursorGrabMode::Confined)
-                                .unwrap();
-                            render_state.window.set_cursor_visible(false);
-
-                            // Centre the cursor in the window
-                            centre_cursor(&render_state.window);
+                            render_state.grab_cursor().expect("Failed to grab cursor");
                         } else {
-                            render_state
-                                .window
-                                .set_cursor_grab(CursorGrabMode::None)
-                                .unwrap();
-                            render_state.window.set_cursor_visible(true);
+                            render_state.ungrab_cursor();
                         }
                     }
                 }
@@ -211,7 +199,9 @@ impl<C: CameraController> ApplicationHandler for App<'_, C> {
                         delta.0 / render_state.config.width as f32,
                         delta.1 / render_state.config.height as f32,
                     );
-                    centre_cursor(&render_state.window);
+                    render_state
+                        .centre_cursor()
+                        .expect("Failed to centre cursor");
 
                     self.camera_controller
                         .handle_mouse_move(normalised_delta, &mut self.game_state.player.camera);
@@ -220,21 +210,6 @@ impl<C: CameraController> ApplicationHandler for App<'_, C> {
             _ => {}
         }
     }
-}
-
-fn set_cursor_pos(window: &Window, position: &PhysicalPosition<u32>) {
-    // On Wayland we need to lock it first
-    window.set_cursor_grab(CursorGrabMode::Locked).unwrap();
-    window.set_cursor_position(*position).unwrap();
-    window.set_cursor_grab(CursorGrabMode::Confined).unwrap();
-}
-
-fn centre_cursor(window: &Window) {
-    let pos = window.inner_size();
-    set_cursor_pos(
-        window,
-        &PhysicalPosition::new(pos.width / 2, pos.height / 2),
-    );
 }
 
 fn main() {

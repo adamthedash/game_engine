@@ -15,7 +15,11 @@ use wgpu_text::{
     BrushBuilder, TextBrush,
     glyph_brush::{self, Text, ab_glyph::FontRef},
 };
-use winit::{dpi::PhysicalSize, window::Window};
+use winit::{
+    dpi::{PhysicalPosition, PhysicalSize},
+    error::ExternalError,
+    window::{CursorGrabMode, Window},
+};
 
 use crate::{
     block::Block,
@@ -457,5 +461,37 @@ impl RenderState<'_> {
 
             self.brush.draw(&mut render_pass);
         }
+    }
+
+    /// Grab cursor control so the camera can be moved around
+    pub fn grab_cursor(&self) -> Result<(), ExternalError> {
+        self.window.set_cursor_grab(CursorGrabMode::Confined)?;
+        self.window.set_cursor_visible(false);
+
+        // Centre the cursor in the window
+        self.centre_cursor()
+    }
+
+    /// Unlock the cursor so the player can interact with UI
+    pub fn ungrab_cursor(&self) {
+        self.window.set_cursor_grab(CursorGrabMode::None).unwrap();
+        self.window.set_cursor_visible(true);
+    }
+
+    /// Set the cursor's position, position is in pixel space
+    pub fn set_cursor_pos(&self, position: &PhysicalPosition<u32>) -> Result<(), ExternalError> {
+        // On Wayland we need to lock it first
+        self.window.set_cursor_grab(CursorGrabMode::Locked)?;
+        self.window.set_cursor_position(*position)?;
+        self.window.set_cursor_grab(CursorGrabMode::Confined)?;
+        Ok(())
+    }
+
+    /// Centre the cursor on the screen
+    pub fn centre_cursor(&self) -> Result<(), ExternalError> {
+        self.set_cursor_pos(&PhysicalPosition::new(
+            self.config.width / 2,
+            self.config.height / 2,
+        ))
     }
 }
