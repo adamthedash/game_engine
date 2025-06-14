@@ -1,10 +1,7 @@
 #![feature(int_roundings)]
 use std::{f32, path::Path, sync::Arc, time::Instant};
 
-use camera::{
-    Camera,
-    walking::WalkingCameraController,
-};
+use camera::{Camera, walking::WalkingCameraController};
 use cgmath::{Deg, Rad};
 use game::GameState;
 use player::Player;
@@ -55,6 +52,7 @@ impl App<'_, WalkingCameraController> {
                     znear: 0.1,
                     zfar: 100.,
                 },
+                arm_length: 5.,
             },
         };
         game_state.init();

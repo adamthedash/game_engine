@@ -11,6 +11,7 @@ use num_traits::{Euclid, FromPrimitive, ToPrimitive};
 use rustc_hash::FxHashMap;
 
 use crate::{
+    bbox::AABB,
     block::Block,
     world_gen::{ChunkGenerator, Perlin},
 };
@@ -42,6 +43,13 @@ impl ChunkPos {
             })
             .filter(move |offset| offset.magnitude2() <= dist2);
         offsets.map(move |offset| ChunkPos(self.0 + offset))
+    }
+
+    pub fn aabb(&self) -> AABB<i32> {
+        AABB::new(
+            &self.to_block_pos().0,
+            &Self(self.0 + Vector3::new(1, 1, 1)).to_block_pos().0,
+        )
     }
 }
 
@@ -189,7 +197,7 @@ impl<'a> Iterator for ChunkIter<'a> {
         self.index += 1;
 
         Some(Block {
-            world_pos: block_pos,
+            block_pos,
             block_type: self.chunk.blocks[x][y][z],
         })
     }
@@ -311,7 +319,7 @@ impl World {
 
         blocks_to_update.iter().for_each(|b| {
             Chunk::ADJACENT_OFFSETS.iter().for_each(|o| {
-                let (chunk_pos, (x, y, z)) = BlockPos(b.world_pos.0 + o).to_chunk_offset();
+                let (chunk_pos, (x, y, z)) = BlockPos(b.block_pos.0 + o).to_chunk_offset();
 
                 if let Some(chunk) = self.chunks.get_mut(&chunk_pos) {
                     chunk.exposed_blocks[x as usize][y as usize][z as usize] = true;
@@ -355,7 +363,7 @@ impl World {
     pub fn get_block(&self, pos: &BlockPos) -> Option<Block> {
         let (chunk_pos, offset) = pos.to_chunk_offset();
         self.chunks.get(&chunk_pos).map(|chunk| Block {
-            world_pos: pos.clone(),
+            block_pos: pos.clone(),
             block_type: *chunk.get_block(offset),
         })
     }

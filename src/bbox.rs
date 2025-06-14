@@ -55,6 +55,13 @@ impl AABB<f32> {
 
         // Iterate over all 3 axes
         for i in 0..3 {
+            if ray.direction[i].abs() < f32::EPSILON {
+                // Ray is parallel to the slab
+                if ray.pos[i] < self.start[i] || ray.pos[i] > self.end[i] {
+                    return None; // Ray is outside the slab and parallel to it
+                }
+            }
+
             let inv_dir = 1.0 / ray.direction[i];
             let mut t1 = (self.start[i] - ray.pos[i]) * inv_dir;
             let mut t2 = (self.end[i] - ray.pos[i]) * inv_dir;

@@ -18,6 +18,7 @@ use wgpu_text::{
 use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{
+    block::Block,
     camera::{Camera, CameraUniform},
     game::GameState,
     render::{
@@ -288,11 +289,13 @@ impl RenderState<'_> {
     pub fn render(&mut self, game: &GameState) {
         let start_time = time::Instant::now();
 
+        let player_target_block = game.get_player_target_block();
+
         // Check what blocks are candidates for rendering
         let (player_chunk, _) = game.player.camera.pos.to_block_pos().to_chunk_offset();
         let player_vision_chunks =
             (game.player.camera.zfar as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
-        let mut visible_blocks = player_chunk
+        let visible_blocks = player_chunk
             // Only render chunks within vision distance of the player (plus 1 chunk buffer)
             .chunks_within(player_vision_chunks + 1)
             // Only render chunks in the player's viewport
@@ -312,31 +315,26 @@ impl RenderState<'_> {
                     .filter(|b| b.block_type != BlockType::Air)
                     // Only render exposed blocks
                     .filter(|b| {
-                        let (_, block_pos) = b.world_pos.to_chunk_offset();
+                        let (_, block_pos) = b.block_pos.to_chunk_offset();
                         chunk.is_block_exposed(block_pos)
                     })
             })
-            .collect::<Vec<_>>();
-
-        // Check what block the player is looking at
-        let ray = game.player.camera.ray();
-        let pointing_at_block = visible_blocks
-            .iter_mut()
-            .filter_map(|b| {
-                let dist = b.aabb().to_f32().intersect_ray(&ray);
-                dist.map(|d| (d, b))
-            })
-            .min_by(|(dist1, _), (dist2, _)| dist1.total_cmp(dist2));
-        if let Some((dist, block)) = pointing_at_block
-            // Player has 5m reach
-            && dist <= 5.
-        {
-            block.block_type = BlockType::Smiley;
-        }
+            // If we're targetting the block, change the texture
+            .map(|b| {
+                if let Some(target_block) = &player_target_block
+                    && b.block_pos.0 == target_block.block_pos.0
+                {
+                    Block {
+                        block_type: BlockType::Smiley,
+                        ..b
+                    }
+                } else {
+                    b
+                }
+            });
 
         // Convert blocks to renderable instances
         let instances = visible_blocks
-            .iter()
             .map(|block| block.to_instance().to_raw())
             .collect::<Vec<_>>();
         self.queue
@@ -419,6 +417,7 @@ impl RenderState<'_> {
                 1000. / time_taken.as_millis() as f32
             ),
             format!("Blocks rendered: {}", instances.len()),
+            format!("Target block: {player_target_block:?}"),
         ];
         self.debug_render(&debug_text, &mut encoder, &view);
 
