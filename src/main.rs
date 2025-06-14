@@ -8,7 +8,6 @@ use player::Player;
 use tokio::runtime::Runtime;
 use winit::{
     application::ApplicationHandler,
-    dpi::PhysicalPosition,
     event::{KeyEvent, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
@@ -30,15 +29,15 @@ mod render;
 mod world;
 mod world_gen;
 
-struct App<'a, C: CameraController> {
+struct App<C: CameraController> {
     runtime: Runtime,
-    render_state: Option<RenderState<'a>>,
+    render_state: Option<RenderState>,
     camera_controller: C,
     game_state: GameState,
     last_update: Option<Instant>,
 }
 
-impl App<'_, WalkingCameraController> {
+impl App<WalkingCameraController> {
     fn new() -> Self {
         let mut game_state = GameState {
             world: World::default(),
@@ -79,7 +78,7 @@ impl App<'_, WalkingCameraController> {
     }
 }
 
-impl<C: CameraController> ApplicationHandler for App<'_, C> {
+impl<C: CameraController> ApplicationHandler for App<C> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.render_state.is_none() {
             let window = Arc::new(
@@ -213,12 +212,6 @@ impl<C: CameraController> ApplicationHandler for App<'_, C> {
 }
 
 fn main() {
-    /*
-
-    Following https://sotrh.github.io/learn-wgpu/beginner/tutorial2-surface
-    Adapted to v30 wgpu based on https://github.com/gfx-rs/wgpu/blob/trunk/examples/standalone/02_hello_window/src/main.rs
-
-    */
     env_logger::init();
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);

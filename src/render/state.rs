@@ -2,18 +2,15 @@ use std::{path::Path, sync::Arc, time};
 
 use bytemuck::{Pod, Zeroable};
 use cgmath::{Matrix3, Matrix4, Quaternion, Vector3};
+use egui_wgpu::ScreenDescriptor;
 use wgpu::{
     Backends, Buffer, BufferAddress, BufferDescriptor, BufferUsages, CommandEncoder,
     CommandEncoderDescriptor, Device, DeviceDescriptor, Features, InstanceDescriptor, LoadOp,
     Operations, Queue, RenderPassColorAttachment, RenderPassDepthStencilAttachment,
     RenderPassDescriptor, RequestAdapterOptions, StoreOp, Surface, SurfaceConfiguration,
-    TextureView, TextureViewDescriptor, VertexBufferLayout, VertexStepMode,
+    TextureFormat, TextureView, TextureViewDescriptor, VertexBufferLayout, VertexStepMode,
     util::{BufferInitDescriptor, DeviceExt},
     vertex_attr_array,
-};
-use wgpu_text::{
-    BrushBuilder, TextBrush,
-    glyph_brush::{self, Text, ab_glyph::FontRef},
 };
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -108,7 +105,7 @@ const INSTANCE_BUFFER_MAX_SIZE: u64 =
     (std::mem::size_of::<InstanceRaw>() * Chunk::BLOCKS_PER_CHUNK * 512) as u64;
 
 /// Holds all of the stuff related to rendering the game window.
-pub struct RenderState<'a> {
+pub struct RenderState {
     pub window: Arc<Window>,
     surface: Surface<'static>,
     gpu_handle: wgpu::Instance,
@@ -124,15 +121,17 @@ pub struct RenderState<'a> {
     // Camera stuff
     camera_uniform: CameraUniform,
     camera_buffer: Buffer,
-    // Text stuff
-    brush: TextBrush<FontRef<'a>>,
     // Lighting stuff
     lighting_uniform: LightingUniform,
     lighting_buffer: Buffer,
     lighting_shader_pipeline: LightingShaderPipeline,
+    // GUI stuff
+    egui_state: egui_winit::State,
+    egui_context: egui::Context,
+    egui_renderer: egui_wgpu::Renderer,
 }
 
-impl RenderState<'_> {
+impl RenderState {
     pub async fn new(window: Arc<Window>) -> Self {
         let (surface, gpu_handle, device, queue, config) =
             RenderState::init_gpu(window.clone()).await;
@@ -159,13 +158,6 @@ impl RenderState<'_> {
         let lighting_shader_pipeline =
             light_shader.init(&device, &config.format, &camera_buffer, &lighting_buffer);
 
-        // Text
-        let brush = BrushBuilder::using_font_bytes(include_bytes!(
-            "../../res/fonts/JetBrainsMono-Regular.ttf"
-        ))
-        .unwrap()
-        .build(&device, config.width, config.height, config.format);
-
         // Instances of blocks
         let instance_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Instance Buffer"),
@@ -173,6 +165,19 @@ impl RenderState<'_> {
             usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+
+        // GUI
+        let egui_renderer =
+            egui_wgpu::Renderer::new(&device, TextureFormat::Bgra8UnormSrgb, None, 1, false);
+        let egui_context = egui::Context::default();
+        let egui_state = egui_winit::State::new(
+            egui_context.clone(),
+            egui::ViewportId::ROOT,
+            &window,
+            None,
+            None,
+            None,
+        );
 
         Self {
             window,
@@ -185,12 +190,14 @@ impl RenderState<'_> {
             obj_model,
             camera_uniform,
             camera_buffer,
-            brush,
             instance_buffer,
             depth_texture,
             lighting_uniform,
             lighting_buffer,
             lighting_shader_pipeline,
+            egui_state,
+            egui_context,
+            egui_renderer,
         }
     }
 
@@ -246,10 +253,13 @@ impl RenderState<'_> {
         // Device - Yet another GPU handle
         // Queue - Used to send draw operations to the GPU
         let (device, queue) = adapter
-            .request_device(&DeviceDescriptor {
-                required_features: Features::empty(),
-                ..Default::default()
-            })
+            .request_device(
+                &DeviceDescriptor {
+                    required_features: Features::empty(),
+                    ..Default::default()
+                },
+                None,
+            )
             .await
             .unwrap();
 
@@ -274,9 +284,6 @@ impl RenderState<'_> {
 
         camera.aspect = size.width as f32 / size.height as f32;
         self.update_camera_buffer(camera);
-
-        self.brush
-            .resize_view(size.width as f32, size.height as f32, &self.queue);
     }
 
     /// Syncs the camera state to the buffer being rendered in the GPU
@@ -434,33 +441,70 @@ impl RenderState<'_> {
 
     /// Displays the debug text overlay
     fn debug_render(&mut self, texts: &[String], encoder: &mut CommandEncoder, view: &TextureView) {
-        // Text needs a separate render pass because it doesn't like the depth buffer
+        let inputs = egui::RawInput::default();
+        let output = self.egui_context.run(inputs, |ctx| {
+            // UI code here
+            egui::Window::new("Inventory").show(ctx, |ui| {
+                texts.iter().for_each(|t| {
+                    ui.label(t);
+                });
+            });
+        });
 
-        let text = texts
+        let screen_descriptor = ScreenDescriptor {
+            size_in_pixels: [self.config.width, self.config.height],
+            pixels_per_point: self.window.scale_factor() as f32,
+        };
+
+        // Prepare triangles
+        let primitives = self
+            .egui_context
+            .tessellate(output.shapes, screen_descriptor.pixels_per_point);
+
+        // Send new changed textures to GPU
+        output
+            .textures_delta
+            .set
             .iter()
-            .fold(glyph_brush::Section::default(), |acc, t| {
-                acc.add_text(Text::new(t)).add_text(Text::new("\n"))
-            });
-        self.brush
-            .queue(&self.device, &self.queue, [&text])
-            .unwrap();
-        {
-            // Clear the screen and fill it with grey
-            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                label: Some("Render Pass"),
-                color_attachments: &[Some(RenderPassColorAttachment {
-                    view,
-                    resolve_target: None,
-                    ops: Operations {
-                        load: LoadOp::Load,
-                        store: StoreOp::Store,
-                    },
-                })],
-                ..Default::default()
+            .for_each(|(id, image_delta)| {
+                self.egui_renderer
+                    .update_texture(&self.device, &self.queue, *id, image_delta);
             });
 
-            self.brush.draw(&mut render_pass);
+        self.egui_renderer.update_buffers(
+            &self.device,
+            &self.queue,
+            encoder,
+            &primitives,
+            &screen_descriptor,
+        );
+
+        {
+            // Create a render pass for the UI
+            let mut render_pass = encoder
+                .begin_render_pass(&RenderPassDescriptor {
+                    label: Some("UI Render Pass"),
+                    color_attachments: &[Some(RenderPassColorAttachment {
+                        view,
+                        resolve_target: None,
+                        ops: Operations {
+                            load: LoadOp::Load,
+                            store: StoreOp::Store,
+                        },
+                    })],
+                    ..Default::default()
+                })
+                .forget_lifetime();
+
+            // Draw the UI
+            self.egui_renderer
+                .render(&mut render_pass, &primitives, &screen_descriptor);
         }
+
+        // Clean up and un-needed textures
+        output.textures_delta.free.iter().for_each(|id| {
+            self.egui_renderer.free_texture(id);
+        });
     }
 
     /// Grab cursor control so the camera can be moved around
