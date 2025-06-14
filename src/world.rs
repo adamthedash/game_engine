@@ -25,7 +25,7 @@ impl ChunkPos {
     }
 
     /// Convert to the position of the chunk's origin block
-    pub fn to_world_pos(&self) -> BlockPos {
+    pub fn to_block_pos(&self) -> BlockPos {
         BlockPos(self.0 * Chunk::CHUNK_SIZE as i32)
     }
 
@@ -69,6 +69,10 @@ impl BlockPos {
 
         (chunk_index, within_chunk_pos)
     }
+
+    pub fn to_world_pos(&self) -> WorldPos {
+        WorldPos(self.0.cast().unwrap())
+    }
 }
 
 /// Represents any position in the world in block-space (1 unit moves 1 block length)
@@ -108,13 +112,25 @@ impl Chunk {
     pub const BLOCKS_PER_CHUNK: usize = const { Self::CHUNK_SIZE.pow(3) };
 
     /// Relative offsets in cardinal directions
-    pub const ADJACENT_OFFSETS: [[i32; 3]; 6] = [
-        [-1, 0, 0], // left
-        [1, 0, 0],  // right
-        [0, -1, 0], // down
-        [0, 1, 0],  // up
-        [0, 0, -1], // backwards
-        [0, 0, 1],  // forwards
+    pub const ADJACENT_OFFSETS: [Vector3<i32>; 6] = [
+        Vector3::new(-1, 0, 0), // left
+        Vector3::new(1, 0, 0),  // right
+        Vector3::new(0, -1, 0), // down
+        Vector3::new(0, 1, 0),  // up
+        Vector3::new(0, 0, -1), // backwards
+        Vector3::new(0, 0, 1),  // forwards
+    ];
+
+    /// Cube corners
+    pub const CORNER_OFFSETS: [Vector3<i32>; 8] = [
+        Vector3::new(0, 0, 0),
+        Vector3::new(0, 0, 1),
+        Vector3::new(0, 1, 0),
+        Vector3::new(0, 1, 1),
+        Vector3::new(1, 0, 0),
+        Vector3::new(1, 0, 1),
+        Vector3::new(1, 1, 0),
+        Vector3::new(1, 1, 1),
     ];
 
     /// Iterate over the blocks in this chunk
@@ -246,7 +262,7 @@ impl World {
                     .unwrap();
 
                 Chunk {
-                    world_pos: chunk_pos.to_world_pos(),
+                    world_pos: chunk_pos.to_block_pos(),
                     chunk_pos,
                     blocks,
                     exposed_blocks: Default::default(),
@@ -295,8 +311,7 @@ impl World {
 
         blocks_to_update.iter().for_each(|b| {
             Chunk::ADJACENT_OFFSETS.iter().for_each(|o| {
-                let (chunk_pos, (x, y, z)) =
-                    BlockPos(b.world_pos.0 + Vector3::new(o[0], o[1], o[2])).to_chunk_offset();
+                let (chunk_pos, (x, y, z)) = BlockPos(b.world_pos.0 + o).to_chunk_offset();
 
                 if let Some(chunk) = self.chunks.get_mut(&chunk_pos) {
                     chunk.exposed_blocks[x as usize][y as usize][z as usize] = true;
@@ -318,7 +333,7 @@ impl World {
     pub fn get_or_generate_chunk(&mut self, pos: &ChunkPos) -> &Chunk {
         if !self.chunks.contains_key(pos) {
             // Create a new chunk
-            let new_chunk = self.generator.generate_chunk(pos.to_world_pos());
+            let new_chunk = self.generator.generate_chunk(pos.to_block_pos());
             self.chunks.insert(pos.clone(), new_chunk);
 
             // Add exposed block cache
@@ -327,7 +342,7 @@ impl World {
             // Also need to re-run adjacent exposure tests
             let chunks_to_update = Chunk::ADJACENT_OFFSETS
                 .iter()
-                .map(|o| ChunkPos(pos.0 + Vector3::new(o[0], o[1], o[2])))
+                .map(|o| ChunkPos(pos.0 + o))
                 .filter(|pos| self.chunks.contains_key(pos))
                 .collect::<Vec<_>>();
             chunks_to_update.iter().for_each(|pos| {

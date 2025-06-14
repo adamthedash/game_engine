@@ -3,10 +3,10 @@ Experimenting with a 3D rendering / game engine. Currently aiming towards someth
 
 ### Current status
 **Player**  
-Mincraft creative mode-style flying movement.
-Space-like interia flying movement.
-Walking around movement with gravity.
-Collision detection.
+Mincraft creative mode-style flying movement.  
+Space-like interia flying movement.  
+Walking around movement with gravity.  
+Collision detection.  
 
 **World**  
 Multiple block types (now with some nicer textures).  

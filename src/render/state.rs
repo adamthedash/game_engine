@@ -29,7 +29,7 @@ use crate::{
         },
         texture::Texture,
     },
-    world::{BlockType, Chunk},
+    world::{BlockType, Chunk, ChunkPos},
 };
 
 /// Represents a vertex on the GPU
@@ -295,6 +295,15 @@ impl RenderState<'_> {
         let instances = player_chunk
             // Only render chunks within vision distance of the player (plus 1 chunk buffer)
             .chunks_within(player_vision_chunks + 1)
+            // Only render chunks in the player's viewport
+            .filter(|chunk_pos| {
+                Chunk::CORNER_OFFSETS.iter().any(|o| {
+                    let chunk_corner = ChunkPos(chunk_pos.0 + o);
+                    game.player
+                        .camera
+                        .in_view(&chunk_corner.to_block_pos().to_world_pos())
+                })
+            })
             .flat_map(|pos| game.world.chunks.get(&pos))
             .flat_map(|chunk| {
                 chunk

@@ -4,7 +4,8 @@ pub mod traits;
 pub mod walking;
 
 use cgmath::{
-    Angle, Deg, ElementWise, InnerSpace, Matrix4, Rad, SquareMatrix, Vector3, Vector4, perspective,
+    Angle, Deg, InnerSpace, Matrix4, Rad, SquareMatrix, Transform, Vector3, Vector4,
+    perspective,
 };
 
 use crate::{bbox::AABB, world::WorldPos};
@@ -42,6 +43,15 @@ impl Camera {
         let proj = perspective(self.fovy, self.aspect, self.znear, self.zfar);
 
         OPENGL_TO_WGPU_MATRIX * proj * view
+    }
+
+    /// Checks whether a point is within the viewport
+    pub fn in_view(&self, pos: &WorldPos) -> bool {
+        let view_proj_matrix = self.get_view_proj_matrix();
+        let projected = view_proj_matrix.transform_point(pos.0);
+
+        // Check if projected point is within the -1 .. 1 NCD
+        projected.x.abs() <= 1. || projected.y.abs() <= 1. || projected.z.abs() <= 1.
     }
 
     /// Return the bounding box of the camera

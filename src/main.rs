@@ -2,7 +2,7 @@
 use std::{f32, path::Path, sync::Arc, time::Instant};
 
 use camera::{
-    Camera, basic_flight::BasicFlightCameraController, space_flight::SpaceFlightCameraController,
+    Camera,
     walking::WalkingCameraController,
 };
 use cgmath::{Deg, Rad};
