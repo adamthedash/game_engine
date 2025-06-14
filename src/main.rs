@@ -11,7 +11,7 @@ use winit::{
     event::{KeyEvent, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
-    window::{Window, WindowId},
+    window::{CursorGrabMode, Window, WindowId},
 };
 
 use crate::{
@@ -89,10 +89,11 @@ impl<C: CameraController> ApplicationHandler for App<'_, C> {
                     .unwrap(),
             );
             let render_state = self.runtime.block_on(RenderState::new(window));
-            // render_state
-            //     .window
-            //     .set_cursor_grab(CursorGrabMode::Confined)
-            //     .unwrap();
+            render_state
+                .window
+                .set_cursor_grab(CursorGrabMode::Confined)
+                .unwrap();
+            // render_state.window.set_cursor_visible(false);
             self.render_state = Some(render_state);
         }
     }
@@ -103,14 +104,13 @@ impl<C: CameraController> ApplicationHandler for App<'_, C> {
         _window_id: WindowId,
         event: WindowEvent,
     ) {
-        //if !matches!(
-        //    event,
-        //    WindowEvent::RedrawRequested
-        //        | WindowEvent::Moved { .. }
-        //        | WindowEvent::AxisMotion { .. }
-        //) {
-        //    println!("Event: {event:?}");
-        //}
+        if !matches!(
+            event,
+            WindowEvent::RedrawRequested // | WindowEvent::Moved { .. }
+                                         // | WindowEvent::AxisMotion { .. }
+        ) {
+            println!("Event: {event:?}");
+        }
 
         // Debug block
         if let Some(block) = self
@@ -169,6 +169,7 @@ impl<C: CameraController> ApplicationHandler for App<'_, C> {
                 self.camera_controller.handle_keypress(&event);
                 self.game_state.handle_keypress(&event);
             }
+            // X11 mouse movement
             WindowEvent::AxisMotion { axis, value, .. } => {
                 if let Some(render_state) = &mut self.render_state {
                     let value = value as f32;
@@ -191,6 +192,35 @@ impl<C: CameraController> ApplicationHandler for App<'_, C> {
                     self.camera_controller.handle_mouse_move(
                         axis,
                         normalised,
+                        &mut self.game_state.player.camera,
+                    );
+                }
+            }
+            // Wayland
+            WindowEvent::CursorMoved {
+                device_id,
+                position,
+            } => {
+                if let Some(render_state) = &mut self.render_state {
+                    let cur = (
+                        position.x as f32 / render_state.config.width as f32,
+                        position.y as f32 / render_state.config.height as f32,
+                    );
+                    let prev = (
+                        self.prev_cursor_pos.0.unwrap_or(cur.0),
+                        self.prev_cursor_pos.1.unwrap_or(cur.1),
+                    );
+                    self.prev_cursor_pos = (Some(cur.0), Some(cur.1));
+                    let delta = (cur.0 - prev.0, cur.1 - prev.1);
+
+                    self.camera_controller.handle_mouse_move(
+                        0,
+                        delta.0,
+                        &mut self.game_state.player.camera,
+                    );
+                    self.camera_controller.handle_mouse_move(
+                        1,
+                        delta.1,
                         &mut self.game_state.player.camera,
                     );
                 }
