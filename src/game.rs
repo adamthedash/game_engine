@@ -5,6 +5,7 @@ use itertools::Itertools;
 use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
 
 use crate::{
+    InteractionMode,
     block::Block,
     player::Player,
     world::{BlockType, Chunk, World},
@@ -30,8 +31,12 @@ impl GameState {
         self.generate_chunks();
     }
 
-    pub fn handle_mouse_key(&mut self, event: &WindowEvent) {
+    pub fn handle_mouse_key(&mut self, event: &WindowEvent, mode: &InteractionMode) {
         assert!(matches!(event, WindowEvent::MouseInput { .. }));
+
+        if *mode != InteractionMode::Game {
+            return;
+        }
 
         if matches!(
             event,

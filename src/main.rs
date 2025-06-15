@@ -30,12 +30,31 @@ mod render;
 mod world;
 mod world_gen;
 
+#[derive(PartialEq)]
+pub enum InteractionMode {
+    // Player can walk around and interact with the world
+    Game,
+    // Player is in a menu / interface
+    UI,
+}
+
+impl InteractionMode {
+    pub fn toggle(&mut self) {
+        use InteractionMode::*;
+        *self = match self {
+            Game => UI,
+            UI => Game,
+        }
+    }
+}
+
 struct App<C: CameraController> {
     runtime: Runtime,
     render_state: Option<RenderState>,
     camera_controller: C,
     game_state: GameState,
     last_update: Option<Instant>,
+    interaction_mode: InteractionMode,
 }
 
 impl App<WalkingCameraController> {
@@ -75,12 +94,14 @@ impl App<WalkingCameraController> {
             //),
             game_state,
             last_update: None,
+            interaction_mode: InteractionMode::Game,
         }
     }
 }
 
 impl<C: CameraController> ApplicationHandler for App<C> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        // Initialise RenderState once
         if self.render_state.is_none() {
             let window = Arc::new(
                 event_loop
@@ -90,12 +111,15 @@ impl<C: CameraController> ApplicationHandler for App<C> {
                     .unwrap(),
             );
             let render_state = self.runtime.block_on(RenderState::new(window));
+
+            // Lock cursor
             render_state
                 .draw_context
                 .window
                 .set_cursor_grab(CursorGrabMode::Confined)
                 .unwrap();
             render_state.draw_context.window.set_cursor_visible(false);
+
             self.render_state = Some(render_state);
         }
     }
@@ -182,16 +206,20 @@ impl<C: CameraController> ApplicationHandler for App<C> {
                 }
                 if *key == KeyCode::Escape && !repeat && state.is_pressed() {
                     self.camera_controller.toggle();
+                    self.interaction_mode.toggle();
 
                     // Toggle window cursor locking
                     if let Some(render_state) = &mut self.render_state {
-                        if self.camera_controller.enabled() {
-                            render_state
-                                .draw_context
-                                .grab_cursor()
-                                .expect("Failed to grab cursor");
-                        } else {
-                            render_state.draw_context.ungrab_cursor();
+                        match self.interaction_mode {
+                            InteractionMode::Game => {
+                                render_state
+                                    .draw_context
+                                    .grab_cursor()
+                                    .expect("Failed to grab cursor");
+                            }
+                            InteractionMode::UI => {
+                                render_state.draw_context.ungrab_cursor();
+                            }
                         }
                     }
                 }
@@ -200,13 +228,15 @@ impl<C: CameraController> ApplicationHandler for App<C> {
                 self.game_state.handle_keypress(event);
             }
             event @ WindowEvent::MouseInput { .. } => {
-                self.game_state.handle_mouse_key(event);
+                self.game_state
+                    .handle_mouse_key(event, &self.interaction_mode);
             }
             WindowEvent::MouseWheel {
                 delta: MouseScrollDelta::LineDelta(_, y),
                 ..
             } => {
-                if let Some(render_state) = &mut self.render_state
+                if self.interaction_mode == InteractionMode::Game
+                    && let Some(render_state) = &mut self.render_state
                     && *y != 0.
                 {
                     render_state.ui.scroll_hotbar(*y > 0.);
@@ -214,6 +244,7 @@ impl<C: CameraController> ApplicationHandler for App<C> {
             }
             WindowEvent::CursorMoved { position, .. } => {
                 if let Some(render_state) = &mut self.render_state
+                    && self.interaction_mode == InteractionMode::Game
                     && self.camera_controller.enabled()
                 {
                     let config = &render_state.draw_context.config;
