@@ -113,9 +113,13 @@ impl DrawContext {
     /// Set the cursor's position, position is in pixel space
     pub fn set_cursor_pos(&self, position: &PhysicalPosition<u32>) -> Result<(), ExternalError> {
         // On Wayland we need to lock it first
-        self.window.set_cursor_grab(CursorGrabMode::Locked)?;
+        let wayland = self.window.set_cursor_grab(CursorGrabMode::Locked).is_ok();
+
         self.window.set_cursor_position(*position)?;
-        self.window.set_cursor_grab(CursorGrabMode::Confined)?;
+
+        if wayland {
+            self.window.set_cursor_grab(CursorGrabMode::Confined)?;
+        }
         Ok(())
     }
 

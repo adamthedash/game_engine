@@ -89,9 +89,13 @@ impl<C: CameraController> ApplicationHandler for App<C> {
                     )
                     .unwrap(),
             );
-            window.set_cursor_grab(CursorGrabMode::Confined).unwrap();
-            window.set_cursor_visible(false);
             let render_state = self.runtime.block_on(RenderState::new(window));
+            render_state
+                .draw_context
+                .window
+                .set_cursor_grab(CursorGrabMode::Confined)
+                .unwrap();
+            render_state.draw_context.window.set_cursor_visible(false);
             self.render_state = Some(render_state);
         }
     }
