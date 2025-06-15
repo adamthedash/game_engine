@@ -1,7 +1,10 @@
 #![feature(int_roundings)]
 use std::{f32, path::Path, sync::Arc, time::Instant};
 
-use camera::{Camera, walking::WalkingCameraController};
+use camera::{
+    Camera, basic_flight::BasicFlightCameraController, space_flight::SpaceFlightCameraController,
+    walking::WalkingCameraController,
+};
 use cgmath::{Deg, Rad};
 use game::GameState;
 use player::Player;
@@ -57,7 +60,7 @@ struct App<C: CameraController> {
     interaction_mode: InteractionMode,
 }
 
-impl App<WalkingCameraController> {
+impl App<BasicFlightCameraController> {
     fn new() -> Self {
         let mut game_state = GameState {
             world: World::default(),
@@ -79,13 +82,13 @@ impl App<WalkingCameraController> {
         Self {
             runtime: Runtime::new().unwrap(),
             render_state: None,
-            //camera_controller: BasicFlightCameraController::new(5., 2. * f32::consts::PI * 1.),
-            camera_controller: WalkingCameraController::new(
-                5.,
-                2. * f32::consts::PI * 0.5,
-                10.,
-                1.5,
-            ),
+            camera_controller: BasicFlightCameraController::new(5., 2. * f32::consts::PI * 1.),
+            //camera_controller: WalkingCameraController::new(
+            //    5.,
+            //    2. * f32::consts::PI * 0.5,
+            //    10.,
+            //    1.5,
+            //),
             //camera_controller: SpaceFlightCameraController::new(
             //    25.,
             //    2. * f32::consts::PI * 1.,

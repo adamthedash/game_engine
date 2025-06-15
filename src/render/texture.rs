@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use anyhow::Result;
-use image::{EncodableLayout, ImageReader};
+use image::{EncodableLayout, ImageReader, RgbaImage};
 use wgpu::{
     CompareFunction, Device, Extent3d, FilterMode, Origin3d, Queue, Sampler, SamplerDescriptor,
     SurfaceConfiguration, TexelCopyBufferLayout, TexelCopyTextureInfo, TextureAspect,
@@ -9,6 +9,7 @@ use wgpu::{
     TextureViewDescriptor,
 };
 
+#[derive(Debug)]
 pub struct Texture {
     texture: wgpu::Texture,
     pub view: TextureView,
@@ -76,7 +77,7 @@ impl Texture {
         queue: &Queue,
         label: &str,
     ) -> Result<Self> {
-        let images = paths
+        let mut images = paths
             .iter()
             .map(|path| Ok(ImageReader::open(path)?.decode()?.to_rgba8()))
             .collect::<Result<Vec<_>>>()?;
@@ -87,6 +88,12 @@ impl Texture {
             images.iter().all(|img| img.dimensions() == image_size),
             "All images must be the same dimensions"
         );
+
+        // Append on an extra blank texture so we force 2dArray texture
+        if images.len() == 1 {
+            let dummy_img = RgbaImage::new(image_size.0, image_size.1);
+            images.push(dummy_img);
+        }
 
         let texture_size = Extent3d {
             width: image_size.0,

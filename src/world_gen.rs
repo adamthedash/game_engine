@@ -82,8 +82,8 @@ impl ChunkGenerator {
                     // Treat random number as if it was density
                     let block_type = match density {
                         -1_f64..0. => BlockType::Air,
-                        0_f64..0.25 => BlockType::Dirt,
-                        0.25_f64..1. => BlockType::Stone,
+                        0_f64..0.05 => BlockType::Dirt,
+                        0.05_f64..1. => BlockType::Stone,
                         _ => unreachable!("Random number generated outside of -1 .. 1 !"),
                     };
 

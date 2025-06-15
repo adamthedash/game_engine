@@ -14,17 +14,20 @@ use wgpu::{
 use crate::render::{state::Vertex, texture::Texture};
 
 /// Represents a single model mesh / material. Eg. a single block type
+#[derive(Debug)]
 pub struct Model {
     pub meshes: Vec<Mesh>,
     pub materials: Vec<Material>,
 }
 
+#[derive(Debug)]
 pub struct Material {
     pub name: String,
     pub texture: Texture,
     pub bind_group: wgpu::BindGroup,
 }
 
+#[derive(Debug)]
 pub struct Mesh {
     pub name: String,
     pub vertex_buffer: wgpu::Buffer,

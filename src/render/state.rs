@@ -1,7 +1,7 @@
 use std::{path::Path, sync::Arc, time};
 
 use bytemuck::{Pod, Zeroable};
-use cgmath::{Matrix3, Matrix4, Quaternion, Vector3};
+use cgmath::{Matrix3, Matrix4, Quaternion, Vector3, Zero};
 use wgpu::{
     Buffer, BufferAddress, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, Device,
     LoadOp, Operations, RenderPassColorAttachment, RenderPassDepthStencilAttachment,
@@ -106,9 +106,11 @@ pub struct RenderState {
     // Shader stuff
     texture_shader_pipeline: TextureShaderPipeline,
     instance_buffer: Buffer,
-    // Texture stuff
-    obj_model: Model,
+    instance_buffer_entity: Buffer,
     depth_texture: Texture,
+    // Entity stuff
+    block_model: Model,
+    entity_model: Model,
     // Camera stuff
     camera_uniform: CameraUniform,
     camera_buffer: Buffer,
@@ -136,9 +138,17 @@ impl RenderState {
         );
 
         // Mesh
-        let obj_path = Path::new(env!("OUT_DIR")).join("res/meshes/block.obj");
-        let obj_model = Model::load_model(
-            &obj_path,
+        let block_path = Path::new(env!("OUT_DIR")).join("res/meshes/block.obj");
+        let block_model = Model::load_model(
+            &block_path,
+            &draw_context.device,
+            &draw_context.queue,
+            &texture_shader.texture_layout,
+        )
+        .unwrap();
+        let sibeal_path = Path::new(env!("OUT_DIR")).join("res/meshes/sibeal.obj");
+        let sibeal_model = Model::load_model(
+            &sibeal_path,
             &draw_context.device,
             &draw_context.queue,
             &texture_shader.texture_layout,
@@ -171,16 +181,25 @@ impl RenderState {
             mapped_at_creation: false,
         });
 
+        let instance_buffer_entity = draw_context.device.create_buffer(&BufferDescriptor {
+            label: Some("Instance Buffer Sibeal"),
+            size: INSTANCE_BUFFER_MAX_SIZE,
+            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         // GUI
         let ui = UI::new(&draw_context.device, &draw_context.window);
 
         Self {
             draw_context,
             texture_shader_pipeline,
-            obj_model,
+            block_model,
+            entity_model: sibeal_model,
             camera_uniform,
             camera_buffer,
             instance_buffer,
+            instance_buffer_entity,
             depth_texture,
             lighting_uniform,
             lighting_buffer,
@@ -292,6 +311,19 @@ impl RenderState {
             bytemuck::cast_slice(&instances),
         );
 
+        // Entities
+        let sibeal_instances = [Instance {
+            pos: Vector3::new(1., 12., -16.),
+            rotation: Quaternion::zero(),
+            texture_index: 0,
+        }
+        .to_raw()];
+        self.draw_context.queue.write_buffer(
+            &self.instance_buffer_entity,
+            0,
+            bytemuck::cast_slice(&sibeal_instances),
+        );
+
         // Get a view on the surface texture that we'll draw to
         let (output, texture_view) = self.draw_context.get_texture_view();
 
@@ -334,8 +366,8 @@ impl RenderState {
             // Draw our mesh cubes
             render_pass.set_pipeline(&self.texture_shader_pipeline.render_pipeline);
 
-            let mesh = &self.obj_model.meshes[0];
-            let material = &self.obj_model.materials[0];
+            let mesh = &self.block_model.meshes[0];
+            let material = &self.block_model.materials[0];
             self.texture_shader_pipeline.setup_rendering_pass(
                 &mut render_pass,
                 &mesh.vertex_buffer,
@@ -346,8 +378,21 @@ impl RenderState {
             render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
             render_pass.draw_indexed(0..mesh.num_elements, 0, 0..instances.len() as u32);
 
+            // Draw Sibeal
+            let mesh = &self.entity_model.meshes[0];
+            let material = &self.entity_model.materials[0];
+            self.texture_shader_pipeline.setup_rendering_pass(
+                &mut render_pass,
+                &mesh.vertex_buffer,
+                &mesh.index_buffer,
+                &material.bind_group,
+            );
+            render_pass.set_vertex_buffer(1, self.instance_buffer_entity.slice(..));
+            render_pass.draw_indexed(0..mesh.num_elements, 0, 0..sibeal_instances.len() as u32);
+
             // Draw the light object
             render_pass.set_pipeline(&self.lighting_shader_pipeline.render_pipeline);
+            let mesh = &self.block_model.meshes[0];
             self.lighting_shader_pipeline.setup_rendering_pass(
                 &mut render_pass,
                 &mesh.vertex_buffer,
