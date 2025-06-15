@@ -8,7 +8,8 @@ use player::Player;
 use tokio::runtime::Runtime;
 use winit::{
     application::ApplicationHandler,
-    event::{KeyEvent, WindowEvent},
+    dpi::PhysicalSize,
+    event::{KeyEvent, MouseScrollDelta, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
     window::{CursorGrabMode, Window, WindowId},
@@ -83,7 +84,9 @@ impl<C: CameraController> ApplicationHandler for App<C> {
         if self.render_state.is_none() {
             let window = Arc::new(
                 event_loop
-                    .create_window(Window::default_attributes())
+                    .create_window(
+                        Window::default_attributes().with_inner_size(PhysicalSize::new(1600, 900)),
+                    )
                     .unwrap(),
             );
             window.set_cursor_grab(CursorGrabMode::Confined).unwrap();
@@ -114,6 +117,14 @@ impl<C: CameraController> ApplicationHandler for App<C> {
             println!("Event: {event:?}");
         }
 
+        // Handle UI events
+        if let Some(render_state) = &mut self.render_state {
+            let _ = render_state
+                .ui
+                .egui_state
+                .on_window_event(&render_state.draw_context.window, &event);
+        }
+
         // Debug block
         if let Some(block) = self
             .game_state
@@ -123,7 +134,8 @@ impl<C: CameraController> ApplicationHandler for App<C> {
             *block = BlockType::Smiley;
         };
 
-        match event {
+        match &event {
+            WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::RedrawRequested => {
                 // Game update pass
                 if let Some(last_updated) = self.last_update {
@@ -148,7 +160,7 @@ impl<C: CameraController> ApplicationHandler for App<C> {
             }
             WindowEvent::Resized(size) => {
                 if let Some(render_state) = &mut self.render_state {
-                    render_state.resize(size, &mut self.game_state.player.camera);
+                    render_state.resize(*size, &mut self.game_state.player.camera);
                 }
             }
             WindowEvent::KeyboardInput {
@@ -161,10 +173,10 @@ impl<C: CameraController> ApplicationHandler for App<C> {
                     },
                 ..
             } => {
-                if key == KeyCode::F4 {
+                if *key == KeyCode::F4 {
                     event_loop.exit();
                 }
-                if key == KeyCode::Escape && !repeat && state.is_pressed() {
+                if *key == KeyCode::Escape && !repeat && state.is_pressed() {
                     self.camera_controller.toggle();
 
                     // Toggle window cursor locking
@@ -180,11 +192,21 @@ impl<C: CameraController> ApplicationHandler for App<C> {
                     }
                 }
 
-                self.camera_controller.handle_keypress(&event);
-                self.game_state.handle_keypress(&event);
+                self.camera_controller.handle_keypress(event);
+                self.game_state.handle_keypress(event);
             }
             event @ WindowEvent::MouseInput { .. } => {
-                self.game_state.handle_mouse_key(&event);
+                self.game_state.handle_mouse_key(event);
+            }
+            WindowEvent::MouseWheel {
+                delta: MouseScrollDelta::LineDelta(_, y),
+                ..
+            } => {
+                if let Some(render_state) = &mut self.render_state
+                    && *y != 0.
+                {
+                    render_state.ui.scroll_hotbar(*y > 0.);
+                }
             }
             WindowEvent::CursorMoved { position, .. } => {
                 if let Some(render_state) = &mut self.render_state

@@ -1,17 +1,21 @@
-use egui::Context;
+use egui::{Context, Window, include_image};
 use egui_wgpu::{Renderer, ScreenDescriptor};
 use egui_winit::State;
 use wgpu::{
-    CommandEncoder, Device, LoadOp, Operations, RenderPassColorAttachment,
-    RenderPassDescriptor, StoreOp, TextureFormat, TextureView,
+    CommandEncoder, Device, LoadOp, Operations, RenderPassColorAttachment, RenderPassDescriptor,
+    StoreOp, TextureFormat, TextureView,
 };
 
 use crate::render::context::DrawContext;
 
 pub struct UI {
-    egui_state: State,
+    // Rendering
+    pub egui_state: State,
     egui_context: Context,
     egui_renderer: Renderer,
+    // State
+    pub hotbar_selected: usize,
+    pub num_hotbars: usize,
 }
 
 impl UI {
@@ -28,10 +32,14 @@ impl UI {
             None,
         );
 
+        egui_extras::install_image_loaders(&egui_context);
+
         Self {
             egui_state,
             egui_context,
             egui_renderer,
+            hotbar_selected: 0,
+            num_hotbars: 10,
         }
     }
 
@@ -43,14 +51,29 @@ impl UI {
         view: &TextureView,
         debug_lines: &[String],
     ) {
-        let inputs = egui::RawInput::default();
+        let inputs = self.egui_state.take_egui_input(&draw_context.window);
         let output = self.egui_context.run(inputs, |ctx| {
             // UI code here
-            egui::Window::new("Inventory").show(ctx, |ui| {
+            Window::new("Debug").default_open(false).show(ctx, |ui| {
                 debug_lines.iter().for_each(|t| {
                     ui.label(t);
                 });
             });
+
+            Window::new("Hotbar")
+                .title_bar(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    ui.columns(self.num_hotbars, |columns| {
+                        columns.iter_mut().enumerate().for_each(|(i, c)| {
+                            if i == self.hotbar_selected {
+                                c.image(include_image!("../../res/meshes/smiley2.png"));
+                            } else {
+                                c.image(include_image!("../../res/meshes/smiley.png"));
+                            }
+                        });
+                    });
+                });
         });
 
         let screen_descriptor = ScreenDescriptor {
@@ -111,5 +134,18 @@ impl UI {
         output.textures_delta.free.iter().for_each(|id| {
             self.egui_renderer.free_texture(id);
         });
+    }
+
+    /// Move the selected hotbar up or down by one
+    pub fn scroll_hotbar(&mut self, up: bool) {
+        if up {
+            self.hotbar_selected += 1;
+            self.hotbar_selected %= self.num_hotbars;
+        } else {
+            if self.hotbar_selected == 0 {
+                self.hotbar_selected += self.num_hotbars;
+            }
+            self.hotbar_selected -= 1;
+        }
     }
 }

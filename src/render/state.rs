@@ -117,7 +117,7 @@ pub struct RenderState {
     lighting_buffer: Buffer,
     lighting_shader_pipeline: LightingShaderPipeline,
     // GUI stuff
-    ui: UI,
+    pub ui: UI,
 }
 
 impl RenderState {
@@ -213,6 +213,7 @@ impl RenderState {
 
     // Resize the window
     pub fn resize(&mut self, size: PhysicalSize<u32>, camera: &mut Camera) {
+        self.draw_context.resize(size);
         self.depth_texture = Texture::create_depth_texture(
             &self.draw_context.device,
             &self.draw_context.config,
