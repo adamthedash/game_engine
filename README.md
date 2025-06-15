@@ -7,6 +7,7 @@ Mincraft creative mode-style flying movement.
 Space-like interia flying movement.  
 Walking around movement with gravity.  
 Collision detection.  
+Target block highlighting & block breaking.  
 
 **World**  
 Multiple block types (now with some nicer textures).  
@@ -18,5 +19,10 @@ Mesh based rendering with multiple textures.
 Dynamic culling for non-exposed blocks and chunks too far from the camera.  
 Pre-generated block exposure information so it's not on the hot path
 Basic lighting.
+
+**UI**
+Basic UI with egui.  
+Scrollable hotbar.  
+Debug UI.  
 
 ![](./github/screenshot.png)
