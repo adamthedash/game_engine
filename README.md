@@ -13,6 +13,7 @@ Target block highlighting & block breaking.
 Multiple block types (now with some nicer textures).  
 Basic world gen using Perlin noise (now infinite in all 3 directions).  
 Dynamic world gen as player moves around.
+Sibeal, Destroyer of Worlds.  
 
 **Rendering**  
 Mesh based rendering with multiple textures.  
@@ -24,5 +25,7 @@ Basic lighting.
 Basic UI with egui.  
 Scrollable hotbar.  
 Debug UI.  
+Basic inventory screen.  
+Different UI visibility depending on player's interaction mode.  
 
 ![](./github/screenshot.png)
