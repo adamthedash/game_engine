@@ -5,10 +5,10 @@ use camera::{Camera, basic_flight::BasicFlightCameraController};
 use cgmath::{Deg, Rad};
 use egui::ahash::HashMapExt;
 use game::GameState;
-use inventory::Inventory;
 use player::Player;
 use rustc_hash::FxHashMap;
 use tokio::runtime::Runtime;
+use ui::inventory::Inventory;
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
@@ -29,7 +29,6 @@ mod bbox;
 mod block;
 mod camera;
 mod game;
-pub mod inventory;
 pub mod item;
 mod player;
 mod render;

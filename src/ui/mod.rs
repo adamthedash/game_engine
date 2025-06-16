@@ -1,6 +1,9 @@
+pub mod debug;
 pub mod hotbar;
+pub mod inventory;
 
-use egui::{Context, Ui, Window};
+use debug::DebugWindow;
+use egui::{Context, Ui};
 use egui_wgpu::{Renderer, ScreenDescriptor};
 use egui_winit::State;
 use wgpu::{
@@ -58,11 +61,10 @@ impl UI {
         let inputs = self.egui_state.take_egui_input(&draw_context.window);
         let output = self.egui_context.run(inputs, |ctx| {
             // UI code here
-            Window::new("Debug").default_open(false).show(ctx, |ui| {
-                debug_lines.iter().for_each(|t| {
-                    ui.label(t);
-                });
-            });
+            DebugWindow {
+                lines: debug_lines.to_vec(),
+            }
+            .show_window(ctx);
 
             game.player.hotbar.show_window(ctx);
         });

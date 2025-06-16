@@ -1,4 +1,4 @@
-use crate::{Hotbar, camera::Camera, inventory::Inventory};
+use crate::{Hotbar, camera::Camera, ui::inventory::Inventory};
 
 /// Information about the player
 pub struct Player {
