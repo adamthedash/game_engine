@@ -1,4 +1,6 @@
-use egui::{Align2, Color32, Context, Frame, Stroke, Ui, Window};
+pub mod hotbar;
+
+use egui::{Context, Ui, Window};
 use egui_wgpu::{Renderer, ScreenDescriptor};
 use egui_winit::State;
 use wgpu::{
@@ -6,7 +8,13 @@ use wgpu::{
     StoreOp, TextureFormat, TextureView,
 };
 
-use crate::{game::GameState, inventory::Hotbar, item::ITEMS, render::context::DrawContext};
+use crate::{game::GameState, render::context::DrawContext};
+
+/// Trait to enable easy drawing of UI elements
+pub trait Drawable {
+    fn show_window(&self, ctx: &Context);
+    fn show_widget(&self, ui: &mut Ui);
+}
 
 pub struct UI {
     // Rendering
@@ -116,62 +124,6 @@ impl UI {
         // Clean up any un-needed textures
         output.textures_delta.free.iter().for_each(|id| {
             self.egui_renderer.free_texture(id);
-        });
-    }
-}
-
-/// Trait to enable easy drawing of UI elements
-pub trait Drawable {
-    fn show_window(&self, ctx: &Context);
-    fn show_widget(&self, ui: &mut Ui);
-}
-
-impl Drawable for Hotbar {
-    fn show_window(&self, ctx: &Context) {
-        Window::new("Hotbar")
-            .title_bar(false)
-            .resizable(false)
-            .frame(Frame::window(&ctx.style()).inner_margin(0))
-            .anchor(Align2::CENTER_BOTTOM, [0., 0.])
-            .show(ctx, |ui| {
-                // Remove horizontal padding ebtween slots
-                ui.spacing_mut().item_spacing.x = 0.;
-
-                self.show_widget(ui);
-            });
-    }
-
-    fn show_widget(&self, ui: &mut Ui) {
-        let icon_size = 32.;
-        let selected_margin_size = 3.;
-
-        let items = ITEMS.get().expect("Item info has not been initialised!");
-
-        ui.columns(self.slots.len(), |columns| {
-            // Draw item slots
-            columns.iter_mut().enumerate().for_each(|(i, c)| {
-                let frame = Frame::new().stroke(Stroke::new(
-                    selected_margin_size,
-                    // Highlight selected slot
-                    if i == self.selected {
-                        Color32::LIGHT_BLUE
-                    } else {
-                        Color32::TRANSPARENT
-                    },
-                ));
-
-                // Get icon for the item
-                let icon = self.slots[i]
-                    .and_then(|id| items.get(&id).and_then(|item| item.icon.as_ref()))
-                    .unwrap_or_else(|| items.get(&0).unwrap().icon.as_ref().unwrap());
-
-                frame.show(c, |ui| {
-                    ui.add(
-                        egui::Image::new(icon.clone())
-                            .fit_to_exact_size([icon_size, icon_size].into()),
-                    );
-                });
-            });
         });
     }
 }

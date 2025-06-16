@@ -2,7 +2,6 @@ use std::{path::Path, sync::Arc, time};
 
 use bytemuck::{Pod, Zeroable};
 use cgmath::{Matrix3, Matrix4, Quaternion, Vector3, Zero};
-use egui::ahash::HashMapExt;
 use wgpu::{
     Buffer, BufferAddress, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, Device,
     LoadOp, Operations, RenderPassColorAttachment, RenderPassDepthStencilAttachment,
@@ -26,8 +25,8 @@ use crate::{
             texture::{TextureShaderPipeline, TextureShaderPipelineLayout},
         },
         texture::Texture,
-        ui::UI,
     },
+    ui::UI,
     world::{BlockType, Chunk, ChunkPos},
 };
 

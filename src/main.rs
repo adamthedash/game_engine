@@ -5,7 +5,7 @@ use camera::{Camera, basic_flight::BasicFlightCameraController};
 use cgmath::{Deg, Rad};
 use egui::ahash::HashMapExt;
 use game::GameState;
-use inventory::{Hotbar, Inventory};
+use inventory::Inventory;
 use player::Player;
 use rustc_hash::FxHashMap;
 use tokio::runtime::Runtime;
@@ -21,6 +21,7 @@ use winit::{
 use crate::{
     camera::traits::CameraController,
     render::state::RenderState,
+    ui::hotbar::Hotbar,
     world::{BlockPos, BlockType, World, WorldPos},
 };
 
@@ -32,6 +33,7 @@ pub mod inventory;
 pub mod item;
 mod player;
 mod render;
+pub mod ui;
 mod world;
 mod world_gen;
 
