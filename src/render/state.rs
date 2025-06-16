@@ -2,6 +2,7 @@ use std::{path::Path, sync::Arc, time};
 
 use bytemuck::{Pod, Zeroable};
 use cgmath::{Matrix3, Matrix4, Quaternion, Vector3, Zero};
+use egui::ahash::HashMapExt;
 use wgpu::{
     Buffer, BufferAddress, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, Device,
     LoadOp, Operations, RenderPassColorAttachment, RenderPassDepthStencilAttachment,
@@ -15,6 +16,7 @@ use crate::{
     block::Block,
     camera::{Camera, CameraUniform},
     game::GameState,
+    item::init_item_info,
     render::{
         context::DrawContext,
         light::LightingUniform,
@@ -189,7 +191,10 @@ impl RenderState {
         });
 
         // GUI
-        let ui = UI::new(&draw_context.device, &draw_context.window);
+        let mut ui = UI::new(&draw_context.device, &draw_context.window);
+
+        // Item textures
+        init_item_info(&draw_context, &mut ui.egui_renderer);
 
         Self {
             draw_context,

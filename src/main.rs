@@ -1,13 +1,13 @@
 #![feature(int_roundings)]
 use std::{f32, path::Path, sync::Arc, time::Instant};
 
-use camera::{
-    Camera, basic_flight::BasicFlightCameraController,
-};
+use camera::{Camera, basic_flight::BasicFlightCameraController};
 use cgmath::{Deg, Rad};
+use egui::ahash::HashMapExt;
 use game::GameState;
 use inventory::{Hotbar, Inventory};
 use player::Player;
+use rustc_hash::FxHashMap;
 use tokio::runtime::Runtime;
 use winit::{
     application::ApplicationHandler,
@@ -29,6 +29,7 @@ mod block;
 mod camera;
 mod game;
 pub mod inventory;
+pub mod item;
 mod player;
 mod render;
 mod world;
@@ -77,9 +78,24 @@ impl App<BasicFlightCameraController> {
                 },
                 arm_length: 5.,
                 inventory: Inventory {
-                    items: Default::default(),
+                    items: {
+                        let mut items = FxHashMap::new();
+                        items.insert(1, 5);
+                        items.insert(2, 5);
+
+                        items
+                    },
                 },
-                hotbar: Hotbar::new(),
+                hotbar: Hotbar {
+                    slots: {
+                        let mut slots = [None; 10];
+                        slots[4] = Some(1);
+                        slots[2] = Some(2);
+
+                        slots
+                    },
+                    ..Default::default()
+                },
             },
         };
         game_state.init();

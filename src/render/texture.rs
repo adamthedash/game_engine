@@ -11,7 +11,7 @@ use wgpu::{
 
 #[derive(Debug)]
 pub struct Texture {
-    texture: wgpu::Texture,
+    pub texture: wgpu::Texture,
     pub view: TextureView,
     pub sampler: Sampler,
 }
