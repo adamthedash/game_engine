@@ -12,6 +12,7 @@ use wgpu::{
 use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{
+    InteractionMode,
     block::Block,
     camera::{Camera, CameraUniform},
     game::GameState,
@@ -258,7 +259,7 @@ impl RenderState {
     }
 
     /// Perform the actual rendering to the screen
-    pub fn render(&mut self, game: &GameState) {
+    pub fn render(&mut self, game: &GameState, interaction_mode: &InteractionMode) {
         let start_time = time::Instant::now();
 
         let player_target_block = game.get_player_target_block();
@@ -423,6 +424,7 @@ impl RenderState {
             &mut encoder,
             &texture_view,
             game,
+            interaction_mode,
             &debug_text,
         );
 

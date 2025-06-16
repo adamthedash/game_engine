@@ -208,7 +208,7 @@ impl<C: CameraController> ApplicationHandler for App<C> {
 
                     render_state.update_camera_buffer(&self.game_state.player.camera);
 
-                    render_state.render(&self.game_state);
+                    render_state.render(&self.game_state, &self.interaction_mode);
                 }
             }
             WindowEvent::Resized(size) => {

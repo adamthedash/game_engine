@@ -11,7 +11,7 @@ use wgpu::{
     StoreOp, TextureFormat, TextureView,
 };
 
-use crate::{game::GameState, render::context::DrawContext};
+use crate::{InteractionMode, game::GameState, render::context::DrawContext};
 
 /// Trait to enable easy drawing of UI elements
 pub trait Drawable {
@@ -56,6 +56,7 @@ impl UI {
         encoder: &mut CommandEncoder,
         view: &TextureView,
         game: &GameState,
+        game_mode: &InteractionMode,
         debug_lines: &[String],
     ) {
         let inputs = self.egui_state.take_egui_input(&draw_context.window);
@@ -66,7 +67,14 @@ impl UI {
             }
             .show_window(ctx);
 
-            game.player.hotbar.show_window(ctx);
+            match game_mode {
+                InteractionMode::Game => {
+                    game.player.hotbar.show_window(ctx);
+                }
+                InteractionMode::UI => {
+                    game.player.inventory.show_window(ctx);
+                }
+            }
         });
 
         let screen_descriptor = ScreenDescriptor {
