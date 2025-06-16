@@ -414,8 +414,13 @@ impl RenderState {
             format!("Blocks rendered: {}", instances.len()),
             format!("Target block: {player_target_block:?}"),
         ];
-        self.ui
-            .render(&self.draw_context, &mut encoder, &texture_view, &debug_text);
+        self.ui.render(
+            &self.draw_context,
+            &mut encoder,
+            &texture_view,
+            game,
+            &debug_text,
+        );
 
         // Actually run the operations on the GPU
         self.draw_context

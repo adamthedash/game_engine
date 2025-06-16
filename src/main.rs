@@ -2,11 +2,11 @@
 use std::{f32, path::Path, sync::Arc, time::Instant};
 
 use camera::{
-    Camera, basic_flight::BasicFlightCameraController, space_flight::SpaceFlightCameraController,
-    walking::WalkingCameraController,
+    Camera, basic_flight::BasicFlightCameraController,
 };
 use cgmath::{Deg, Rad};
 use game::GameState;
+use inventory::{Hotbar, Inventory};
 use player::Player;
 use tokio::runtime::Runtime;
 use winit::{
@@ -28,6 +28,7 @@ mod bbox;
 mod block;
 mod camera;
 mod game;
+pub mod inventory;
 mod player;
 mod render;
 mod world;
@@ -75,6 +76,10 @@ impl App<BasicFlightCameraController> {
                     zfar: 100.,
                 },
                 arm_length: 5.,
+                inventory: Inventory {
+                    items: Default::default(),
+                },
+                hotbar: Hotbar::new(),
             },
         };
         game_state.init();
@@ -238,11 +243,8 @@ impl<C: CameraController> ApplicationHandler for App<C> {
                 delta: MouseScrollDelta::LineDelta(_, y),
                 ..
             } => {
-                if self.interaction_mode == InteractionMode::Game
-                    && let Some(render_state) = &mut self.render_state
-                    && *y != 0.
-                {
-                    render_state.ui.scroll_hotbar(*y > 0.);
+                if self.interaction_mode == InteractionMode::Game && *y != 0. {
+                    self.game_state.player.hotbar.scroll(*y > 0.);
                 }
             }
             WindowEvent::CursorMoved { position, .. } => {

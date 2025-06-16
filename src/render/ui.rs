@@ -6,16 +6,13 @@ use wgpu::{
     StoreOp, TextureFormat, TextureView,
 };
 
-use crate::render::context::DrawContext;
+use crate::{game::GameState, render::context::DrawContext};
 
 pub struct UI {
     // Rendering
     pub egui_state: State,
     egui_context: Context,
     egui_renderer: Renderer,
-    // State
-    pub hotbar_selected: usize,
-    pub num_hotbars: usize,
 }
 
 impl UI {
@@ -38,8 +35,6 @@ impl UI {
             egui_state,
             egui_context,
             egui_renderer,
-            hotbar_selected: 0,
-            num_hotbars: 10,
         }
     }
 
@@ -49,6 +44,7 @@ impl UI {
         draw_context: &DrawContext,
         encoder: &mut CommandEncoder,
         view: &TextureView,
+        game: &GameState,
         debug_lines: &[String],
     ) {
         let inputs = self.egui_state.take_egui_input(&draw_context.window);
@@ -64,9 +60,9 @@ impl UI {
                 .title_bar(false)
                 .resizable(false)
                 .show(ctx, |ui| {
-                    ui.columns(self.num_hotbars, |columns| {
+                    ui.columns(game.player.hotbar.slots.len(), |columns| {
                         columns.iter_mut().enumerate().for_each(|(i, c)| {
-                            if i == self.hotbar_selected {
+                            if i == game.player.hotbar.selected {
                                 c.image(include_image!("../../res/meshes/smiley2.png"));
                             } else {
                                 c.image(include_image!("../../res/meshes/smiley.png"));
@@ -134,18 +130,5 @@ impl UI {
         output.textures_delta.free.iter().for_each(|id| {
             self.egui_renderer.free_texture(id);
         });
-    }
-
-    /// Move the selected hotbar up or down by one
-    pub fn scroll_hotbar(&mut self, up: bool) {
-        if up {
-            self.hotbar_selected += 1;
-            self.hotbar_selected %= self.num_hotbars;
-        } else {
-            if self.hotbar_selected == 0 {
-                self.hotbar_selected += self.num_hotbars;
-            }
-            self.hotbar_selected -= 1;
-        }
     }
 }

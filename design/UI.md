@@ -8,4 +8,6 @@
 The hotbar holds up to 10 items from the player's inventory for quick-use.  
 It's a view on "favourited" items, rather than a separate inventory space.  
 It can be configured from the inventory screen.  
-Different slots can be selected by scrolling on the scrollbar or hitting the numbers on the keyboard.
+Different slots can be selected by scrolling on the scrollbar or hitting the numbers on the keyboard.  
+
+
