@@ -1,5 +1,5 @@
 #![feature(int_roundings)]
-use std::{f32, path::Path, sync::Arc, time::Instant};
+use std::{cell::RefCell, f32, path::Path, rc::Rc, sync::Arc, time::Instant};
 
 use camera::{Camera, basic_flight::BasicFlightCameraController};
 use cgmath::{Deg, Rad};
@@ -65,6 +65,28 @@ struct App<C: CameraController> {
 
 impl App<BasicFlightCameraController> {
     fn new() -> Self {
+        let inventory = Inventory {
+            items: {
+                let mut items = FxHashMap::new();
+                items.insert(1, 5);
+                items.insert(2, 12);
+
+                items
+            },
+        };
+        let inventory = Rc::new(RefCell::new(inventory));
+        let hotbar = Hotbar {
+            slots: {
+                let mut slots = [None; 10];
+                slots[4] = Some(1);
+                slots[2] = Some(2);
+
+                slots
+            },
+            inventory: inventory.clone(),
+            selected: 0,
+        };
+
         let mut game_state = GameState {
             world: World::default(),
             player: Player {
@@ -78,25 +100,8 @@ impl App<BasicFlightCameraController> {
                     zfar: 100.,
                 },
                 arm_length: 5.,
-                inventory: Inventory {
-                    items: {
-                        let mut items = FxHashMap::new();
-                        items.insert(1, 5);
-                        items.insert(2, 5);
-
-                        items
-                    },
-                },
-                hotbar: Hotbar {
-                    slots: {
-                        let mut slots = [None; 10];
-                        slots[4] = Some(1);
-                        slots[2] = Some(2);
-
-                        slots
-                    },
-                    ..Default::default()
-                },
+                hotbar,
+                inventory,
             },
         };
         game_state.init();

@@ -72,7 +72,7 @@ impl UI {
                     game.player.hotbar.show_window(ctx);
                 }
                 InteractionMode::UI => {
-                    game.player.inventory.show_window(ctx);
+                    game.player.inventory.borrow().show_window(ctx);
                 }
             }
         });

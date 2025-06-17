@@ -20,9 +20,9 @@ pub struct Item {
 pub static ITEMS: OnceLock<FxHashMap<ItemId, Item>> = OnceLock::new();
 
 const ITEM_TEXTURES: [&str; 3] = [
-    "res/meshes/smiley.png",
-    "res/meshes/dirt.png",
-    "res/meshes/stone.png",
+    "res/icons/smiley.png",
+    "res/icons/dirt.png",
+    "res/icons/stone.png",
 ];
 
 /// Initialise item info

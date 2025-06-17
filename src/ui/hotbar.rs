@@ -1,14 +1,18 @@
-use egui::{Align2, Color32, Context, Frame, Stroke, Ui, Window};
+use std::{cell::RefCell, rc::Rc};
 
-use super::Drawable;
+use egui::{Align2, Color32, Context, FontId, Frame, Sense, Stroke, Ui, Window};
+
+use super::{Drawable, inventory::Inventory};
 use crate::item::{ITEMS, ItemId};
 
-#[derive(Default)]
 pub struct Hotbar {
     // Each slot holds one item ID
     pub slots: [Option<ItemId>; 10],
     // Slot selected
     pub selected: usize,
+
+    // View onto inventory
+    pub inventory: Rc<RefCell<Inventory>>,
 }
 
 impl Hotbar {
@@ -49,6 +53,7 @@ impl Drawable for Hotbar {
     fn show_widget(&self, ui: &mut Ui) {
         let icon_size = 32.;
         let selected_margin_size = 3.;
+        let font_size = 15.;
 
         let items = ITEMS.get().expect("Item info has not been initialised!");
 
@@ -66,15 +71,38 @@ impl Drawable for Hotbar {
                 ));
 
                 // Get icon for the item
-                let icon = self.slots[i]
-                    .and_then(|id| items.get(&id).and_then(|item| item.icon.as_ref()))
-                    .unwrap_or_else(|| items.get(&0).unwrap().icon.as_ref().unwrap());
+                let (icon, count) = if let Some(id) = self.slots[i] {
+                    let icon = items.get(&id).and_then(|item| item.icon.as_ref());
+                    let count = *self.inventory.borrow().items.get(&id).unwrap_or(&0);
+                    (icon, count)
+                } else {
+                    (None, 0)
+                };
 
                 frame.show(c, |ui| {
-                    ui.add(
-                        egui::Image::new(icon.clone())
-                            .fit_to_exact_size([icon_size, icon_size].into()),
-                    );
+                    if let Some(icon) = icon {
+                        // Draw image
+                        let rect = ui
+                            .add(
+                                egui::Image::new(icon.clone())
+                                    .fit_to_exact_size([icon_size, icon_size].into()),
+                            )
+                            .rect;
+
+                        // Draw item count in bottom right
+                        if count > 0 {
+                            let painter = ui.painter();
+                            let font_id = FontId::monospace(font_size);
+                            let text =
+                                painter.layout_no_wrap(format!("{count}"), font_id, Color32::WHITE);
+
+                            let pos = rect.right_bottom() - text.size();
+                            painter.galley(pos, text, Color32::WHITE);
+                        }
+                    } else {
+                        // Blank icon
+                        ui.allocate_exact_size([icon_size, icon_size].into(), Sense::empty());
+                    }
                 });
             });
         });

@@ -1,4 +1,4 @@
-use egui::{Align2, Vec2, Window};
+use egui::{Align2, Color32, FontId, Frame, Vec2, Window};
 use rustc_hash::FxHashMap;
 
 use super::Drawable;
@@ -13,7 +13,10 @@ pub struct Inventory {
 impl Drawable for Inventory {
     fn show_window(&self, ctx: &egui::Context) {
         let icon_size = 32.;
-        let window_size = Vec2::new(icon_size, icon_size) * 8.;
+        let num_slots = 8;
+        let font_size = 15.;
+
+        let window_size = Vec2::new(icon_size, icon_size) * num_slots as f32;
         let items = ITEMS.get().expect("Items info not initialised!");
 
         Window::new("Inventory")
@@ -30,10 +33,23 @@ impl Drawable for Inventory {
                     // Get icon for the item
                     let icon = items.get(id).unwrap().icon.as_ref().unwrap();
 
-                    ui.add(
-                        egui::Image::new(icon.clone())
-                            .fit_to_exact_size([icon_size, icon_size].into()),
-                    );
+                    let frame = Frame::NONE;
+                    frame.show(ui, |ui| {
+                        let resp = ui.add(
+                            egui::Image::new(icon.clone())
+                                .fit_to_exact_size([icon_size, icon_size].into()),
+                        );
+                        let rect = resp.rect;
+
+                        // Draw item count in bottom right
+                        let painter = ui.painter();
+                        let font_id = FontId::monospace(font_size);
+                        let text =
+                            painter.layout_no_wrap(format!("{count}"), font_id, Color32::WHITE);
+
+                        let pos = rect.right_bottom() - text.size();
+                        painter.galley(pos, text, Color32::WHITE);
+                    });
                 });
             });
     }
