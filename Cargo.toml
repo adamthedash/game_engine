@@ -7,6 +7,7 @@ edition = "2024"
 anyhow = "1.0.98"
 bytemuck = { version = "1.23.0", features = ["derive"] }
 cgmath = "0.18.0"
+eframe = "0.31.1"
 egui = "0.31.1"
 egui-wgpu = { version = "0.31.1", features = ["winit"] }
 egui-winit = "0.31.1"
