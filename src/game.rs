@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use cgmath::MetricSpace;
+use cgmath::{MetricSpace, Vector3, Zero};
 use itertools::Itertools;
 use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
 
@@ -8,7 +8,7 @@ use crate::{
     InteractionMode,
     block::Block,
     player::Player,
-    world::{BlockType, Chunk, World},
+    world::{BlockPos, BlockType, Chunk, World, WorldPos},
 };
 
 /// Holds state information about the game independent of the rendering
@@ -45,16 +45,17 @@ impl GameState {
                 button: MouseButton::Left,
                 ..
             }
-        ) && let Some(target_block) = self.get_player_target_block()
-        {
-            // Break block
-            *self.world.get_block_mut(&target_block.block_pos).unwrap() = BlockType::Air;
-            println!("Breaking block: {target_block:?}");
-
-            // Update block exposure information
-            // TODO: Change to block-level updates instead of chunk level
-            let (chunk_pos, _) = target_block.block_pos.to_chunk_offset();
-            self.world.update_exposed_blocks(&chunk_pos);
+        ) {
+            self.break_block();
+        } else if matches!(
+            event,
+            WindowEvent::MouseInput {
+                state: ElementState::Pressed,
+                button: MouseButton::Right,
+                ..
+            }
+        ) {
+            self.place_block();
         }
     }
 
@@ -73,6 +74,11 @@ impl GameState {
 
     /// Get the block that the player is looking at
     pub fn get_player_target_block(&self) -> Option<Block> {
+        self.get_player_target_block_verbose()
+            .map(|(_, _, block)| block)
+    }
+
+    pub fn get_player_target_block_verbose(&self) -> Option<(f32, WorldPos, Block)> {
         let ray = self.player.camera.ray();
         let (player_chunk_pos, _) = self.player.camera.pos.to_block_pos().to_chunk_offset();
 
@@ -124,8 +130,87 @@ impl GameState {
                     })
                     // Find the closest candidate
                     .min_by(|(d1, _), (d2, _)| d1.total_cmp(d2))
-                    .map(|(_, block)| block)
+                    // Compute the intersection point
+                    .map(|(d, block)| {
+                        let intersect = WorldPos(ray.pos + ray.direction * d);
+                        (d, intersect, block)
+                    })
             })
             .next()
     }
+
+    /// Attempt to break the block the player is targeting
+    fn break_block(&mut self) {
+        if let Some(target_block) = self.get_player_target_block() {
+            // Break block
+            let old_block = std::mem::replace(
+                self.world.get_block_mut(&target_block.block_pos).unwrap(),
+                BlockType::Air,
+            );
+
+            // Give an item to the player
+            // TODO: Abstract this out
+            match old_block {
+                BlockType::Air => unreachable!("Can't break Air block!"),
+                BlockType::Dirt => self.player.inventory.borrow_mut().add_item(1, 1),
+                BlockType::Stone => self.player.inventory.borrow_mut().add_item(2, 1),
+                BlockType::Smiley => todo!(),
+                BlockType::Smiley2 => todo!(),
+            }
+
+            // Update block exposure information
+            // TODO: Change to block-level updates instead of chunk level
+            let (chunk_pos, _) = target_block.block_pos.to_chunk_offset();
+            self.world.update_exposed_blocks(&chunk_pos);
+        }
+    }
+
+    /// Attempt the place a block where the player is looking
+    fn place_block(&mut self) {
+        if let Some((id, count)) = self.player.hotbar.get_selected_item() {
+            assert!(count > 0);
+
+            if let Some((_, intersect, target_block)) = self.get_player_target_block_verbose() {
+                // Get the adjacent block
+                let direction_vector = intersect.0 - target_block.block_pos.centre().0;
+                let offset = to_cardinal_offset(&direction_vector);
+                let adjacent_block_pos = BlockPos(target_block.block_pos.0 + offset);
+
+                if let Some(block_type) = self.world.get_block_mut(&adjacent_block_pos)
+                    // Only place in air blocks
+                    && *block_type == BlockType::Air
+                {
+                    // TODO: move this selection logic elsewhere
+                    *block_type = match id {
+                        1 => BlockType::Dirt,
+                        2 => BlockType::Stone,
+                        _ => unreachable!("Holding dodgy item!"),
+                    };
+                    self.player.inventory.borrow_mut().remove_item(id, 1);
+
+                    // Update block exposure information
+                    // TODO: Change to block-level updates instead of chunk level
+                    let (chunk_pos, _) = target_block.block_pos.to_chunk_offset();
+                    self.world.update_exposed_blocks(&chunk_pos);
+                }
+            }
+        }
+    }
+}
+
+/// Convert a vector offset to it's closest unit offset along one cardinal direction
+fn to_cardinal_offset(vec: &Vector3<f32>) -> Vector3<i32> {
+    // Get the axis with the largest magnitude
+    let largest_mag = [vec[0], vec[1], vec[2]]
+        .into_iter()
+        .enumerate()
+        .max_by(|(_, x1), (_, x2)| x1.abs().total_cmp(&x2.abs()))
+        .map(|(i, _)| i)
+        .unwrap();
+
+    // Get the unit vector along this axis
+    let mut offset = Vector3::zero();
+    offset[largest_mag] = if vec[largest_mag] > 0. { 1 } else { -1 };
+
+    offset
 }

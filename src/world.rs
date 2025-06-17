@@ -81,6 +81,11 @@ impl BlockPos {
     pub fn to_world_pos(&self) -> WorldPos {
         WorldPos(self.0.cast().expect("Failed to cast BlockPos -> WorldPos"))
     }
+
+    /// Centre point of the block in world space
+    pub fn centre(&self) -> WorldPos {
+        WorldPos(self.to_world_pos().0 + Vector3::new(0.5, 0.5, 0.5))
+    }
 }
 
 /// Represents any position in the world in block-space (1 unit moves 1 block length)

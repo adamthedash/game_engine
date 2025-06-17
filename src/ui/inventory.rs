@@ -10,6 +10,26 @@ pub struct Inventory {
     pub items: FxHashMap<ItemId, usize>,
 }
 
+impl Inventory {
+    pub fn add_item(&mut self, item: ItemId, count: usize) {
+        *self.items.entry(item).or_insert(0) += count;
+    }
+
+    pub fn remove_item(&mut self, item: ItemId, count: usize) {
+        assert!(
+            self.items.get(&item).is_some_and(|x| *x >= count),
+            "Not enough items!"
+        );
+
+        *self.items.get_mut(&item).unwrap() -= count;
+
+        // Remove from inventory if we've ran out
+        if *self.items.get(&item).unwrap() == 0 {
+            self.items.remove(&item);
+        }
+    }
+}
+
 impl Drawable for Inventory {
     fn show_window(&self, ctx: &egui::Context) {
         let icon_size = 32.;

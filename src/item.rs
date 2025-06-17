@@ -8,7 +8,7 @@ use crate::render::{context::DrawContext, texture::Texture};
 
 pub type ItemId = usize;
 
-/// An item in the inventory
+/// Static item information
 #[derive(Debug)]
 pub struct Item {
     pub id: ItemId,
@@ -20,8 +20,8 @@ pub struct Item {
 pub static ITEMS: OnceLock<FxHashMap<ItemId, Item>> = OnceLock::new();
 
 const ITEM_TEXTURES: [&str; 3] = [
-    "res/icons/smiley.png",
-    "res/icons/dirt.png",
+    "res/icons/smiley.png", // ID = 0
+    "res/icons/dirt.png",   // ID = 1
     "res/icons/stone.png",
 ];
 

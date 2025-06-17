@@ -33,6 +33,15 @@ impl Hotbar {
     pub fn set_favourite(&mut self, slot: usize, item_id: usize) {
         *self.slots.get_mut(slot).expect("Slot out of range") = Some(item_id);
     }
+
+    /// Get the player's selected item & count
+    pub fn get_selected_item(&self) -> Option<(ItemId, usize)> {
+        let item_id = self.slots[self.selected]?;
+        let inventory = self.inventory.borrow();
+        let count = inventory.items.get(&item_id)?;
+
+        Some((item_id, *count))
+    }
 }
 
 impl Drawable for Hotbar {
