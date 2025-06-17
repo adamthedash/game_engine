@@ -12,6 +12,7 @@ pub type ItemId = usize;
 #[derive(Debug)]
 pub struct Item {
     pub id: ItemId,
+
     // Egui texture
     pub icon: Option<ImageSource<'static>>,
 }

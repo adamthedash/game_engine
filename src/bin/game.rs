@@ -1,14 +1,19 @@
 #![feature(int_roundings)]
 use std::{cell::RefCell, f32, path::Path, rc::Rc, sync::Arc, time::Instant};
 
-use camera::{Camera, basic_flight::BasicFlightCameraController};
 use cgmath::{Deg, Rad};
 use egui::ahash::HashMapExt;
-use game::GameState;
-use player::Player;
+use game_engine::{
+    InteractionMode,
+    camera::{Camera, basic_flight::BasicFlightCameraController, traits::CameraController},
+    game::GameState,
+    player::Player,
+    render::state::RenderState,
+    ui::{hotbar::Hotbar, inventory::Inventory},
+    world::{BlockPos, BlockType, World, WorldPos},
+};
 use rustc_hash::FxHashMap;
 use tokio::runtime::Runtime;
-use ui::inventory::Inventory;
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
@@ -17,42 +22,6 @@ use winit::{
     keyboard::{KeyCode, PhysicalKey},
     window::{CursorGrabMode, Window, WindowId},
 };
-
-use crate::{
-    camera::traits::CameraController,
-    render::state::RenderState,
-    ui::hotbar::Hotbar,
-    world::{BlockPos, BlockType, World, WorldPos},
-};
-
-mod bbox;
-mod block;
-mod camera;
-mod game;
-pub mod item;
-mod player;
-mod render;
-pub mod ui;
-mod world;
-mod world_gen;
-
-#[derive(PartialEq)]
-pub enum InteractionMode {
-    // Player can walk around and interact with the world
-    Game,
-    // Player is in a menu / interface
-    UI,
-}
-
-impl InteractionMode {
-    pub fn toggle(&mut self) {
-        use InteractionMode::*;
-        *self = match self {
-            Game => UI,
-            UI => Game,
-        }
-    }
-}
 
 struct App<C: CameraController> {
     runtime: Runtime,

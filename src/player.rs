@@ -1,6 +1,9 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{Hotbar, camera::Camera, ui::inventory::Inventory};
+use crate::{
+    camera::Camera,
+    ui::{hotbar::Hotbar, inventory::Inventory},
+};
 
 /// Information about the player
 pub struct Player {
