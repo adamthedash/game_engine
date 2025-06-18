@@ -101,17 +101,19 @@ impl CameraController for WalkingCameraController {
         }
 
         camera.yaw += Rad(self.turn_speed * delta.0);
-        camera.yaw = camera.yaw.normalize();
+        camera.yaw.set(camera.yaw.get().normalize());
 
         camera.pitch -= Rad(self.turn_speed * delta.1);
         // Clip just under fully vertical to avoid weirdness
-        camera.pitch.0 = camera.pitch.0.clamp(-FRAC_PI_2 * 0.99, FRAC_PI_2 * 0.99);
+        camera
+            .pitch
+            .update(|p| p.0 = p.0.clamp(-FRAC_PI_2 * 0.99, FRAC_PI_2 * 0.99));
     }
 
     /// Update the camera position
     fn update_camera(&mut self, camera: &mut Camera, world: &World, duration: &Duration) {
         // Step 1: figure out the direction vector the player wants to move in
-        let forward = angles_to_vec3(camera.yaw, Rad(0.));
+        let forward = angles_to_vec3(camera.yaw.get(), Rad(0.));
         let right = forward.cross(Vector3::unit_y()).normalize();
 
         let mut movement_vector = Vector3::new(0., 0., 0.);
@@ -138,7 +140,7 @@ impl CameraController for WalkingCameraController {
         }
 
         // Step 2: Figure out if we're colliding with any blocks
-        let player_block_pos = camera.pos.to_block_pos();
+        let player_block_pos = camera.pos.get().to_block_pos();
         let player_aabb = camera.aabb();
         let colliding_with = |pos: &BlockPos| {
             if let Some(block) = world.get_block(pos) {
@@ -195,6 +197,8 @@ impl CameraController for WalkingCameraController {
         // walls
 
         // Apply the movement vector
-        camera.pos.0 += movement_vector * duration.as_secs_f32();
+        camera
+            .pos
+            .update(|p| p.0 += movement_vector * duration.as_secs_f32());
     }
 }

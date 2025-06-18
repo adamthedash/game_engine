@@ -1,4 +1,5 @@
 #![feature(int_roundings)]
+#![feature(iter_collect_into)]
 
 pub mod bbox;
 pub mod block;
@@ -8,9 +9,9 @@ pub mod item;
 pub mod player;
 pub mod render;
 pub mod ui;
+pub mod util;
 pub mod world;
 pub mod world_gen;
-pub mod util;
 
 #[derive(PartialEq)]
 pub enum InteractionMode {

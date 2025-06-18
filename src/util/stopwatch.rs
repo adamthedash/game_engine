@@ -7,6 +7,12 @@ pub struct StopWatch {
     pub trackers: FxHashMap<String, Vec<Duration>>,
 }
 
+impl Default for StopWatch {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StopWatch {
     pub fn new() -> Self {
         Self {

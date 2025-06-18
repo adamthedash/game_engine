@@ -61,9 +61,15 @@ impl GameState {
 
     /// Generate chunks around the player
     fn generate_chunks(&mut self) {
-        let (player_chunk, _) = self.player.camera.pos.to_block_pos().to_chunk_offset();
+        let (player_chunk, _) = self
+            .player
+            .camera
+            .pos
+            .get()
+            .to_block_pos()
+            .to_chunk_offset();
         let player_vision_chunks =
-            (self.player.camera.zfar as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
+            (self.player.camera.zfar.get() as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
         player_chunk
             .chunks_within(player_vision_chunks + 1)
             // Only generate chunks within vision distance of the player
@@ -80,7 +86,13 @@ impl GameState {
 
     pub fn get_player_target_block_verbose(&self) -> Option<(f32, WorldPos, Block)> {
         let ray = self.player.camera.ray();
-        let (player_chunk_pos, _) = self.player.camera.pos.to_block_pos().to_chunk_offset();
+        let (player_chunk_pos, _) = self
+            .player
+            .camera
+            .pos
+            .get()
+            .to_block_pos()
+            .to_chunk_offset();
 
         // Always process the player's chunk
         let player_chunk = [self.world.chunks.get(&player_chunk_pos).unwrap()];
@@ -117,7 +129,7 @@ impl GameState {
                         b.block_pos
                             .to_world_pos()
                             .0
-                            .distance2(self.player.camera.pos.0)
+                            .distance2(self.player.camera.pos.get().0)
                             <= self.player.arm_length.powi(2) + 3.
                     })
                     // Check which blocks are infront of player

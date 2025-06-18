@@ -42,6 +42,18 @@ impl<S: BaseNum + PartialOrd> AABB<S> {
             end: self.end.cast().unwrap(),
         }
     }
+
+    /// Iterate over all of the vertices of this bounding box
+    pub fn iter_points<'a>(&'a self) -> impl Iterator<Item = Point3<S>> + 'a {
+        let points = [&self.start, &self.end];
+        (0..8).map(move |i| {
+            let x = (i >> 2) & 1;
+            let y = (i >> 1) & 1;
+            let z = i & 1;
+
+            Point3::new(points[x].x, points[y].y, points[z].z)
+        })
+    }
 }
 
 impl AABB<f32> {

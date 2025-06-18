@@ -101,11 +101,13 @@ impl CameraController for SpaceFlightCameraController {
         }
 
         camera.yaw += Rad(self.turn_speed * delta.0);
-        camera.yaw = camera.yaw.normalize();
+        camera.yaw.set(camera.yaw.get().normalize());
 
         camera.pitch -= Rad(self.turn_speed * delta.1);
         // Clip just under fully vertical to avoid weirdness
-        camera.pitch.0 = camera.pitch.0.clamp(-FRAC_PI_2 * 0.99, FRAC_PI_2 * 0.99);
+        camera
+            .pitch
+            .update(|p| p.0 = p.0.clamp(-FRAC_PI_2 * 0.99, FRAC_PI_2 * 0.99));
     }
 
     fn update_camera(
@@ -119,7 +121,7 @@ impl CameraController for SpaceFlightCameraController {
         }
 
         // Step 1: figure out the direction vector the player wants to move in
-        let forward = angles_to_vec3(camera.yaw, camera.pitch);
+        let forward = angles_to_vec3(camera.yaw.get(), camera.pitch.get());
         let right = forward.cross(Vector3::unit_y()).normalize();
 
         let mut acceleration_vector = Vector3::new(0., 0., 0.);
@@ -180,7 +182,7 @@ impl CameraController for SpaceFlightCameraController {
         }
 
         // Step 4: Figure out if we're colliding with any blocks
-        let player_block_pos = camera.pos.to_block_pos();
+        let player_block_pos = camera.pos.get().to_block_pos();
         let player_aabb = camera.aabb();
 
         let colliding_with = |pos: &BlockPos| {
@@ -218,6 +220,8 @@ impl CameraController for SpaceFlightCameraController {
         }
 
         // Step 5: Apply the movement
-        camera.pos.0 += self.velocity * duration.as_secs_f32();
+        camera
+            .pos
+            .update(|p| p.0 += self.velocity * duration.as_secs_f32());
     }
 }

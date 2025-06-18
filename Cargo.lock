@@ -1527,6 +1527,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "rustc-hash 2.1.1",
+ "sycamore-reactive",
  "tobj",
  "tokio",
  "wgpu",
@@ -3685,6 +3686,17 @@ checksum = "6e44e288cd960318917cbd540340968b90becc8bc81f171345d706e7a89d9d70"
 dependencies = [
  "kurbo",
  "siphasher 0.3.11",
+]
+
+[[package]]
+name = "sycamore-reactive"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2bacf810535efc2701187a716a5652197ad241d620d5b00fb12caa6dfa23add"
+dependencies = [
+ "paste",
+ "slotmap",
+ "smallvec",
 ]
 
 [[package]]

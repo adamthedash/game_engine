@@ -1,8 +1,4 @@
-use std::{
-    path::Path,
-    sync::Arc,
-    time::{self, Instant},
-};
+use std::{path::Path, sync::Arc};
 
 use bytemuck::{Pod, Zeroable};
 use cgmath::{Matrix3, Matrix4, Quaternion, Vector3, Zero};
@@ -127,6 +123,9 @@ pub struct RenderState {
     lighting_shader_pipeline: LightingShaderPipeline,
     // GUI stuff
     pub ui: UI,
+    // Re-usable CPU buffers
+    instances_cpu: Vec<InstanceRaw>,
+    visible_blocks: Vec<Block>,
 }
 
 impl RenderState {
@@ -215,6 +214,8 @@ impl RenderState {
             lighting_buffer,
             lighting_shader_pipeline,
             ui,
+            instances_cpu: vec![],
+            visible_blocks: vec![],
         }
     }
 
@@ -249,7 +250,7 @@ impl RenderState {
             "depth_texture",
         );
 
-        camera.aspect = size.width as f32 / size.height as f32;
+        camera.aspect.set(size.width as f32 / size.height as f32);
         self.update_camera_buffer(camera);
     }
 
@@ -270,10 +271,18 @@ impl RenderState {
         let player_target_block = game.get_player_target_block();
 
         // Check what blocks are candidates for rendering
-        let (player_chunk, _) = game.player.camera.pos.to_block_pos().to_chunk_offset();
+        let (player_chunk, _) = game
+            .player
+            .camera
+            .pos
+            .get()
+            .to_block_pos()
+            .to_chunk_offset();
         let player_vision_chunks =
-            (game.player.camera.zfar as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
-        let visible_blocks = player_chunk
+            (game.player.camera.zfar.get() as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
+
+        self.visible_blocks.clear();
+        player_chunk
             // Only render chunks within vision distance of the player (plus 1 chunk buffer)
             .chunks_within(player_vision_chunks + 1)
             // Only render chunks in the player's viewport
@@ -309,18 +318,109 @@ impl RenderState {
                 } else {
                     b
                 }
-            });
+            })
+            .collect_into(&mut self.visible_blocks);
+
+        // Depth testing
+        //let mut cross_sections = self
+        //    .visible_blocks
+        //    .iter()
+        //    .map(|b| {
+        //        // Project the block to NCD space
+        //        let points = b
+        //            .aabb()
+        //            .to_f32()
+        //            .iter_points()
+        //            .map(|p| game.player.camera.project_to_ncd(&WorldPos(p)))
+        //            .collect::<Vec<_>>();
+        //
+        //        // Get the cross-sectional bounding box & distance from player
+        //        let minx = points
+        //            .iter()
+        //            .min_by(|p1, p2| p1.0.x.total_cmp(&p2.0.x))
+        //            .unwrap()
+        //            .0
+        //            .x;
+        //        let miny = points
+        //            .iter()
+        //            .min_by(|p1, p2| p1.0.y.total_cmp(&p2.0.y))
+        //            .unwrap()
+        //            .0
+        //            .y;
+        //        let maxx = points
+        //            .iter()
+        //            .max_by(|p1, p2| p1.0.x.total_cmp(&p2.0.x))
+        //            .unwrap()
+        //            .0
+        //            .x;
+        //        let maxy = points
+        //            .iter()
+        //            .max_by(|p1, p2| p1.0.y.total_cmp(&p2.0.y))
+        //            .unwrap()
+        //            .0
+        //            .y;
+        //        let cross_section = (Point2::new(minx, miny), Point2::new(maxx, maxy));
+        //
+        //        let distance = points
+        //            .iter()
+        //            .min_by(|p1, p2| p1.0.z.total_cmp(&p2.0.z))
+        //            .unwrap()
+        //            .0
+        //            .z;
+        //
+        //        (cross_section, distance)
+        //    })
+        //    .collect::<Vec<_>>();
+        //// Sort by distance
+        //cross_sections.sort_by(|(_, d1), (_, d2)| d1.total_cmp(d2));
+        //let mut keep = vec![true; cross_sections.len()];
+        //for i in 0..keep.len() - 1 {
+        //    if !keep[i] {
+        //        continue;
+        //    }
+        //
+        //    /// Checks if bbox1 completely covers bbox2
+        //    fn covers(
+        //        bbox1: &(Point2<f32>, Point2<f32>),
+        //        bbox2: &(Point2<f32>, Point2<f32>),
+        //    ) -> bool {
+        //        bbox1.1.x <= bbox2.1.x
+        //            && bbox1.1.y <= bbox2.1.y
+        //            && bbox1.0.x >= bbox2.0.x
+        //            && bbox1.0.y >= bbox2.0.y
+        //    }
+        //
+        //    // Check all blocks behind to see which are covered
+        //    for j in i + 1..keep.len() {
+        //        if !keep[j] {
+        //            continue;
+        //        }
+        //
+        //        if covers(&cross_sections[i].0, &cross_sections[j].0) {
+        //            keep[j] = false;
+        //        }
+        //    }
+        //}
+        //
+        //let visible_blocks = visible_blocks
+        //    .into_iter()
+        //    .zip(keep)
+        //    .filter_map(|(b, keep)| keep.then_some(b))
+        //    .collect::<Vec<_>>();
+        stopwatch.stamp_and_reset("Block elimination");
 
         // Convert blocks to renderable instances
-        let instances = visible_blocks
+        self.instances_cpu.clear();
+        self.visible_blocks
+            .iter()
             .map(|block| block.to_instance().to_raw())
-            .collect::<Vec<_>>();
-        stopwatch.stamp_and_reset("Pre-render pass");
+            .collect_into(&mut self.instances_cpu);
+        stopwatch.stamp_and_reset("Instance creation");
 
         self.draw_context.queue.write_buffer(
             &self.instance_buffer,
             0,
-            bytemuck::cast_slice(&instances),
+            bytemuck::cast_slice(&self.instances_cpu),
         );
 
         // Entities
@@ -388,7 +488,7 @@ impl RenderState {
             );
 
             render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-            render_pass.draw_indexed(0..mesh.num_elements, 0, 0..instances.len() as u32);
+            render_pass.draw_indexed(0..mesh.num_elements, 0, 0..self.instances_cpu.len() as u32);
 
             // Draw Sibeal
             let mesh = &self.entity_model.meshes[0];
@@ -420,7 +520,7 @@ impl RenderState {
             .into_iter()
             .chain([
                 // format!("{:#?}", game.player.camera),
-                format!("Blocks rendered: {}", instances.len()),
+                format!("Blocks rendered: {}", self.instances_cpu.len()),
                 format!("Target block: {player_target_block:?}"),
             ])
             .collect::<Vec<_>>();

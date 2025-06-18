@@ -89,7 +89,7 @@ impl BlockPos {
 }
 
 /// Represents any position in the world in block-space (1 unit moves 1 block length)
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct WorldPos(pub Point3<f32>);
 
 impl WorldPos {

@@ -95,11 +95,13 @@ impl CameraController for BasicFlightCameraController {
         }
 
         camera.yaw += Rad(self.turn_speed * delta.0);
-        camera.yaw = camera.yaw.normalize();
+        camera.yaw.set(camera.yaw.get().normalize());
 
         camera.pitch -= Rad(self.turn_speed * delta.1);
         // Clip just under fully vertical to avoid weirdness
-        camera.pitch.0 = camera.pitch.0.clamp(-FRAC_PI_2 * 0.99, FRAC_PI_2 * 0.99);
+        camera
+            .pitch
+            .update(|p| p.0 = p.0.clamp(-FRAC_PI_2 * 0.99, FRAC_PI_2 * 0.99));
     }
 
     /// Update the camera position
@@ -109,7 +111,7 @@ impl CameraController for BasicFlightCameraController {
         }
 
         // Step 1: figure out the direction vector the player wants to move in
-        let forward = angles_to_vec3(camera.yaw, camera.pitch);
+        let forward = angles_to_vec3(camera.yaw.get(), camera.pitch.get());
         let right = forward.cross(Vector3::unit_y()).normalize();
 
         let mut movement_vector = Vector3::new(0., 0., 0.);
@@ -146,7 +148,7 @@ impl CameraController for BasicFlightCameraController {
         movement_vector = movement_vector.normalize();
 
         // Step 2: Figure out if we're colliding with any blocks
-        let player_block_pos = camera.pos.to_block_pos();
+        let player_block_pos = camera.pos.get().to_block_pos();
         let player_aabb = camera.aabb();
         let colliding_with = |pos: &BlockPos| {
             if let Some(block) = world.get_block(pos) {
@@ -183,6 +185,8 @@ impl CameraController for BasicFlightCameraController {
         }
 
         // Apply the movement vector
-        camera.pos.0 += movement_vector * self.move_speed * duration.as_secs_f32();
+        camera
+            .pos
+            .update(|p| p.0 += movement_vector * self.move_speed * duration.as_secs_f32());
     }
 }

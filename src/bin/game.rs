@@ -59,15 +59,15 @@ impl App<BasicFlightCameraController> {
         let mut game_state = GameState {
             world: World::default(),
             player: Player {
-                camera: Camera {
-                    pos: WorldPos((-7., -20., -14.).into()),
-                    yaw: Rad(0.),
-                    pitch: Rad(0.),
-                    aspect: 1.,
-                    fovy: Deg(90.),
-                    znear: 0.1,
-                    zfar: 100.,
-                },
+                camera: Camera::new(
+                    WorldPos((-7., -20., -14.).into()),
+                    Rad(0.),
+                    Rad(0.),
+                    1.,
+                    Deg(90.),
+                    0.1,
+                    100.,
+                ),
                 arm_length: 5.,
                 hotbar,
                 inventory,
@@ -271,6 +271,8 @@ fn main() {
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);
 
-    let mut app = App::new();
-    event_loop.run_app(&mut app).unwrap();
+    let _ = sycamore_reactive::create_root(|| {
+        let mut app = App::new();
+        event_loop.run_app(&mut app).unwrap();
+    });
 }
