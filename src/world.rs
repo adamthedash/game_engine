@@ -300,7 +300,7 @@ impl World {
     }
 
     pub fn default() -> Self {
-        /// This is a nice one
+        // This is a nice one
         let chunk_gen = ChunkGenerator::new(Perlin::new(42, 4, 1., 0.5, 1. / 16.));
 
         Self {
