@@ -1,4 +1,8 @@
-use std::{path::Path, sync::Arc, time};
+use std::{
+    path::Path,
+    sync::Arc,
+    time::{self, Instant},
+};
 
 use bytemuck::{Pod, Zeroable};
 use cgmath::{Matrix3, Matrix4, Quaternion, Vector3, Zero};
@@ -28,6 +32,7 @@ use crate::{
         texture::Texture,
     },
     ui::UI,
+    util::stopwatch::StopWatch,
     world::{BlockType, Chunk, ChunkPos},
 };
 
@@ -260,7 +265,7 @@ impl RenderState {
 
     /// Perform the actual rendering to the screen
     pub fn render(&mut self, game: &GameState, interaction_mode: &InteractionMode) {
-        let start_time = time::Instant::now();
+        let mut stopwatch = StopWatch::new();
 
         let player_target_block = game.get_player_target_block();
 
@@ -310,6 +315,8 @@ impl RenderState {
         let instances = visible_blocks
             .map(|block| block.to_instance().to_raw())
             .collect::<Vec<_>>();
+        stopwatch.stamp_and_reset("Pre-render pass");
+
         self.draw_context.queue.write_buffer(
             &self.instance_buffer,
             0,
@@ -406,19 +413,18 @@ impl RenderState {
             render_pass.draw_indexed(0..mesh.num_elements, 0, 0..1);
         }
 
-        let end_time = time::Instant::now();
-        let time_taken = end_time.duration_since(start_time);
+        stopwatch.stamp_and_reset("Render pass");
 
-        let debug_text = [
-            format!("{:#?}", game.player.camera),
-            format!(
-                "Render pass: {:?} ({} FPS)",
-                time_taken,
-                1000. / time_taken.as_millis() as f32
-            ),
-            format!("Blocks rendered: {}", instances.len()),
-            format!("Target block: {player_target_block:?}"),
-        ];
+        let debug_text = stopwatch
+            .get_debug_strings()
+            .into_iter()
+            .chain([
+                // format!("{:#?}", game.player.camera),
+                format!("Blocks rendered: {}", instances.len()),
+                format!("Target block: {player_target_block:?}"),
+            ])
+            .collect::<Vec<_>>();
+
         self.ui.render(
             &self.draw_context,
             &mut encoder,

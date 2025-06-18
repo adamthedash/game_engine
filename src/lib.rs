@@ -10,6 +10,7 @@ pub mod render;
 pub mod ui;
 pub mod world;
 pub mod world_gen;
+pub mod util;
 
 #[derive(PartialEq)]
 pub enum InteractionMode {
