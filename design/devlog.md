@@ -95,9 +95,80 @@ I had some WIP code from before to do loading/saving of worlds. Right now it jus
 
 The rendering bug from last time ended up being simple. When moving from individual faces to the block mesh, I had forgot to change the instancing code. So for each block I was actually rendering 6 blocks in a 3d "+" shape.  
 
+I also did a bunch of cleanup & refactoring, particularly with the rendering code as it was getting pretty unwieldy.  
+
 Here's what today's result looks like, 2 chunks each made of a different block type.  
 
 ![](./images/day3.png)
+
+
+## Day 4
+Today I wanted to get something a bit more interesting in my world, so it was time to tackle world gen!  
+
+I found [this great video](https://www.youtube.com/watch?v=YyVAaJqYAfE) and [blog](https://www.alanzucconi.com/2022/06/05/minecraft-world-generation/) which goes through Minecraft's world generation and how it evolved over time.  
+
+The basis of it is a [seedable random noise generation function](https://en.wikipedia.org/wiki/Perlin_noise), which basically means a parameterised function which maps an input (in this case x,y,z coordinates) to a random value between -1 and 1. The one I'll be using (Perlin noise) has some nice properties:  
+1) You can apply it at a single point. This means that I can generate any place in the world at any time.  
+2) It's locally smoothe, which results in nice terrain-like outputs.  
+3) There's some parameters to tweak, so you can end up with nice rolling hills or jagged mountains.  
+4) It's fast!  
+
+I've implemented this algorithm many times in the past, so I'll be grabbing an off the shelf library this time [libnoise](https://docs.rs/libnoise/latest/libnoise/index.html).  
+What I will be doing myself is layering multiple different generators together. This will let me have both coarse and fine detail in the terrain.  
+
+To decide on what kinds of blocks will be created, I'm treating the noise output as a density. Where there is low density, there will be Air (i.e. no block), at medium density there will be dirt, and high will be stone. I'll refine the rules for this down the line, but this will give me something to start with.  
+
+After playing around with the parameters for a while, I settled on something I liked. I want to go for something that feels like a big endless cavern, with lots of tunnels and crevices.  
+
+Going from my toy chunks before to a "real" world immediately caused some issues. Each of my chunks has 4096 blocks in them. My camera has ~100 blocks view distance, so I thought creating chunks in a 16 chunk radius would be a good idea. This brought the number of blocks being rendered from 8192 to over 134 million! Which of course ground the game to a halt.  
+If I was going to work with big worlds, then it was time to take a look at rendering performance.  
+
+I really like performance optimisations. My day job is AI engineering, so I'm used to dealing with a lot of data processing. Typically performance improvements come down to a few options:  
+1) Do less of the thing  
+2) Do the same thing, but in a smarter way  
+3) Do the thing on better hardware  
+4) Do the thing in parallel  
+5) Do a different thing that solves the same problem  
+
+In my case, the rendering loop consisted of:  
+1) Iterate over all of the blocks in the world
+2) Create instance data (transformation, texture index) ready to be sent to the GPU
+3) Copy the data over to the GPU
+4) Draw the blocks to the screen
+
+The obvious and most simple question to ask is "Do we need to render all the blocks at once?" and of course the answer is no. So I'm going to take perf opt #1 and smash everything I can with it.  
+
+The first thing I did was to limit the candidate blocks to ones that it would be possible for the player to see. For this I simply skipped any chunks that were out of vision distance of the player, plus an extra chunk's distance just in case. This brought me down from 32768 chunks to just 2130 (~8.7m blocks). I decided not to go down to the block level, as it would mean millions of relatively expensive distance calculations for not a lot more shaved off.  
+
+Secondly, I skipped rendering Air blocks (duh). This is about 50% of all blocks, so it brought the number down to ~4.4m.  
+
+Finally, the player can never see a block unless they are exposed to the air. So I added a check for any adjacent block is of type Air. If any of them were, then the block is "exposed" and is rendered. I decided to skip checks for blocks at the edge of chunks, since that would add an extra hash per-block. This meant that the outside hull of each chunk was rendered, even if the blocks might be underground.  
+This further shaved down the number of blocks to ~1.7m, which was just about renderable at single digit FPS.  
+
+This still needs to come way down if I want a 3D world, so I'll focus more on it next time.  
+
+Here's what that looks like (Only 2D plane of chunks to show a cross-section).  
+![](./images/day4.png)
+
+
+## Day 5
+Today's goals
+1) Continue on optimising the rendering loop  
+2) Some basic collision detection  
+3) Lighting  
+4) On demand world generation  
+
+
+Starting with the performance optimisations, I first applied a little bit of #2. Previously I was iterating over all chunks in the world and checking if they were within sight of the player. This is fine for a small world, but as we grow larger it scales with the number of generated chunks. I instead changed this over to generating some candidate chunk positions given the player's position, which scales with the vision range of the player, which in this case is constant. Realistically this didn't have much effect, but it's a bit more ergonomic and it's a check I'll want to have later on I'm sure.  
+
+My 2nd one is back to rule #1, do less. Checking whether a block is exposed or not is relatively cheap on an individual block level, but adds up when it needs to be done for every block every frame. Realistically the world is not going to change very often (only when a chunk is generated, or when a block is broken/placed), so there's a lot of benefit in caching the exposure information and only re-calculating on a change.  
+I added a new 3D array on the chunk to track whether a block is exposed. Since there's no interaction with the world right now, it is calculated once when a chunk is generated. In the rendering loop we just index into that array which is lightning fast.  
+
+3rd, another "smarter" solution. Since I'm not updating exposure information every frame, I can use a more expensive method to give a better result. Where I previously assumed that blocks on the chunk boundaries are exposed, I now actually perform the check across chunk boundaries. This again reduces the number of blocks we end up rendering, from ~1.7m down to just 260k. The increased time spent on the check up front is noticable; there is a freeze for a few hundred miliseconds whenever a new set of chunks is generated. However it's worth it as the game sits at ~40 FPS when idle / looking around.
+
+Moving on to collision detection, I opted for a very simple Axis-Aligned Bounding Box (AABB) approach. Since the world is made from cubes, the player probably is aswell. This made collision detection very straightforward - if the bboxes intersect, there's a collision. I changed the camera controller code around a bit so it first creates a "desired" movement vector based on the player's inputs, checks for collisions around the player, and if there is it nulls the movement in that direction. Having this in the controller also means that it's only checking for collisions
+
+
 
 
 
