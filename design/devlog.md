@@ -61,3 +61,43 @@ Result for today looks pretty much the same as yesterday. There's something funk
 ![](./images/day2.png)
 
 
+## Day 3
+Today's goals:  
+1) New block types  
+2) A data structure for the world state, chunks, blocks, etc.  
+3) Fix the rendering bug  
+
+A voxel game is pretty boring if there's just a world full of one thing, so I wanted to have a way to easily extend to different block types. [Claude ended up helping me here](https://claude.ai/share/8320c181-b6b1-4ade-9cf5-b48b4e1399fe) by pointing towards 2D texture arrays. There are a similar enough concept to sprite sheets - a single texture that you index into.  
+Extending my render pipeline to support texture arrays was trivial enough; Textures are packed into a single buffer, then indexed into by the shader by passing in the block ID as the index.  
+The new block, creatively named smiley2, is just a re-coloured version of the original. I'm able to re-use the block mesh and just extend the MTL file with the new texture.  
+
+Next it was time to tackle the world data. Since I want this to support very large (or infinite) worlds, chunking the world data was a no-brainer. This'll allow me to only load relevant parts of the world, and introduce a coarser granularity when doing various computations. I also didn't want to limit worlds to 2D, so my chunks will be cubes rather than vertically infinite chunks a-la minecraft.  
+[Nice blog](https://0fps.net/2012/01/14/an-analysis-of-minecraft-like-engines/) on performance chararcteristics for voxel engines.  
+When considering which data structures to choose, I'll consider a few access patterns:  
+1) For the rendering pass, I'll need to visit every block so I don't want a bunch of expensive pointers or hashes.  
+2) For player interactions, they'll likely be localised to around the player's position. So I'll need to be able to look up based on a position key.  
+3) For block-block interactions, they'll likely be adjacent, so similar to #2  
+4) Completely random access such as random events, monster spawns.  
+5) Only loading needed chunks, which will be sparse.  
+
+I decided to go with a HashMap for holding the chunks at a top level. This will allow me to have a sparse representation of loaded chunks. Hashing is pretty expensive in a hot loop, but I'm hoping I can minimise the number of chunk lookups I need to perform.  
+For blocks within a chunk, I'll be storing them as a 3D array. This will allow very fast access once we're in the context of a chunk. It should also be the most compact way of storing the really granular block data.  
+Here's how that'll look in terms of access:  
+(C: Number of chunks, B: Number of blocks in a chunk)  
+1) Iterating over all blocks: C + C * B iterations (No hash needed as we're just looping through all entries)  
+2) Random access to a block: 1x hash, 1x array lookup  
+3) Iterating over blocks around a given position: Small C (worst case 8 at the corner of a chunk) hashes + N array lookups depending on range  
+4) Iterating over all blocks in a chunk: 1x hash + B iterations  
+
+One variable to tweak is the size of the chunk. If it's too small, there will be too many hashes and slow things down. If it's too big, we're losing a lot of granularity for things like lazy loading. For now I'm going with a completely arbitrary 16x16x16.  
+
+I had some WIP code from before to do loading/saving of worlds. Right now it just serialises each chunk to a binary file, then stores a world as a folder of chunk files.  
+
+The rendering bug from last time ended up being simple. When moving from individual faces to the block mesh, I had forgot to change the instancing code. So for each block I was actually rendering 6 blocks in a 3d "+" shape.  
+
+Here's what today's result looks like, 2 chunks each made of a different block type.  
+
+![](./images/day3.png)
+
+
+
