@@ -33,6 +33,7 @@ pub struct Camera {
 }
 
 /// Represents coordinates in -1 .. 1 NCD space
+#[derive(Debug)]
 pub struct NCDPos(pub Point3<f32>);
 
 impl Camera {
@@ -81,7 +82,6 @@ impl Camera {
 
     /// Project a point into -1 .. 1 NCD coordinates
     pub fn project_to_ncd(&self, pos: &WorldPos) -> NCDPos {
-        // TODO: Cache view proj matrix as it's expensive to compute
         NCDPos(self.view_proj_matrix.get().transform_point(pos.0))
     }
 
@@ -90,7 +90,7 @@ impl Camera {
         let projected = self.project_to_ncd(pos).0;
 
         // Check if projected point is within the -1 .. 1 NCD
-        projected.x.abs() <= 1. || projected.y.abs() <= 1. || projected.z.abs() <= 1.
+        projected.x.abs() <= 1. && projected.y.abs() <= 1. && projected.z.abs() <= 1.
     }
 
     /// Return the bounding box of the camera

@@ -12,12 +12,7 @@ use wgpu::{
 use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{
-    InteractionMode,
-    block::Block,
-    camera::{Camera, CameraUniform},
-    game::GameState,
-    item::init_item_info,
-    render::{
+    block::Block, camera::{Camera, CameraUniform}, game::GameState, item::init_item_info, render::{
         context::DrawContext,
         light::LightingUniform,
         model::Model,
@@ -26,10 +21,7 @@ use crate::{
             texture::{TextureShaderPipeline, TextureShaderPipelineLayout},
         },
         texture::Texture,
-    },
-    ui::UI,
-    util::stopwatch::StopWatch,
-    world::{BlockType, Chunk, ChunkPos},
+    }, ui::UI, util::stopwatch::StopWatch, world::{BlockPos, BlockType, Chunk, ChunkPos}, InteractionMode
 };
 
 /// Represents a vertex on the GPU
@@ -429,11 +421,15 @@ impl RenderState {
 
         stopwatch.stamp_and_reset("Render pass");
 
+        let debug_block_pos = BlockPos::new(-4, 23, -5);
+        let debug_block_ndc = game.player.camera.project_to_ncd(&debug_block_pos.to_world_pos());
+        let in_view = game.player.camera.in_view(&debug_block_pos.to_world_pos());
+
         let debug_text = stopwatch
             .get_debug_strings()
             .into_iter()
             .chain([
-                // format!("{:#?}", game.player.camera),
+                format!("block: {:?} ncd: {:?} in view: {:?}", debug_block_pos, debug_block_ndc, in_view),
                 format!("Blocks rendered: {}", self.instances_cpu.len()),
                 format!("Target block: {player_target_block:?}"),
             ])
