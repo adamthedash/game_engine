@@ -287,19 +287,17 @@ Before:
 After:  
 ![](./images/day10_terrain_after.png)  
 
+## Day 11
+Today's goal: rendering opt
 
+After yesterday's world gen changes I'm sitting at around 400k blocks being rendered. The vast majority of these will be obscured to the camera, like underground caves. I don't want to go down the route of ray tracing yet, so I decided to roll my own depth testing. This works by first transforming blocks into NCD space, then getting the 2D bounding box facing the player and its distance. After sorting by distance, the blocks are processed incrementally and casts its "shadow" onto blocks further away. Blocks which are fully in a shadow are eliminated from rendering.  
+Unfortunately the time spent doing this check was far more expensive than just rendering the blocks, and didn't end up eliminating as many blocks as I expected.  
 
+During this I wanted to have some better handling of derived variables like the camera's view-model projection. Right now I'm updating it in the camera controller whenever I make a change. There's a few properties I was looking for:  
+1) I want it to be transparent to whatever is making the change. They should be able to change the camera and not have to worry about also updating the derived thing.  
+2) I want it to be lazily evaluated. If I update the camera 100 times per update frame, but only read the VMP matrix once, then I don't want to re-calculate it every time.  
+3) If there's no change, then it shouldn't be recalculated.  
+4) Only the things that have changed should be recalculated. Eg. for a DAG of derived variables, only the minimum subgraph should be calculated.  
 
-
-
-
-
-
-
-
-
-
-
-
-
+I found [sycamore-reactive](https://github.com/sycamore-rs/sycamore/tree/main/packages/sycamore-reactive), which is a sub-package of the Sycamore web framework for reactive primatives. It's not well documented, but it seems to be close to what I want. The pain is that every variable, either "raw" or derived, needs to be wrapped in another struct. Also the whole app needs to be wrapped in its own event loop. I'm also not a massive fan of the ergonomics of setting/getting variables. I'm going to use it for the time being for the camera, but will probably end up ditching it down the line.  
 
