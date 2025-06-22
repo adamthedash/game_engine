@@ -187,6 +187,19 @@ Also I finally created some real block textures, so I've got dirt and stone now.
 Here's what everything looks like so far:  
 ![](./images/day5.png)  
 
+## Day 6
+Today's goal: Add a walking controller.  
+
+Since I've got collisions working now, I can start working on more game-like movement. I started by abstracting out a CameraController interface, which takes user inputs and modifies the Camera accordingly.  
+The walking controller was a bit more tricky than the flight controller as I had to take gravity into account. This controller allows the player to move horizontally, jump by applying an instant upwards force, and fall due to gravity applying downward force over time.  
+I also had the idea to add a space-flight controller. This one is much more stateful than the others in that player input applies a force in that direction, and the internal velocity moves the player over time. The player's velocity decays over time due to drag/air resistance so they won't keep flying forever.  
+
+Other than that, a bunch more refactoring & cleanup.  
+
+## Day 7
+Today: time to put in some UI  
+
+
 
 
 
