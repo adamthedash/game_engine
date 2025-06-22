@@ -279,6 +279,15 @@ I realised the world was looking pretty boring, the parameters I was using up un
 Instead of eyeballing it, I wanted to make a small tool to experiment quickly with different params. I shamelessly got Claude to whip something together, and after some fixes due to outdated libraries I got something nice running:  
 ![](./images/day10_map_tool.png)  
 
+I settled on something that was a bit more interesting, the open spaces are much tighter and there's more parts jutting out. The downside is that there's a lot more surface area, and thus a lot more blocks exposed and rendered. The FPS is sitting at around 20-30, so I'll probably have to go back to rendering optimisations again soon.  
+
+Before:  
+![](./images/day10_terrain_before.png)  
+
+After:  
+![](./images/day10_terrain_after.png)  
+
+
 
 
 
