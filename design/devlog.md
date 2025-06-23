@@ -301,3 +301,14 @@ During this I wanted to have some better handling of derived variables like the 
 
 I found [sycamore-reactive](https://github.com/sycamore-rs/sycamore/tree/main/packages/sycamore-reactive), which is a sub-package of the Sycamore web framework for reactive primatives. It's not well documented, but it seems to be close to what I want. The pain is that every variable, either "raw" or derived, needs to be wrapped in another struct. Also the whole app needs to be wrapped in its own event loop. I'm also not a massive fan of the ergonomics of setting/getting variables. I'm going to use it for the time being for the camera, but will probably end up ditching it down the line.  
 
+## Day 12
+Today is rendering opt part 2  
+
+I found the bug in the "is in view" check which I introduced a few days ago. Instead of checking if a point was within the NDC box, I was checking if it was within any two of the axis planes. After the fix, I immediately ran into an issue with how I was culling chunks. By only checking whether a vertex lies within the NDC, I miss the case where the player is really close to a chunk, and the NDC is inside the chunk's AABB. This resulted in chunks disappearing when getting too close, which obviously isn't great.  
+![](./images/day12_chunks.png)  
+
+To really nail this check, I need to see if any part of the chunk intersects with the NDC box. Unfortunately the NDC transform turns straight lines into hyperbolae, so the check becomes extremely complicated. Instead I'll be trying [Frustum](https://bruop.github.io/frustum_culling/) [Culling](https://learnopengl.com/Guest-Articles/2021/Scene/Frustum-Culling), which seems to be the go-to for this kind of thing. It involves checking against each of the linear planes of the frustum, which is pretty quick.  
+I first generated this code with Claude, but I ended having to re-write it from scratch as it got it wrong but I couldn't figure out where. It took me longer than I'd like to admit to finally get the maths right. I spent about 2 hours debugging a single missing "-".  
+After adding this, it brought down the number of blocks rendered by up to 70% depending on where I was looking. In some directions it seemed to still load all the chunks, so I'm not convinced it's working 100% correct yet.  
+
+

@@ -51,6 +51,16 @@ impl ChunkPos {
             &Self(self.0 + Vector3::new(1, 1, 1)).to_block_pos().0,
         )
     }
+
+    /// Returns the AABB in block coordinates
+    pub fn aabb_block(&self) -> AABB<i32> {
+        AABB::new(
+            &self.to_block_pos().0,
+            &Self(self.0 + Vector3::new(1, 1, 1) * Chunk::CHUNK_SIZE as i32)
+                .to_block_pos()
+                .0,
+        )
+    }
 }
 
 /// Represents the position of a block in block-space (1 unit moves 1 block length)
@@ -85,6 +95,10 @@ impl BlockPos {
     /// Centre point of the block in world space
     pub fn centre(&self) -> WorldPos {
         WorldPos(self.to_world_pos().0 + Vector3::new(0.5, 0.5, 0.5))
+    }
+
+    pub fn aabb(&self) -> AABB<i32> {
+        AABB::new(&self.0, &(self.0 + Vector3::new(1, 1, 1)))
     }
 }
 

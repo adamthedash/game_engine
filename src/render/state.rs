@@ -12,7 +12,12 @@ use wgpu::{
 use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{
-    block::Block, camera::{Camera, CameraUniform}, game::GameState, item::init_item_info, render::{
+    InteractionMode,
+    block::Block,
+    camera::{Camera, CameraUniform},
+    game::GameState,
+    item::init_item_info,
+    render::{
         context::DrawContext,
         light::LightingUniform,
         model::Model,
@@ -21,7 +26,10 @@ use crate::{
             texture::{TextureShaderPipeline, TextureShaderPipelineLayout},
         },
         texture::Texture,
-    }, ui::UI, util::stopwatch::StopWatch, world::{BlockPos, BlockType, Chunk, ChunkPos}, InteractionMode
+    },
+    ui::UI,
+    util::stopwatch::StopWatch,
+    world::{BlockPos, BlockType, Chunk},
 };
 
 /// Represents a vertex on the GPU
@@ -279,12 +287,9 @@ impl RenderState {
             .chunks_within(player_vision_chunks + 1)
             // Only render chunks in the player's viewport
             .filter(|chunk_pos| {
-                Chunk::CORNER_OFFSETS.iter().any(|o| {
-                    let chunk_corner = ChunkPos(chunk_pos.0 + o);
-                    game.player
-                        .camera
-                        .in_view(&chunk_corner.to_block_pos().to_world_pos())
-                })
+                game.player
+                    .camera
+                    .in_view_aabb(&chunk_pos.aabb_block().to_f32())
             })
             .flat_map(|pos| game.world.chunks.get(&pos))
             .flat_map(|chunk| {
@@ -422,14 +427,29 @@ impl RenderState {
         stopwatch.stamp_and_reset("Render pass");
 
         let debug_block_pos = BlockPos::new(-4, 23, -5);
-        let debug_block_ndc = game.player.camera.project_to_ncd(&debug_block_pos.to_world_pos());
-        let in_view = game.player.camera.in_view(&debug_block_pos.to_world_pos());
+        let debug_frustum = game.player.camera.frustum.with(|f| {
+            [
+                f.near.signed_distance(&debug_block_pos.to_world_pos()),
+                f.far.signed_distance(&debug_block_pos.to_world_pos()),
+                f.left.signed_distance(&debug_block_pos.to_world_pos()),
+                f.right.signed_distance(&debug_block_pos.to_world_pos()),
+                f.top.signed_distance(&debug_block_pos.to_world_pos()),
+                f.bottom.signed_distance(&debug_block_pos.to_world_pos()),
+            ]
+        });
+        let in_view = game
+            .player
+            .camera
+            .in_view_aabb(&debug_block_pos.aabb().to_f32());
 
         let debug_text = stopwatch
             .get_debug_strings()
             .into_iter()
             .chain([
-                format!("block: {:?} ncd: {:?} in view: {:?}", debug_block_pos, debug_block_ndc, in_view),
+                format!("pos: {:?}", game.player.camera.pos),
+                // format!("camera: {:#?}", game.player.camera.frustum),
+                format!("block: {debug_block_pos:?} in view: {in_view:?}"),
+                // format!("frustum dists: {:?}", debug_frustum),
                 format!("Blocks rendered: {}", self.instances_cpu.len()),
                 format!("Target block: {player_target_block:?}"),
             ])

@@ -4,12 +4,19 @@ pub mod traits;
 pub mod walking;
 
 use cgmath::{
-    Angle, Deg, InnerSpace, Matrix4, Point3, Rad, SquareMatrix, Transform, Vector3, Vector4,
-    perspective,
+    Angle, Deg, InnerSpace, Matrix4, Point3, Rad, SquareMatrix, Transform, Vector3,
+    Vector4, perspective,
 };
 use sycamore_reactive::{ReadSignal, Signal, create_memo, create_signal};
 
-use crate::{bbox::AABB, render::ray::Ray, world::WorldPos};
+use crate::{
+    bbox::AABB,
+    render::{
+        frustum::{Frustum, Plane},
+        ray::Ray,
+    },
+    world::WorldPos,
+};
 
 /// Matrix used to convert from OpenGL to WebGPU NCD
 const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::from_cols(
@@ -30,6 +37,7 @@ pub struct Camera {
     pub znear: Signal<f32>,
     pub zfar: Signal<f32>,
     pub view_proj_matrix: ReadSignal<Matrix4<f32>>,
+    pub frustum: ReadSignal<Frustum>,
 }
 
 /// Represents coordinates in -1 .. 1 NCD space
@@ -68,6 +76,43 @@ impl Camera {
             OPENGL_TO_WGPU_MATRIX * proj * view
         });
 
+        let frustum = create_memo(move || {
+            let forward = angles_to_vec3(yaw.get(), pitch.get());
+            let right = forward.cross(Vector3::unit_y()).normalize();
+            let up = right.cross(forward).normalize();
+
+            // Convert vertical FOV from degrees to radians
+            let half_v_fov = fovy.get() * 0.5;
+            let half_h_fov = Deg::from(Rad((half_v_fov.tan() * aspect.get()).atan()));
+
+            // Near and far plane centers
+            let near_center = pos.get().0 + forward * znear.get();
+            let far_center = pos.get().0 + forward * zfar.get();
+
+            // Create planes with inward-pointing normals
+            let near = Plane::from_normal_point(&forward, &near_center);
+            let far = Plane::from_normal_point(&(-forward), &far_center);
+
+            let left_normal = (right * half_h_fov.cos() + forward * half_h_fov.sin()).normalize();
+            let left = Plane::from_normal_point(&left_normal, &pos.get().0);
+            let right_normal = (-right * half_h_fov.cos() + forward * half_h_fov.sin()).normalize();
+            let right = Plane::from_normal_point(&right_normal, &pos.get().0);
+
+            let top_normal = (-up * half_v_fov.cos() + forward * half_v_fov.sin()).normalize();
+            let top = Plane::from_normal_point(&top_normal, &pos.get().0);
+            let bottom_normal = (up * half_v_fov.cos() + forward * half_v_fov.sin()).normalize();
+            let bottom = Plane::from_normal_point(&bottom_normal, &pos.get().0);
+
+            Frustum {
+                near,
+                far,
+                top,
+                bottom,
+                left,
+                right,
+            }
+        });
+
         Self {
             pos,
             yaw,
@@ -77,6 +122,7 @@ impl Camera {
             znear,
             zfar,
             view_proj_matrix,
+            frustum,
         }
     }
 
@@ -86,11 +132,12 @@ impl Camera {
     }
 
     /// Checks whether a point is within the viewport
-    pub fn in_view(&self, pos: &WorldPos) -> bool {
-        let projected = self.project_to_ncd(pos).0;
+    pub fn in_view_point(&self, pos: &WorldPos) -> bool {
+        self.frustum.with(|f| f.contains_point(pos))
+    }
 
-        // Check if projected point is within the -1 .. 1 NCD
-        projected.x.abs() <= 1. && projected.y.abs() <= 1. && projected.z.abs() <= 1.
+    pub fn in_view_aabb(&self, aabb: &AABB<f32>) -> bool {
+        self.frustum.with(|f| f.intersects_aabb(aabb))
     }
 
     /// Return the bounding box of the camera
