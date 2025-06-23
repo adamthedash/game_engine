@@ -12,3 +12,15 @@ map_Kd smiley.png
 
 newmtl smiley2
 map_Kd smiley2.png
+
+newmtl darkstone
+map_Kd darkstone.png
+
+newmtl mossystone
+map_Kd mossystone.png
+
+newmtl voidstone
+map_Kd voidstone.png
+
+newmtl radioactivestone
+map_Kd radioactivestone.png

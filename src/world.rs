@@ -115,6 +115,17 @@ pub enum BlockType {
     Stone,
     Smiley,
     Smiley2,
+    DarkStone, // ID 5
+    MossyStone,
+    VoidStone,
+    RadioactiveStone,
+}
+
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+pub enum Biome {
+    DirtLand,
+    StoneLand,
+    DenseCaves,
 }
 
 #[derive(Debug)]
@@ -294,7 +305,11 @@ impl World {
                 hm
             });
 
-        let chunk_gen = ChunkGenerator::new(Perlin::new(42, 3, 0.5, 2., 1. / 64.));
+        // TODO: save out chunk generator
+        let chunk_gen = ChunkGenerator::new(
+            Perlin::new(42, 4, 1., 0.5, 1. / 16.),
+            Perlin::new(42, 4, 1., 0.5, 1. / 16.),
+        );
 
         let mut world = World {
             chunks,
@@ -306,7 +321,10 @@ impl World {
 
     pub fn default() -> Self {
         // This is a nice one
-        let chunk_gen = ChunkGenerator::new(Perlin::new(42, 4, 1., 0.5, 1. / 16.));
+        let chunk_gen = ChunkGenerator::new(
+            Perlin::new(42, 4, 1., 0.5, 1. / 16.),
+            Perlin::new(42, 1, 1., 0.5, 1. / 256.),
+        );
 
         Self {
             chunks: Default::default(),

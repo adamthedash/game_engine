@@ -168,6 +168,10 @@ impl GameState {
                 BlockType::Stone => self.player.inventory.borrow_mut().add_item(2, 1),
                 BlockType::Smiley => todo!(),
                 BlockType::Smiley2 => todo!(),
+                BlockType::DarkStone => self.player.inventory.borrow_mut().add_item(3, 1),
+                BlockType::MossyStone => self.player.inventory.borrow_mut().add_item(4, 1),
+                BlockType::RadioactiveStone => self.player.inventory.borrow_mut().add_item(5, 1),
+                BlockType::VoidStone => self.player.inventory.borrow_mut().add_item(6, 1),
             }
 
             // Update block exposure information

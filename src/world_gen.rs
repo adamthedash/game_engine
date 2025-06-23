@@ -1,6 +1,6 @@
 use libnoise::{Generator, ImprovedPerlin};
 
-use crate::world::{BlockPos, BlockType, Chunk};
+use crate::world::{Biome, BlockPos, BlockType, Chunk};
 
 #[derive(Debug)]
 pub struct Perlin {
@@ -62,12 +62,13 @@ impl Perlin {
 }
 
 pub struct ChunkGenerator {
-    rng: Perlin,
+    density: Perlin,
+    biome: Perlin,
 }
 
 impl ChunkGenerator {
-    pub fn new(rng: Perlin) -> Self {
-        Self { rng }
+    pub fn new(density: Perlin, biome: Perlin) -> Self {
+        Self { density, biome }
     }
 
     pub fn generate_chunk(&self, world_pos: BlockPos) -> Chunk {
@@ -77,14 +78,38 @@ impl ChunkGenerator {
         for (i, x) in (world_pos.0.x..).take(Chunk::CHUNK_SIZE).enumerate() {
             for (j, y) in (world_pos.0.y..).take(Chunk::CHUNK_SIZE).enumerate() {
                 for (k, z) in (world_pos.0.z..).take(Chunk::CHUNK_SIZE).enumerate() {
-                    let density = self.rng.sample(x as f64, y as f64, z as f64);
+                    let density = self.density.sample(x as f64, y as f64, z as f64);
+                    let biome = self.biome.sample(x as f64, y as f64, z as f64);
 
-                    // Treat random number as if it was density
-                    let block_type = match density {
-                        -1_f64..0. => BlockType::Air,
-                        0_f64..0.05 => BlockType::Dirt,
-                        0.05_f64..1. => BlockType::Stone,
+                    let biome_type = match biome {
+                        -1_f64..-0.25 => Biome::DirtLand,
+                        -0.25_f64..0.25 => Biome::StoneLand,
+                        0.25_f64..1. => Biome::DenseCaves,
                         _ => unreachable!("Random number generated outside of -1 .. 1 !"),
+                    };
+
+                    let block_type = match biome_type {
+                        Biome::DirtLand => match density {
+                            -1_f64..-0.4 => BlockType::VoidStone,
+                            -0.4_f64..0. => BlockType::Air,
+                            0_f64..0.05 => BlockType::Dirt,
+                            0.05_f64..0.1 => BlockType::MossyStone,
+                            0.1_f64..1. => BlockType::Stone,
+                            _ => unreachable!("Random number generated outside of -1 .. 1 !"),
+                        },
+                        Biome::StoneLand => match density {
+                            -1_f64..-0.4 => BlockType::RadioactiveStone,
+                            -0.4_f64..0. => BlockType::Air,
+                            0_f64..0.05 => BlockType::Stone,
+                            0.05_f64..1. => BlockType::DarkStone,
+                            _ => unreachable!("Random number generated outside of -1 .. 1 !"),
+                        },
+                        Biome::DenseCaves => match density {
+                            -1_f64..-0.25 => BlockType::Air,
+                            -0.25_f64..0.05 => BlockType::Stone,
+                            0.05_f64..1. => BlockType::DarkStone,
+                            _ => unreachable!("Random number generated outside of -1 .. 1 !"),
+                        },
                     };
 
                     blocks[i][j][k] = block_type;

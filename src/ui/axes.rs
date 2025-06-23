@@ -37,7 +37,7 @@ impl Drawable for Axes<'_> {
             OPENGL_TO_WGPU_MATRIX * proj * view
         };
 
-        Window::new("Axes").show(ctx, |ui| {
+        Window::new("Axes").default_open(false).show(ctx, |ui| {
             let (resp, painter) = ui.allocate_painter(Vec2::splat(window_size), Sense::empty());
 
             // Find origin point of window in camera space

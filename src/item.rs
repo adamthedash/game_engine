@@ -20,10 +20,14 @@ pub struct Item {
 /// Global static item information, will be set when the renderer loads
 pub static ITEMS: OnceLock<FxHashMap<ItemId, Item>> = OnceLock::new();
 
-const ITEM_TEXTURES: [&str; 3] = [
+const ITEM_TEXTURES: [&str; 7] = [
     "res/icons/smiley.png", // ID = 0
     "res/icons/dirt.png",   // ID = 1
     "res/icons/stone.png",
+    "res/icons/darkstone.png",
+    "res/icons/mossystone.png",
+    "res/icons/radioactivestone.png", // 5
+    "res/icons/voidstone.png",
 ];
 
 /// Initialise item info

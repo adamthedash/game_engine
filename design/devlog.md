@@ -321,4 +321,25 @@ One thing that's become abundantly clear to me is that I don't have great tools 
 
 I'll implement the wireframes as a new shader. It might also be a good chance to improve the visual feedback for player's target block. I'd like to show a subtle highlight around the edges so the player can still tell the type of block it is.  
 
+I added the axis visualisation as another floating window that can be hidden. It works by shooting a ray out from the camera towards the window's centre and placing a fake set of origin vectors in the world at that point. The camera MVP transformation is applied to project them back onto the screen space. This not only means I get correct axes for the camera's position and angle, but also the exact position on the screen where the axes are drawn.  
+![](./images/day13_axes.png)  
+
+I'll come back to the wireframes another time, for now I wanted to take a look at the world generation and make it a bit more interesting. So far I've just been treating the perlin noise as a sort of density. When there's low it's air, medium it's dirt, and high it's stone. This did the job as a basic framework to work with, but with only one axis of variation it's still pretty boring.  
+If I layer several random noise generators together on different axes, then I with just a handful I can generate an exponential amount of variation. Some layers I'm thinking of at the moment:  
+1) Density as an alternative to height in a 2D world, since mine is infinite in all directions. I can use this to control the size of caves, and different mineral layers as the player digs into the surface. I could also have black holes at the extremes. 
+2) Moisture, which I can use to move between deserts, oceans, swamps, etc.  
+3) Temperature
+4) "Influence" which is a bit nebulous. I'm taking inspiration from Path of Exile's influence system, where different regions are controlled by different bosses/gods/eldritch monsters/etc. I could use this as a progression axis to generate areas with tougher monsters and higher level materials.  
+5) Other "one-hot" axes which control the existence of something in particular independent of the other axes. eg. radioactivity might make a region dangerous to inhabit, but juice up monsters the monsters that would usually live there.  
+
+I want to combine all of these axes to create biomes, rather than just having some discrete random biomes. This should give more natural transitions between areas. This is how the biome system in minecraft works (see the video from a few days back).  
+For now I've just added some new blocks, and a 2nd noise layer controllering 3 descrete biomes: DirtLand, StoneLand, and DenseCaves. Here's two new blocks (void and radioactive stone) which spawn at very low densities in the dirt and stone lands respectively:  
+![](./images/day13_blocks.png)  
+
+
+
+
+
+
+
 
