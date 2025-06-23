@@ -15,6 +15,7 @@ pub struct Frustum {
 }
 
 impl Frustum {
+    /// Checks if a point is within the frustum
     pub fn contains_point(&self, point: &WorldPos) -> bool {
         [
             &self.near,
@@ -28,6 +29,7 @@ impl Frustum {
         .all(|p| p.signed_distance(point) >= 0.)
     }
 
+    /// Checks if there is any overlap between this and an AABB
     pub fn intersects_aabb(&self, aabb: &AABB<f32>) -> bool {
         // https://gdbooks.gitbooks.io/3dcollisions/content/Chapter6/aabb_in_frustum.html
         // If there is any plane where the aabb is full behind it, then there's no intersection

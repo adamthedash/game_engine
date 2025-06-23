@@ -28,7 +28,7 @@ use crate::{
         texture::Texture,
     },
     ui::UI,
-    util::stopwatch::StopWatch,
+    util::{counter::Counter, stopwatch::StopWatch},
     world::{BlockPos, BlockType, Chunk},
 };
 
@@ -267,6 +267,9 @@ impl RenderState {
     /// Perform the actual rendering to the screen
     pub fn render(&mut self, game: &GameState, interaction_mode: &InteractionMode) {
         let mut stopwatch = StopWatch::new();
+        let mut total_stopwatch = StopWatch::new();
+        let mut counter = Counter::new();
+        counter.enabled = true;
 
         let player_target_block = game.get_player_target_block();
 
@@ -285,22 +288,33 @@ impl RenderState {
         player_chunk
             // Only render chunks within vision distance of the player (plus 1 chunk buffer)
             .chunks_within(player_vision_chunks + 1)
+            .inspect(|_| {
+                counter.increment("Chunks in range");
+            })
             // Only render chunks in the player's viewport
-            .filter(|chunk_pos| {
-                game.player
-                    .camera
-                    .in_view_aabb(&chunk_pos.aabb_block().to_f32())
+            .filter(|chunk_pos| game.player.camera.in_view_aabb(&chunk_pos.aabb().to_f32()))
+            .inspect(|_| {
+                counter.increment("Chunks in view");
             })
             .flat_map(|pos| game.world.chunks.get(&pos))
             .flat_map(|chunk| {
                 chunk
                     .iter_blocks()
+                    .inspect(|_| {
+                        counter.increment("All blocks");
+                    })
                     // Don't render air blocks
                     .filter(|b| b.block_type != BlockType::Air)
+                    .inspect(|_| {
+                        counter.increment("Non-air blocks");
+                    })
                     // Only render exposed blocks
                     .filter(|b| {
                         let (_, block_pos) = b.block_pos.to_chunk_offset();
                         chunk.is_block_exposed(block_pos)
+                    })
+                    .inspect(|_| {
+                        counter.increment("Exposed blocks");
                     })
             })
             // If we're targetting the block, change the texture
@@ -315,6 +329,9 @@ impl RenderState {
                 } else {
                     b
                 }
+            })
+            .inspect(|_| {
+                counter.increment("Blocks rendered");
             })
             .collect_into(&mut self.visible_blocks);
 
@@ -442,9 +459,13 @@ impl RenderState {
             .camera
             .in_view_aabb(&debug_block_pos.aabb().to_f32());
 
+        total_stopwatch.stamp_and_reset("Total render loop");
+
         let debug_text = stopwatch
             .get_debug_strings()
             .into_iter()
+            .chain(total_stopwatch.get_debug_strings())
+            .chain(counter.get_debug_strings())
             .chain([
                 format!("pos: {:?}", game.player.camera.pos),
                 // format!("camera: {:#?}", game.player.camera.frustum),

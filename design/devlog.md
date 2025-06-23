@@ -311,4 +311,14 @@ To really nail this check, I need to see if any part of the chunk intersects wit
 I first generated this code with Claude, but I ended having to re-write it from scratch as it got it wrong but I couldn't figure out where. It took me longer than I'd like to admit to finally get the maths right. I spent about 2 hours debugging a single missing "-".  
 After adding this, it brought down the number of blocks rendered by up to 70% depending on where I was looking. In some directions it seemed to still load all the chunks, so I'm not convinced it's working 100% correct yet.  
 
+## Day 13
+Today I got the frustum culling completely sorted. The final piece was a mis-calculation of the chunk AABB. With everything fixed, my render loop is down under 20ms per frame (50-60 FPS) and hovering around 100k blocks rendered.  
+
+One thing that's become abundantly clear to me is that I don't have great tools to debug issues with geometry, so I think I'll tackle this next. There's a few things that would be useful:  
+1) A visualisation of the world axes relative to my camera position.  
+2) A wireframe of the viewport frustum, although I don't be able to show my camera's current one, I want to be able to place one in the world.  
+3) Wireframes for the chunk boundaries and maybe blocks.  
+
+I'll implement the wireframes as a new shader. It might also be a good chance to improve the visual feedback for player's target block. I'd like to show a subtle highlight around the edges so the player can still tell the type of block it is.  
+
 

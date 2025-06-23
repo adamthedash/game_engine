@@ -45,20 +45,11 @@ impl ChunkPos {
         offsets.map(move |offset| ChunkPos(self.0 + offset))
     }
 
+    /// Returns the AABB in block coordinates
     pub fn aabb(&self) -> AABB<i32> {
         AABB::new(
             &self.to_block_pos().0,
             &Self(self.0 + Vector3::new(1, 1, 1)).to_block_pos().0,
-        )
-    }
-
-    /// Returns the AABB in block coordinates
-    pub fn aabb_block(&self) -> AABB<i32> {
-        AABB::new(
-            &self.to_block_pos().0,
-            &Self(self.0 + Vector3::new(1, 1, 1) * Chunk::CHUNK_SIZE as i32)
-                .to_block_pos()
-                .0,
         )
     }
 }
