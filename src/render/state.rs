@@ -269,7 +269,7 @@ impl RenderState {
         let mut stopwatch = StopWatch::new();
         let mut total_stopwatch = StopWatch::new();
         let mut counter = Counter::new();
-        counter.enabled = true;
+        counter.enabled = false;
 
         let player_target_block = game.get_player_target_block();
 

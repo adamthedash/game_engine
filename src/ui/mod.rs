@@ -1,7 +1,9 @@
+pub mod axes;
 pub mod debug;
 pub mod hotbar;
 pub mod inventory;
 
+use axes::Axes;
 use debug::DebugWindow;
 use egui::{Context, Ui};
 use egui_wgpu::{Renderer, ScreenDescriptor};
@@ -64,6 +66,11 @@ impl UI {
             // UI code here
             DebugWindow {
                 lines: debug_lines.to_vec(),
+            }
+            .show_window(ctx);
+
+            Axes {
+                camera: &game.player.camera,
             }
             .show_window(ctx);
 

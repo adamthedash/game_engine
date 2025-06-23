@@ -4,9 +4,10 @@ pub mod traits;
 pub mod walking;
 
 use cgmath::{
-    Angle, Deg, InnerSpace, Matrix4, Point3, Rad, SquareMatrix, Transform, Vector3,
-    Vector4, perspective,
+    Angle, Deg, InnerSpace, Matrix4, Point3, Rad, SquareMatrix, Transform, Vector3, Vector4,
+    perspective,
 };
+use egui::Pos2;
 use sycamore_reactive::{ReadSignal, Signal, create_memo, create_signal};
 
 use crate::{
@@ -19,7 +20,7 @@ use crate::{
 };
 
 /// Matrix used to convert from OpenGL to WebGPU NCD
-const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::from_cols(
+pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::from_cols(
     Vector4::new(1.0, 0.0, 0.0, 0.0),
     Vector4::new(0.0, 1.0, 0.0, 0.0),
     Vector4::new(0.0, 0.0, 0.5, 0.0),
@@ -162,6 +163,25 @@ impl Camera {
             angles_to_vec3(self.yaw.get(), self.pitch.get()),
         )
     }
+
+    /// Convert a point on screen space (-1 .. 1, top-left origin) to a vector in that direction in world space.
+    pub fn viewport_to_world_vector(&self, viewport_pos: Pos2) -> Vector3<f32> {
+        // Get axis vector in camera space
+        let forward = angles_to_vec3(self.yaw.get(), self.pitch.get());
+        let right = forward.cross(Vector3::unit_y()).normalize();
+        let up = right.cross(forward).normalize();
+
+        // Size of plane in world units
+        let near_plane_height = (self.fovy.get() / 2.).tan() * self.znear.get() * 2.;
+        let near_plane_width = near_plane_height * self.aspect.get();
+
+        // Vector from camera origin through viewport point in world space.
+        let centre_world_vector = forward * self.znear.get()
+            + right * near_plane_width * viewport_pos.x / 2.
+            + up * near_plane_height * (-viewport_pos.y) / 2.;
+
+        centre_world_vector.normalize()
+    }
 }
 
 /// Projection matrix for the shaders, stored on the GPU
@@ -190,7 +210,7 @@ impl CameraUniform {
     }
 }
 
-fn angles_to_vec3(yaw: Rad<f32>, pitch: Rad<f32>) -> Vector3<f32> {
+pub fn angles_to_vec3(yaw: Rad<f32>, pitch: Rad<f32>) -> Vector3<f32> {
     let (y, verticality) = pitch.sin_cos();
     let (z, x) = yaw.sin_cos();
     Vector3::new(x * verticality, y, z * verticality).normalize()
