@@ -337,6 +337,9 @@ For now I've just added some new blocks, and a 2nd noise layer controllering 3 d
 ![](./images/day13_blocks.png)  
 
 
+## Day 14
+One thing that's been bugging me is the stop-the-world freeze whenever new chunks are generated. This happens because when the player crosses the distance to generate a new chunk, it triggers generation for an entire 2D plane of chunks all at once. The way I want to solve this in the long term is by having chunk generation (and loading) happen asynchronously from the main game loop. In the short term however, I'm just going to ammortise the generation over several frames. The way I'll do this is actually to generate *more* chunks around the player, but past the vision threshold I'll give them only a chance of generating. That way by the time the player gets into range, the majority of the chunks will have already been loaded. I set the outer 2 chunk radius a 10% chance of generating per frame, and it *just worked*.  
+
 
 
 

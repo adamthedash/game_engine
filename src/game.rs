@@ -1,7 +1,8 @@
 use std::time::Duration;
 
-use cgmath::{MetricSpace, Vector3, Zero};
+use cgmath::{InnerSpace, MetricSpace, Vector3, Zero};
 use itertools::Itertools;
+use rand::random_bool;
 use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
 
 use crate::{
@@ -61,6 +62,9 @@ impl GameState {
 
     /// Generate chunks around the player
     fn generate_chunks(&mut self) {
+        let pre_generate_buffer = 2; // Generate chunks randomly in this range
+        let pre_generate_chance = 0.1;
+
         let (player_chunk, _) = self
             .player
             .camera
@@ -71,10 +75,22 @@ impl GameState {
         let player_vision_chunks =
             (self.player.camera.zfar.get() as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
         player_chunk
-            .chunks_within(player_vision_chunks + 1)
+            .chunks_within(player_vision_chunks + 1 + pre_generate_buffer)
             // Only generate chunks within vision distance of the player
             .for_each(|chunk_pos| {
-                self.world.get_or_generate_chunk(&chunk_pos);
+                let generate = if (chunk_pos.0 - player_chunk.0).magnitude2()
+                    > (player_vision_chunks as i32 + 1).pow(2)
+                {
+                    // Random gen area
+                    random_bool(pre_generate_chance)
+                } else {
+                    // Guarantee generation
+                    true
+                };
+
+                if generate {
+                    self.world.get_or_generate_chunk(&chunk_pos);
+                }
             });
     }
 
