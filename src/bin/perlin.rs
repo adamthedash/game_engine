@@ -1,5 +1,8 @@
-use eframe::egui;
-use egui::{ColorImage, TextureHandle, TextureOptions};
+use eframe::{App, Frame, NativeOptions, egui};
+use egui::{
+    CentralPanel, Color32, ColorImage, Context, CornerRadius, DragValue, Image, SidePanel,
+    TextureHandle, TextureOptions, Vec2, ViewportBuilder,
+};
 use game_engine::world_gen::Perlin;
 
 struct PerlinViewer {
@@ -86,7 +89,7 @@ impl PerlinViewer {
         pixels
     }
 
-    fn update_texture(&mut self, ctx: &egui::Context) {
+    fn update_texture(&mut self, ctx: &Context) {
         let pixels = self.generate_noise_map();
         let color_image = ColorImage::from_rgb([self.map_size, self.map_size], &pixels);
 
@@ -112,13 +115,13 @@ impl PerlinViewer {
     }
 }
 
-impl eframe::App for PerlinViewer {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+impl App for PerlinViewer {
+    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         if self.needs_update {
             self.update_texture(ctx);
         }
 
-        egui::SidePanel::left("controls").show(ctx, |ui| {
+        SidePanel::left("controls").show(ctx, |ui| {
             ui.heading("Perlin Noise Controls");
             ui.separator();
             ui.label("Terrain Thresholds:");
@@ -127,9 +130,9 @@ impl eframe::App for PerlinViewer {
                 ui.label("Water (<):");
                 if ui
                     .add(
-                        egui::DragValue::new(&mut self.water_threshold)
+                        DragValue::new(&mut self.water_threshold)
                             .speed(0.01)
-                            .clamp_range(-1.0..=1.0),
+                            .range(-1.0..=1.0),
                     )
                     .changed()
                 {
@@ -145,9 +148,9 @@ impl eframe::App for PerlinViewer {
                 ui.label("Snow (>=):");
                 if ui
                     .add(
-                        egui::DragValue::new(&mut self.snow_threshold)
+                        DragValue::new(&mut self.snow_threshold)
                             .speed(0.01)
-                            .clamp_range(-1.0..=1.0),
+                            .range(-1.0..=1.0),
                     )
                     .changed()
                 {
@@ -168,9 +171,9 @@ impl eframe::App for PerlinViewer {
             ui.separator();
             ui.label("Legend:");
             ui.horizontal(|ui| {
-                ui.colored_label(egui::Color32::from_rgb(30, 100, 200), "■ Water");
-                ui.colored_label(egui::Color32::from_rgb(101, 67, 33), "■ Rock/Land");
-                ui.colored_label(egui::Color32::from_rgb(240, 240, 255), "■ Snow");
+                ui.colored_label(Color32::from_rgb(30, 100, 200), "■ Water");
+                ui.colored_label(Color32::from_rgb(101, 67, 33), "■ Rock/Land");
+                ui.colored_label(Color32::from_rgb(240, 240, 255), "■ Snow");
             });
 
             ui.separator();
@@ -180,14 +183,14 @@ impl eframe::App for PerlinViewer {
             let mut seed_changed = false;
             ui.horizontal(|ui| {
                 ui.label("Seed:");
-                seed_changed = ui.add(egui::DragValue::new(&mut self.seed)).changed();
+                seed_changed = ui.add(DragValue::new(&mut self.seed)).changed();
             });
 
             let mut octaves_changed = false;
             ui.horizontal(|ui| {
                 ui.label("Octaves:");
                 octaves_changed = ui
-                    .add(egui::DragValue::new(&mut self.num_octaves).clamp_range(1..=8))
+                    .add(DragValue::new(&mut self.num_octaves).range(1..=8))
                     .changed();
             });
 
@@ -196,9 +199,9 @@ impl eframe::App for PerlinViewer {
                 ui.label("Amplitude:");
                 amplitude_changed = ui
                     .add(
-                        egui::DragValue::new(&mut self.amplitude)
+                        DragValue::new(&mut self.amplitude)
                             .speed(0.1)
-                            .clamp_range(0.1..=5.0),
+                            .range(0.1..=5.0),
                     )
                     .changed();
             });
@@ -208,23 +211,25 @@ impl eframe::App for PerlinViewer {
                 ui.label("Persistence:");
                 persistence_changed = ui
                     .add(
-                        egui::DragValue::new(&mut self.persistence)
+                        DragValue::new(&mut self.persistence)
                             .speed(0.01)
-                            .clamp_range(0.0..=1.0),
+                            .range(0.0..=1.0),
                     )
                     .changed();
             });
 
             let mut perlin_scale_changed = false;
             ui.horizontal(|ui| {
-                ui.label("Perlin Scale:");
+                ui.label("log(Perlin Scale):");
+                let mut log_perlin_scale = self.perlin_scale.log2();
                 perlin_scale_changed = ui
                     .add(
-                        egui::DragValue::new(&mut self.perlin_scale)
+                        DragValue::new(&mut log_perlin_scale)
                             .speed(0.1)
-                            .clamp_range(0.1..=10.0),
+                            .range(-10.0..=10.0),
                     )
                     .changed();
+                self.perlin_scale = 2_f64.powf(log_perlin_scale);
             });
 
             if seed_changed
@@ -243,9 +248,9 @@ impl eframe::App for PerlinViewer {
                 ui.label("Scale:");
                 if ui
                     .add(
-                        egui::DragValue::new(&mut self.scale)
+                        DragValue::new(&mut self.scale)
                             .speed(0.001)
-                            .clamp_range(0.001..=1.0),
+                            .range(0.001..=1.0),
                     )
                     .changed()
                 {
@@ -256,7 +261,7 @@ impl eframe::App for PerlinViewer {
             ui.horizontal(|ui| {
                 ui.label("Map Size:");
                 if ui
-                    .add(egui::DragValue::new(&mut self.map_size).clamp_range(64..=512))
+                    .add(DragValue::new(&mut self.map_size).range(64..=512))
                     .changed()
                 {
                     self.needs_update = true;
@@ -270,7 +275,7 @@ impl eframe::App for PerlinViewer {
             ui.horizontal(|ui| {
                 ui.label("Offset X:");
                 if ui
-                    .add(egui::DragValue::new(&mut self.offset_x).speed(offset_speed))
+                    .add(DragValue::new(&mut self.offset_x).speed(offset_speed))
                     .changed()
                 {
                     self.needs_update = true;
@@ -280,7 +285,7 @@ impl eframe::App for PerlinViewer {
             ui.horizontal(|ui| {
                 ui.label("Offset Y:");
                 if ui
-                    .add(egui::DragValue::new(&mut self.offset_y).speed(offset_speed))
+                    .add(DragValue::new(&mut self.offset_y).speed(offset_speed))
                     .changed()
                 {
                     self.needs_update = true;
@@ -292,56 +297,9 @@ impl eframe::App for PerlinViewer {
                 self.offset_y = 0.0;
                 self.needs_update = true;
             }
-
-            ui.separator();
-            ui.label("Presets:");
-
-            if ui.button("Terrain").clicked() {
-                self.seed = 42;
-                self.num_octaves = 6;
-                self.amplitude = 1.0;
-                self.persistence = 0.5;
-                self.perlin_scale = 2.0;
-                self.scale = 0.02;
-                self.update_generator();
-            }
-
-            if ui.button("Clouds").clicked() {
-                self.seed = 123;
-                self.num_octaves = 4;
-                self.amplitude = 0.8;
-                self.persistence = 0.7;
-                self.perlin_scale = 2.5;
-                self.scale = 0.03;
-                self.update_generator();
-            }
-
-            if ui.button("Island").clicked() {
-                self.seed = 789;
-                self.num_octaves = 5;
-                self.amplitude = 1.2;
-                self.persistence = 0.6;
-                self.perlin_scale = 2.2;
-                self.scale = 0.015;
-                self.water_threshold = -0.2;
-                self.snow_threshold = 0.6;
-                self.update_generator();
-            }
-
-            if ui.button("Archipelago").clicked() {
-                self.seed = 321;
-                self.num_octaves = 4;
-                self.amplitude = 0.9;
-                self.persistence = 0.4;
-                self.perlin_scale = 2.8;
-                self.scale = 0.025;
-                self.water_threshold = 0.1;
-                self.snow_threshold = 0.7;
-                self.update_generator();
-            }
         });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        CentralPanel::default().show(ctx, |ui| {
             ui.heading("Perlin Noise 2D Map");
 
             if let Some(texture) = &self.texture {
@@ -349,9 +307,9 @@ impl eframe::App for PerlinViewer {
                 let image_size = available_size.min_elem().min(600.0);
 
                 ui.add(
-                    egui::Image::from_texture(texture)
-                        .fit_to_exact_size(egui::Vec2::splat(image_size))
-                        .rounding(egui::Rounding::same(4)),
+                    Image::from_texture(texture)
+                        .fit_to_exact_size(Vec2::splat(image_size))
+                        .corner_radius(CornerRadius::same(4)),
                 );
 
                 ui.separator();
@@ -373,8 +331,8 @@ impl eframe::App for PerlinViewer {
 }
 
 fn main() -> Result<(), eframe::Error> {
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
+    let options = NativeOptions {
+        viewport: ViewportBuilder::default()
             .with_inner_size([1200.0, 800.0])
             .with_title("Perlin Noise 2D Map Viewer"),
         ..Default::default()

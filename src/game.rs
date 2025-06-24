@@ -25,12 +25,11 @@ impl GameState {
     }
 
     /// Update the world by a game tick
-    pub fn update(&mut self, time_passed: &Duration) {}
-
-    pub fn handle_keypress(&mut self, event: &KeyEvent) {
-        // TODO: Only generate chunks if the player has moved
+    pub fn update(&mut self, time_passed: &Duration) {
         self.generate_chunks();
     }
+
+    pub fn handle_keypress(&mut self, event: &KeyEvent) {}
 
     pub fn handle_mouse_key(&mut self, event: &WindowEvent, mode: &InteractionMode) {
         assert!(matches!(event, WindowEvent::MouseInput { .. }));
@@ -63,7 +62,7 @@ impl GameState {
     /// Generate chunks around the player
     fn generate_chunks(&mut self) {
         let pre_generate_buffer = 2; // Generate chunks randomly in this range
-        let pre_generate_chance = 0.1;
+        let pre_generate_chance = 0.02;
 
         let (player_chunk, _) = self
             .player
