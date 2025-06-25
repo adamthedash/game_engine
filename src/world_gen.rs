@@ -1,6 +1,9 @@
 use libnoise::{Generator, ImprovedPerlin};
 
-use crate::world::{Biome, BlockPos, BlockType, Chunk};
+use crate::{
+    perlin_cdf::perlin_cdf,
+    world::{Biome, BlockPos, BlockType, Chunk},
+};
 
 #[derive(Debug)]
 pub struct Perlin {
@@ -8,7 +11,6 @@ pub struct Perlin {
     source: ImprovedPerlin<3>,
     amplitudes: Vec<f64>,
     frequencies: Vec<f64>,
-    divisor: f64,
 }
 
 impl Perlin {
@@ -26,6 +28,8 @@ impl Perlin {
         scale: f64,
     ) -> Self {
         assert!(num_octaves > 0);
+        assert!(amplitude > 0.);
+        assert!(persistence > 0.);
 
         // Pre-generate octave values
         let mut amplitudes = vec![1.];
@@ -34,13 +38,15 @@ impl Perlin {
             amplitudes.push(amplitudes[i] * amplitude);
             frequencies.push(frequencies[i] * persistence);
         }
-        let divisor = amplitudes.iter().sum();
+
+        // To preserve variance, amplitudes must satisty unit circle constraint
+        let divisor = amplitudes.iter().map(|a| a * a).sum::<f64>().sqrt();
+        let amplitudes = amplitudes.iter().map(|a| a / divisor).collect();
 
         Self {
             source: libnoise::Source::improved_perlin(seed),
             amplitudes,
             frequencies,
-            divisor,
         }
     }
 
@@ -57,7 +63,35 @@ impl Perlin {
                 ]) * a
             })
             .sum::<f64>()
-            / self.divisor
+            .clamp(-1., 1.)
+    }
+}
+
+/// Represents an partitioned interval over -1 .. 1 that can be sampled
+pub struct Intervals<T> {
+    intervals: Vec<f64>,
+    values: Vec<T>,
+}
+
+impl<T> Intervals<T> {
+    fn new(dividers: Vec<f64>, values: Vec<T>) -> Self {
+        // TODO: validate dividers
+        let mut intervals = vec![-1.];
+        intervals.extend(dividers);
+        intervals.push(1.);
+
+        Self { intervals, values }
+    }
+
+    fn sample(&self, t: f64) -> &T {
+        assert!((-1_f64..=1.).contains(&t));
+
+        self.intervals
+            .array_windows::<2>()
+            .zip(&self.values)
+            .find(|([min, max], _)| (*min..=*max).contains(&t))
+            .unwrap()
+            .1
     }
 }
 
@@ -72,6 +106,38 @@ impl ChunkGenerator {
     }
 
     pub fn generate_chunk(&self, world_pos: BlockPos) -> Chunk {
+        let biome_interval = Intervals::new(
+            [0.33, 0.66].into_iter().map(perlin_cdf).collect(),
+            vec![Biome::DirtLand, Biome::StoneLand, Biome::DenseCaves],
+        );
+
+        let dirtland_interval = Intervals::new(
+            [0.05, 0.5, 0.55, 0.65]
+                .into_iter()
+                .map(perlin_cdf)
+                .collect(),
+            vec![
+                BlockType::VoidStone,
+                BlockType::Air,
+                BlockType::Dirt,
+                BlockType::MossyStone,
+                BlockType::Stone,
+            ],
+        );
+        let stone_interval = Intervals::new(
+            [0.05, 0.5, 0.75].into_iter().map(perlin_cdf).collect(),
+            vec![
+                BlockType::RadioactiveStone,
+                BlockType::Air,
+                BlockType::Stone,
+                BlockType::DarkStone,
+            ],
+        );
+        let dense_caves_interval = Intervals::new(
+            [0.2, 0.3].into_iter().map(perlin_cdf).collect(),
+            vec![BlockType::Air, BlockType::Stone, BlockType::DarkStone],
+        );
+
         // TODO: Perf - uninit array
         let mut blocks =
             [[[BlockType::Air; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE];
@@ -81,38 +147,14 @@ impl ChunkGenerator {
                     let density = self.density.sample(x as f64, y as f64, z as f64);
                     let biome = self.biome.sample(x as f64, y as f64, z as f64);
 
-                    let biome_type = match biome {
-                        -1_f64..-0.25 => Biome::DirtLand,
-                        -0.25_f64..0.25 => Biome::StoneLand,
-                        0.25_f64..1. => Biome::DenseCaves,
-                        _ => unreachable!("Random number generated outside of -1 .. 1 !"),
+                    let biome_type = biome_interval.sample(biome);
+                    let sampler = match biome_type {
+                        Biome::DirtLand => &dirtland_interval,
+                        Biome::StoneLand => &stone_interval,
+                        Biome::DenseCaves => &dense_caves_interval,
                     };
 
-                    let block_type = match biome_type {
-                        Biome::DirtLand => match density {
-                            -1_f64..-0.4 => BlockType::VoidStone,
-                            -0.4_f64..0. => BlockType::Air,
-                            0_f64..0.05 => BlockType::Dirt,
-                            0.05_f64..0.1 => BlockType::MossyStone,
-                            0.1_f64..1. => BlockType::Stone,
-                            _ => unreachable!("Random number generated outside of -1 .. 1 !"),
-                        },
-                        Biome::StoneLand => match density {
-                            -1_f64..-0.4 => BlockType::RadioactiveStone,
-                            -0.4_f64..0. => BlockType::Air,
-                            0_f64..0.05 => BlockType::Stone,
-                            0.05_f64..1. => BlockType::DarkStone,
-                            _ => unreachable!("Random number generated outside of -1 .. 1 !"),
-                        },
-                        Biome::DenseCaves => match density {
-                            -1_f64..-0.25 => BlockType::Air,
-                            -0.25_f64..0.05 => BlockType::Stone,
-                            0.05_f64..1. => BlockType::DarkStone,
-                            _ => unreachable!("Random number generated outside of -1 .. 1 !"),
-                        },
-                    };
-
-                    blocks[i][j][k] = block_type;
+                    blocks[i][j][k] = *sampler.sample(density);
                 }
             }
         }
@@ -131,13 +173,14 @@ impl ChunkGenerator {
 #[cfg(test)]
 mod tests {
 
-    use super::{ChunkGenerator, Perlin};
-    use crate::world::BlockPos;
+    use rand::random_range;
+
+    use super::Perlin;
 
     #[test]
     fn test_perlin() {
         let generator = Perlin::new(42, 3, 2., 2., 1. / 16.);
-        println!("generator: {:?}", generator);
+        println!("generator: {generator:?}");
         for x in 0..64 {
             for z in 0..64 {
                 let val = generator.sample(x as f64, 0., z as f64);
@@ -153,34 +196,42 @@ mod tests {
     }
 
     #[test]
-    fn test_chunk() {
-        let generator = Perlin::new(42, 3, 2., 2., 1. / 16.);
-        let chunk_gen = ChunkGenerator::new(generator);
+    fn test_perlin_dist() {
+        let generator = Perlin::new(42, 5, 0.5, 2., 1. / 16.);
 
-        let chunk = chunk_gen.generate_chunk(BlockPos::new(0, 0, 0));
-        println!("{:?}", chunk);
-    }
+        let n = 1000000;
+        let mut vals = (0..n)
+            .map(|_| {
+                let x = random_range(-1e10..1e10);
+                let y = random_range(-1e10..1e10);
+                let z = random_range(-1e10..1e10);
 
-    #[test]
-    fn test_perlin_image() {
-        let generator = Perlin::new(42, 3, 0.5, 2., 1. / 64.);
+                generator.sample(x, y, z)
+            })
+            .collect::<Vec<_>>();
+        vals.sort_unstable_by(|a, b| a.total_cmp(b));
 
-        let xs = -128..128;
-        let zs = -128..128;
-        //let xs = 0..256;
-        //let zs = 0..256;
+        let mut percentiles = [1e-5, 1e-4, 1e-3, 1e-2]
+            .into_iter()
+            // Extremes
+            .flat_map(|x| [x, 1. - x])
+            // 0-100 to 1 dp
+            .chain((0..=1000).map(|i| i as f64 / 1000.))
+            .collect::<Vec<_>>();
+        percentiles.sort_unstable_by(|a, b| a.total_cmp(b));
 
-        let mut img = image::GrayImage::new(xs.len() as u32, zs.len() as u32);
+        let cdf_values = percentiles
+            .iter()
+            .map(|p| {
+                let index = ((n - 1) as f64 * p) as usize;
+                vals[index]
+            })
+            .collect::<Vec<_>>();
 
-        for (i, x) in xs.enumerate() {
-            for (j, z) in zs.clone().enumerate() {
-                let val = generator.sample(x as f64, 0., z as f64);
-                let val = ((val + 1.) * 128.).clamp(0., 255.) as u8;
-
-                img.put_pixel(i as u32, j as u32, image::Luma([val]));
-            }
-        }
-
-        img.save("map.png").unwrap();
+        // Save out to file
+        percentiles
+            .iter()
+            .zip(cdf_values)
+            .for_each(|(p, v)| println!("({p},{v}),"));
     }
 }

@@ -1,11 +1,13 @@
 #![feature(int_roundings)]
 #![feature(iter_collect_into)]
+#![feature(array_windows)]
 
 pub mod bbox;
 pub mod block;
 pub mod camera;
 pub mod game;
 pub mod item;
+pub(crate) mod perlin_cdf;
 pub mod player;
 pub mod render;
 pub mod ui;

@@ -341,8 +341,34 @@ For now I've just added some new blocks, and a 2nd noise layer controllering 3 d
 One thing that's been bugging me is the stop-the-world freeze whenever new chunks are generated. This happens because when the player crosses the distance to generate a new chunk, it triggers generation for an entire 2D plane of chunks all at once. The way I want to solve this in the long term is by having chunk generation (and loading) happen asynchronously from the main game loop. In the short term however, I'm just going to ammortise the generation over several frames. The way I'll do this is actually to generate *more* chunks around the player, but past the vision threshold I'll give them only a chance of generating. That way by the time the player gets into range, the majority of the chunks will have already been loaded. I set the outer 2 chunk radius a 10% chance of generating per frame, and it *just worked*.  
 
 
+I noticed while playing with my perlin map tool that when I added more octaves (noise layers) to the generation, it biased more around 0, and thus generated a lot less blocks at the extremes. I realised that I neglected what I learned back in statistics 101 class, and that's the formula for the [sum of normally distributed random variables](https://en.wikipedia.org/wiki/Sum_of_normally_distributed_random_variables). In order to preserve the same variance, the weights vector must have magnitude 1.  
 
+Before:  
+![](./images/day14_perlin_before.png)  
 
+After:  
+![](./images/day14_perlin_after.png)  
+
+Perlin noise is roughly normally distributed, so using the outputs as thresholds to generate differnt types of blocks can be difficult as the values don't directly relate to a sense of rarity. I want to transform this back into a uniform distribution so I can easily set things like "this rare ore should be 1% of the total blocks generated in this region.". Doing this transformation at sampling time will be expensive (lots of logs / exponentials), so instead I'll be transforming the thresholds onto the z-space. Since it's only approximately normal, I plan to pre-compute a transformation based on the experimental distribution. Here's some stats on sampling a perlin function (n=1 million):  
+
+50%: -0.0006854611653989897
+55%: 0.033480444761113046
+60%: 0.06830668469368939
+70%: 0.142237558033643
+80%: 0.22778642752324058
+90%: 0.34350776354220014
+95%: 0.43418983172157277
+99%: 0.5906519015332917
+99.9%: 0.7510765681834886
+99.99%: 0.8701822203744498
+99.999%: 0.9642774419871061
+
+These stats are independent of the parameters and number of octaves used.  
+
+With this, I'm able to more directly describe the distributions of block types in my world and have that translated to the appropriate Perlin values with relatively little overhead. Since everything is constant, I'm hoping rust can compile away all of the abstractions and truly have it zero-cost.  
+
+Here's what the terrain looks like now, I'm pretty happy with it for now:  
+![](./images/day14_terrain.png)
 
 
 
