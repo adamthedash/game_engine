@@ -351,17 +351,17 @@ After:
 
 Perlin noise is roughly normally distributed, so using the outputs as thresholds to generate differnt types of blocks can be difficult as the values don't directly relate to a sense of rarity. I want to transform this back into a uniform distribution so I can easily set things like "this rare ore should be 1% of the total blocks generated in this region.". Doing this transformation at sampling time will be expensive (lots of logs / exponentials), so instead I'll be transforming the thresholds onto the z-space. Since it's only approximately normal, I plan to pre-compute a transformation based on the experimental distribution. Here's some stats on sampling a perlin function (n=1 million):  
 
-50%: -0.0006854611653989897
-55%: 0.033480444761113046
-60%: 0.06830668469368939
-70%: 0.142237558033643
-80%: 0.22778642752324058
-90%: 0.34350776354220014
-95%: 0.43418983172157277
-99%: 0.5906519015332917
-99.9%: 0.7510765681834886
-99.99%: 0.8701822203744498
-99.999%: 0.9642774419871061
+50%: -0.0006854611653989897  
+55%: 0.033480444761113046  
+60%: 0.06830668469368939  
+70%: 0.142237558033643  
+80%: 0.22778642752324058  
+90%: 0.34350776354220014  
+95%: 0.43418983172157277  
+99%: 0.5906519015332917  
+99.9%: 0.7510765681834886  
+99.99%: 0.8701822203744498  
+99.999%: 0.9642774419871061  
 
 These stats are independent of the parameters and number of octaves used.  
 
