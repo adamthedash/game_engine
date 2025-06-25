@@ -75,7 +75,10 @@ pub struct Intervals<T> {
 
 impl<T> Intervals<T> {
     fn new(dividers: Vec<f64>, values: Vec<T>) -> Self {
-        // TODO: validate dividers
+        assert!(dividers.is_sorted());
+        assert!(dividers.len() == values.len() - 1);
+        assert!(dividers.iter().all(|d| { (-1_f64..=1.).contains(d) }));
+
         let mut intervals = vec![-1.];
         intervals.extend(dividers);
         intervals.push(1.);

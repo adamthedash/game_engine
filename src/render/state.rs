@@ -21,9 +21,11 @@ use crate::{
         context::DrawContext,
         light::LightingUniform,
         model::Model,
+        renderable::Renderable,
         shaders::{
             lighting::{LightingShaderPipeline, LightingShaderPipelineLayout},
             texture::{TextureShaderPipeline, TextureShaderPipelineLayout},
+            wireframe::{self, WireframeShaderPipeline, WireframeShaderPipelineLayout},
         },
         texture::Texture,
     },
@@ -111,6 +113,8 @@ pub struct RenderState {
     instance_buffer: Buffer,
     instance_buffer_entity: Buffer,
     depth_texture: Texture,
+    wireframe_pipeline: WireframeShaderPipeline,
+    wireframe_renderable: Renderable,
     // Entity stuff
     block_model: Model,
     entity_model: Model,
@@ -135,6 +139,7 @@ impl RenderState {
         // Shaders
         let texture_shader = TextureShaderPipelineLayout::new(&draw_context.device);
         let light_shader = LightingShaderPipelineLayout::new(&draw_context.device);
+        let wireframe_shader = WireframeShaderPipelineLayout::new(&draw_context.device);
 
         // Texture
         let depth_texture = Texture::create_depth_texture(
@@ -178,6 +183,47 @@ impl RenderState {
             &camera_buffer,
             &lighting_buffer,
         );
+        let wireframe_pipeline = wireframe_shader.init(
+            &draw_context.device,
+            &draw_context.config.format,
+            &camera_buffer,
+        );
+
+        // Renderables
+        let cube_wireframe_vertices: [[f32; 3]; 8] = [
+            [0., 0., 0.],
+            [1., 0., 0.],
+            [1., 1., 0.],
+            [0., 1., 0.],
+            [0., 0., 1.],
+            [1., 0., 1.],
+            [1., 1., 1.],
+            [0., 1., 1.],
+        ];
+        let cube_wireframe_indices: [u32; 24] = [
+            // Bottom face edges
+            0, 1, // bottom-back-left to bottom-back-right
+            1, 2, // bottom-back-right to top-back-right
+            2, 3, // top-back-right to top-back-left
+            3, 0, // top-back-left to bottom-back-left
+            // Top face edges
+            4, 5, // bottom-front-left to bottom-front-right
+            5, 6, // bottom-front-right to top-front-right
+            6, 7, // top-front-right to top-front-left
+            7, 4, // top-front-left to bottom-front-left
+            // Vertical edges connecting bottom and top faces
+            0, 4, // bottom-back-left to bottom-front-left
+            1, 5, // bottom-back-right to bottom-front-right
+            2, 6, // top-back-right to top-front-right
+            3, 7, // top-back-left to top-front-left
+        ];
+        let block_wireframe = Renderable::new(
+            &draw_context.device,
+            "Block Wireframe",
+            &cube_wireframe_vertices,
+            &cube_wireframe_indices,
+            std::mem::size_of::<wireframe::InstanceRaw>() as u64,
+        );
 
         // Instances of blocks
         let instance_buffer = draw_context.device.create_buffer(&BufferDescriptor {
@@ -216,6 +262,8 @@ impl RenderState {
             ui,
             instances_cpu: vec![],
             visible_blocks: vec![],
+            wireframe_pipeline,
+            wireframe_renderable: block_wireframe,
         }
     }
 
@@ -316,19 +364,6 @@ impl RenderState {
                     .inspect(|_| {
                         counter.increment("Exposed blocks");
                     })
-            })
-            // If we're targetting the block, change the texture
-            .map(|b| {
-                if let Some(target_block) = &player_target_block
-                    && b.block_pos.0 == target_block.block_pos.0
-                {
-                    Block {
-                        block_type: BlockType::Smiley,
-                        ..b
-                    }
-                } else {
-                    b
-                }
             })
             .inspect(|_| {
                 counter.increment("Blocks rendered");
@@ -439,6 +474,23 @@ impl RenderState {
                 &mesh.index_buffer,
             );
             render_pass.draw_indexed(0..mesh.num_elements, 0, 0..1);
+
+            // Draw the targeted block highlight
+            if let Some(block) = &player_target_block {
+                // Create block instance
+                let instance = wireframe::InstanceRaw {
+                    model: block.to_instance().to_raw().model,
+                    color: [1., 1., 1.],
+                };
+                self.draw_context.queue.write_buffer(
+                    &self.wireframe_renderable.instance_buffer,
+                    0,
+                    bytemuck::cast_slice(&[instance]),
+                );
+
+                self.wireframe_pipeline
+                    .draw(&mut render_pass, &self.wireframe_renderable, 1);
+            }
         }
 
         stopwatch.stamp_and_reset("Render pass");

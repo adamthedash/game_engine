@@ -371,4 +371,11 @@ Here's what the terrain looks like now, I'm pretty happy with it for now:
 ![](./images/day14_terrain.png)
 
 
+## Day 15
+Today: Wireframe shader for targeted block highlighting  
+
+I'm going to implement a genertic wireframe shader which I can pass a set of lines in world space. I was going to use a geometric shader to render a block wireframe given a block position, but I might want to use the wireframes for other things down the line.  
+My shader renders line primatives rather than triangles, and for now I've just hard-coded the vertices & indices for the block. I'll move this to a data file soon. Here's what it looks like:  
+![](./images/day15_block.png)  
+
 
