@@ -1,16 +1,14 @@
 use std::{path::Path, sync::Arc};
 
-use bytemuck::{Pod, Zeroable};
-use cgmath::{Matrix3, Matrix4, Quaternion, Vector3, Zero};
+use cgmath::{Matrix3, Matrix4, One, Vector3};
 use wgpu::{
-    Buffer, BufferAddress, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, Device,
-    LoadOp, Operations, RenderPassColorAttachment, RenderPassDepthStencilAttachment,
-    RenderPassDescriptor, StoreOp, VertexBufferLayout, VertexStepMode,
+    Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, Device, LoadOp, Operations,
+    RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor, StoreOp,
     util::{BufferInitDescriptor, DeviceExt},
-    vertex_attr_array,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
+use super::shaders::texture;
 use crate::{
     InteractionMode,
     block::Block,
@@ -20,8 +18,7 @@ use crate::{
     render::{
         context::DrawContext,
         light::LightingUniform,
-        model::Model,
-        renderable::Renderable,
+        model::{Mesh, Model},
         shaders::{
             lighting::{LightingShaderPipeline, LightingShaderPipelineLayout},
             texture::{TextureShaderPipeline, TextureShaderPipelineLayout},
@@ -34,75 +31,15 @@ use crate::{
     world::{BlockPos, BlockType, Chunk},
 };
 
-/// Represents a vertex on the GPU
-#[repr(C)]
-#[derive(Debug, Clone, Copy, Pod, Zeroable)]
-pub struct Vertex {
-    pub position: [f32; 3],       // XYZ in NDC, CCW order
-    pub texture_coords: [f32; 2], // XY, origin top-left
-    pub normals: [f32; 3],
+/// Create a new instance buffer for the given type
+pub fn create_instance_buffer<T>(device: &Device, max_elements: usize, name: &str) -> Buffer {
+    device.create_buffer(&BufferDescriptor {
+        label: Some(&format!("Instance Buffer: {name:?}")),
+        size: (std::mem::size_of::<T>() * max_elements) as u64,
+        usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    })
 }
-
-impl Vertex {
-    /// Describes the memory layout of the vector buffer for the GPU
-    pub const LAYOUT: VertexBufferLayout<'static> = VertexBufferLayout {
-        array_stride: std::mem::size_of::<Self>() as BufferAddress,
-        step_mode: VertexStepMode::Vertex,
-        attributes: &vertex_attr_array![
-            0 => Float32x3,
-            1 => Float32x2,
-            2 => Float32x3,
-        ],
-    };
-}
-
-/// Represents a copy of a renderable thing, at a specific location
-#[derive(Debug)]
-pub struct Instance {
-    pub pos: Vector3<f32>,
-    pub rotation: Quaternion<f32>,
-    pub texture_index: u32,
-}
-
-impl Instance {
-    fn to_raw(&self) -> InstanceRaw {
-        InstanceRaw {
-            model: (Matrix4::from_translation(self.pos) * Matrix4::from(self.rotation)).into(),
-            texture_index: self.texture_index,
-            normal: Matrix3::from(self.rotation).into(),
-        }
-    }
-}
-
-/// GPU buffer version of Instance
-#[repr(C)]
-#[derive(Debug, Clone, Copy, Pod, Zeroable)]
-pub struct InstanceRaw {
-    model: [[f32; 4]; 4],
-    texture_index: u32,
-    normal: [[f32; 3]; 3],
-}
-
-impl InstanceRaw {
-    pub const LAYOUT: VertexBufferLayout<'static> = VertexBufferLayout {
-        array_stride: std::mem::size_of::<Self>() as BufferAddress,
-        step_mode: VertexStepMode::Instance,
-        attributes: &vertex_attr_array![
-            5 => Float32x4,
-            6 => Float32x4,
-            7 => Float32x4,
-            8 => Float32x4,
-            9 => Uint32,
-            10 => Float32x3,
-            11 => Float32x3,
-            12 => Float32x3,
-        ],
-    };
-}
-
-/// Maximum number of block instances we can render at once
-const INSTANCE_BUFFER_MAX_SIZE: u64 =
-    (std::mem::size_of::<InstanceRaw>() * Chunk::BLOCKS_PER_CHUNK * 512) as u64;
 
 /// Holds all of the stuff related to rendering the game window.
 pub struct RenderState {
@@ -110,25 +47,27 @@ pub struct RenderState {
     pub draw_context: DrawContext,
     // Shader stuff
     texture_shader_pipeline: TextureShaderPipeline,
-    instance_buffer: Buffer,
-    instance_buffer_entity: Buffer,
-    depth_texture: Texture,
     wireframe_pipeline: WireframeShaderPipeline,
-    wireframe_renderable: Renderable,
+    lighting_shader_pipeline: LightingShaderPipeline,
+    depth_texture: Texture,
+    // Instance buffers
+    block_textured_instance_buffer: Buffer,
+    block_wireframe_instance_buffer: Buffer,
+    sibeal_instance_buffer: Buffer,
     // Entity stuff
     block_model: Model,
-    entity_model: Model,
+    sibeal_model: Model,
+    block_wireframe_mesh: Mesh,
     // Camera stuff
     camera_uniform: CameraUniform,
     camera_buffer: Buffer,
     // Lighting stuff
     lighting_uniform: LightingUniform,
     lighting_buffer: Buffer,
-    lighting_shader_pipeline: LightingShaderPipeline,
     // GUI stuff
     pub ui: UI,
     // Re-usable CPU buffers
-    instances_cpu: Vec<InstanceRaw>,
+    instances_cpu: Vec<texture::Instance>,
     visible_blocks: Vec<Block>,
 }
 
@@ -217,28 +156,26 @@ impl RenderState {
             2, 6, // top-back-right to top-front-right
             3, 7, // top-back-left to top-front-left
         ];
-        let block_wireframe = Renderable::new(
+        let block_wireframe_mesh = Mesh::new(
             &draw_context.device,
-            "Block Wireframe",
             &cube_wireframe_vertices,
             &cube_wireframe_indices,
-            std::mem::size_of::<wireframe::InstanceRaw>() as u64,
+            "Block Wireframe",
+        );
+        let block_wireframe_instance_buffer = create_instance_buffer::<wireframe::Instance>(
+            &draw_context.device,
+            1,
+            "Block Wireframe",
         );
 
         // Instances of blocks
-        let instance_buffer = draw_context.device.create_buffer(&BufferDescriptor {
-            label: Some("Instance Buffer"),
-            size: INSTANCE_BUFFER_MAX_SIZE,
-            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let instance_buffer_entity = draw_context.device.create_buffer(&BufferDescriptor {
-            label: Some("Instance Buffer Sibeal"),
-            size: INSTANCE_BUFFER_MAX_SIZE,
-            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let block_textured_instance_buffer = create_instance_buffer::<texture::Instance>(
+            &draw_context.device,
+            Chunk::BLOCKS_PER_CHUNK * 512,
+            "Block Textured",
+        );
+        let sibeal_instance_buffer =
+            create_instance_buffer::<texture::Instance>(&draw_context.device, 1, "Sibeal");
 
         // GUI
         let mut ui = UI::new(&draw_context.device, &draw_context.window);
@@ -250,11 +187,11 @@ impl RenderState {
             draw_context,
             texture_shader_pipeline,
             block_model,
-            entity_model: sibeal_model,
+            sibeal_model,
             camera_uniform,
             camera_buffer,
-            instance_buffer,
-            instance_buffer_entity,
+            block_textured_instance_buffer,
+            sibeal_instance_buffer,
             depth_texture,
             lighting_uniform,
             lighting_buffer,
@@ -263,7 +200,8 @@ impl RenderState {
             instances_cpu: vec![],
             visible_blocks: vec![],
             wireframe_pipeline,
-            wireframe_renderable: block_wireframe,
+            block_wireframe_instance_buffer,
+            block_wireframe_mesh,
         }
     }
 
@@ -376,25 +314,24 @@ impl RenderState {
         self.instances_cpu.clear();
         self.visible_blocks
             .iter()
-            .map(|block| block.to_instance().to_raw())
+            .map(|block| block.to_instance())
             .collect_into(&mut self.instances_cpu);
         stopwatch.stamp_and_reset("Instance creation");
 
         self.draw_context.queue.write_buffer(
-            &self.instance_buffer,
+            &self.block_textured_instance_buffer,
             0,
             bytemuck::cast_slice(&self.instances_cpu),
         );
 
         // Entities
-        let sibeal_instances = [Instance {
-            pos: Vector3::new(1., 12., -16.),
-            rotation: Quaternion::zero(),
+        let sibeal_instances = [texture::Instance {
+            model: Matrix4::from_translation(Vector3::new(1., 12., -16.)).into(),
+            normal: Matrix3::one().into(),
             texture_index: 0,
-        }
-        .to_raw()];
+        }];
         self.draw_context.queue.write_buffer(
-            &self.instance_buffer_entity,
+            &self.sibeal_instance_buffer,
             0,
             bytemuck::cast_slice(&sibeal_instances),
         );
@@ -439,57 +376,51 @@ impl RenderState {
             });
 
             // Draw our mesh cubes
-            render_pass.set_pipeline(&self.texture_shader_pipeline.render_pipeline);
-
             let mesh = &self.block_model.meshes[0];
             let material = &self.block_model.materials[0];
-            self.texture_shader_pipeline.setup_rendering_pass(
+            self.texture_shader_pipeline.draw(
                 &mut render_pass,
-                &mesh.vertex_buffer,
-                &mesh.index_buffer,
+                mesh,
                 &material.bind_group,
+                &self.block_textured_instance_buffer,
+                self.instances_cpu.len(),
             );
-
-            render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-            render_pass.draw_indexed(0..mesh.num_elements, 0, 0..self.instances_cpu.len() as u32);
 
             // Draw Sibeal
-            let mesh = &self.entity_model.meshes[0];
-            let material = &self.entity_model.materials[0];
-            self.texture_shader_pipeline.setup_rendering_pass(
+            let mesh = &self.sibeal_model.meshes[0];
+            let material = &self.sibeal_model.materials[0];
+            self.texture_shader_pipeline.draw(
                 &mut render_pass,
-                &mesh.vertex_buffer,
-                &mesh.index_buffer,
+                mesh,
                 &material.bind_group,
+                &self.sibeal_instance_buffer,
+                1,
             );
-            render_pass.set_vertex_buffer(1, self.instance_buffer_entity.slice(..));
-            render_pass.draw_indexed(0..mesh.num_elements, 0, 0..sibeal_instances.len() as u32);
 
             // Draw the light object
-            render_pass.set_pipeline(&self.lighting_shader_pipeline.render_pipeline);
             let mesh = &self.block_model.meshes[0];
-            self.lighting_shader_pipeline.setup_rendering_pass(
-                &mut render_pass,
-                &mesh.vertex_buffer,
-                &mesh.index_buffer,
-            );
-            render_pass.draw_indexed(0..mesh.num_elements, 0, 0..1);
+            self.lighting_shader_pipeline
+                .draw(&mut render_pass, mesh, 1);
 
             // Draw the targeted block highlight
             if let Some(block) = &player_target_block {
                 // Create block instance
-                let instance = wireframe::InstanceRaw {
-                    model: block.to_instance().to_raw().model,
+                let instance = wireframe::Instance {
+                    model: block.to_instance().model,
                     color: [1., 1., 1.],
                 };
                 self.draw_context.queue.write_buffer(
-                    &self.wireframe_renderable.instance_buffer,
+                    &self.block_wireframe_instance_buffer,
                     0,
                     bytemuck::cast_slice(&[instance]),
                 );
 
-                self.wireframe_pipeline
-                    .draw(&mut render_pass, &self.wireframe_renderable, 1);
+                self.wireframe_pipeline.draw(
+                    &mut render_pass,
+                    &self.block_wireframe_mesh,
+                    &self.block_wireframe_instance_buffer,
+                    1,
+                );
             }
         }
 

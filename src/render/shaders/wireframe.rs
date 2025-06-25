@@ -9,7 +9,7 @@ use wgpu::{
     TextureFormat, VertexBufferLayout, VertexState, VertexStepMode, vertex_attr_array,
 };
 
-use crate::render::{renderable::Renderable, texture::Texture};
+use crate::render::{model::Mesh, texture::Texture};
 
 /// Represents a vertex on the GPU
 #[repr(C)]
@@ -32,12 +32,12 @@ impl Vertex {
 /// GPU buffer version of Instance
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
-pub struct InstanceRaw {
+pub struct Instance {
     pub model: [[f32; 4]; 4],
     pub color: [f32; 3],
 }
 
-impl InstanceRaw {
+impl Instance {
     const LAYOUT: VertexBufferLayout<'static> = VertexBufferLayout {
         array_stride: std::mem::size_of::<Self>() as BufferAddress,
         step_mode: VertexStepMode::Instance,
@@ -118,7 +118,7 @@ impl WireframeShaderPipelineLayout {
             vertex: VertexState {
                 module: &self.shader,
                 entry_point: Some("vs_main"),
-                buffers: &[Vertex::LAYOUT, InstanceRaw::LAYOUT],
+                buffers: &[Vertex::LAYOUT, Instance::LAYOUT],
                 compilation_options: PipelineCompilationOptions::default(),
             },
             // Fragment - The inside of the triangle
@@ -173,15 +173,21 @@ pub struct WireframeShaderPipeline {
 }
 
 impl WireframeShaderPipeline {
-    pub fn draw(&self, render_pass: &mut RenderPass, renderable: &Renderable, num_instance: usize) {
+    pub fn draw(
+        &self,
+        render_pass: &mut RenderPass,
+        mesh: &Mesh,
+        instance_buffer: &Buffer,
+        num_instance: usize,
+    ) {
         render_pass.set_pipeline(&self.render_pipeline);
 
-        render_pass.set_vertex_buffer(0, renderable.vertex_buffer.slice(..));
-        render_pass.set_vertex_buffer(1, renderable.instance_buffer.slice(..));
-        render_pass.set_index_buffer(renderable.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+        render_pass.set_vertex_buffer(1, instance_buffer.slice(..));
+        render_pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 
         render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
 
-        render_pass.draw_indexed(0..renderable.num_indices as u32, 0, 0..num_instance as u32);
+        render_pass.draw_indexed(0..mesh.num_elements, 0, 0..num_instance as u32);
     }
 }

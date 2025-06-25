@@ -1,9 +1,9 @@
-use cgmath::{ElementWise, EuclideanSpace, One, Quaternion};
+use cgmath::{ElementWise, EuclideanSpace, Matrix3, Matrix4, One};
 use num_traits::ToPrimitive;
 
 use crate::{
     bbox::AABB,
-    render::state::Instance,
+    render::shaders::texture::{self, Instance},
     world::{BlockPos, BlockType},
 };
 
@@ -15,10 +15,10 @@ pub struct Block {
 
 impl Block {
     pub fn to_instance(&self) -> Instance {
-        Instance {
-            pos: self.block_pos.0.to_vec().cast().unwrap(),
-            rotation: Quaternion::one(),
+        texture::Instance {
+            model: Matrix4::from_translation(self.block_pos.to_world_pos().0.to_vec()).into(),
             texture_index: self.block_type.to_u32().unwrap(),
+            normal: Matrix3::one().into(),
         }
     }
 

@@ -4,6 +4,7 @@ use std::{
 };
 
 use anyhow::Result;
+use bytemuck::NoUninit;
 use tobj::{LoadOptions, load_obj};
 use wgpu::{
     BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindingResource, BufferUsages, Device,
@@ -11,7 +12,7 @@ use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
 };
 
-use crate::render::{state::Vertex, texture::Texture};
+use crate::render::{shaders::texture::Vertex, texture::Texture};
 
 /// Represents a single model mesh / material. Eg. a single block type
 #[derive(Debug)]
@@ -33,6 +34,28 @@ pub struct Mesh {
     pub vertex_buffer: wgpu::Buffer,
     pub index_buffer: wgpu::Buffer,
     pub num_elements: u32,
+}
+
+impl Mesh {
+    pub fn new<V: NoUninit>(device: &Device, vertices: &[V], indices: &[u32], name: &str) -> Self {
+        let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some(&format!("Vertex Buffer: {name:?}")),
+            contents: bytemuck::cast_slice(vertices),
+            usage: BufferUsages::VERTEX,
+        });
+        let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some(&format!("Index Buffer: {name:?}")),
+            contents: bytemuck::cast_slice(indices),
+            usage: BufferUsages::INDEX,
+        });
+
+        Self {
+            name: name.to_string(),
+            vertex_buffer,
+            index_buffer,
+            num_elements: indices.len() as u32,
+        }
+    }
 }
 
 impl Model {
@@ -127,23 +150,7 @@ impl Model {
                     })
                     .collect::<Vec<_>>();
 
-                let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
-                    label: Some(&format!("Vertex Buffer: {path:?}")),
-                    contents: bytemuck::cast_slice(&vertices),
-                    usage: BufferUsages::VERTEX,
-                });
-                let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
-                    label: Some(&format!("Index Buffer: {path:?}")),
-                    contents: bytemuck::cast_slice(&m.mesh.indices),
-                    usage: BufferUsages::INDEX,
-                });
-
-                Mesh {
-                    name: path.to_str().unwrap().to_string(),
-                    vertex_buffer,
-                    index_buffer,
-                    num_elements: m.mesh.indices.len() as u32,
-                }
+                Mesh::new(device, &vertices, &m.mesh.indices, path.to_str().unwrap())
             })
             .collect::<Vec<_>>();
 

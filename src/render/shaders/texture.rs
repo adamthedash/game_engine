@@ -1,17 +1,64 @@
+use bytemuck::{Pod, Zeroable};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, BlendState, Buffer, BufferBindingType, ColorTargetState,
-    ColorWrites, DepthBiasState, DepthStencilState, Device, Face, FragmentState, FrontFace,
-    MultisampleState, PipelineCompilationOptions, PipelineLayout, PipelineLayoutDescriptor,
-    PrimitiveState, PrimitiveTopology, RenderPass, RenderPipelineDescriptor, SamplerBindingType,
-    ShaderModule, ShaderModuleDescriptor, ShaderStages, StencilState, TextureFormat,
-    TextureSampleType, TextureViewDimension, VertexState,
+    BindGroupLayoutEntry, BindingType, BlendState, Buffer, BufferAddress, BufferBindingType,
+    ColorTargetState, ColorWrites, DepthBiasState, DepthStencilState, Device, Face, FragmentState,
+    FrontFace, MultisampleState, PipelineCompilationOptions, PipelineLayout,
+    PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, RenderPass,
+    RenderPipelineDescriptor, SamplerBindingType, ShaderModule, ShaderModuleDescriptor,
+    ShaderStages, StencilState, TextureFormat, TextureSampleType, TextureViewDimension,
+    VertexBufferLayout, VertexState, VertexStepMode, vertex_attr_array,
 };
 
-use crate::render::{
-    state::{InstanceRaw, Vertex},
-    texture::Texture,
-};
+use crate::render::{model::Mesh, texture::Texture};
+
+/// Represents a vertex on the GPU
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+pub struct Vertex {
+    pub position: [f32; 3],       // XYZ in NDC, CCW order
+    pub texture_coords: [f32; 2], // XY, origin top-left
+    pub normals: [f32; 3],
+}
+
+impl Vertex {
+    /// Describes the memory layout of the vector buffer for the GPU
+    pub const LAYOUT: VertexBufferLayout<'static> = VertexBufferLayout {
+        array_stride: std::mem::size_of::<Self>() as BufferAddress,
+        step_mode: VertexStepMode::Vertex,
+        attributes: &vertex_attr_array![
+            0 => Float32x3,
+            1 => Float32x2,
+            2 => Float32x3,
+        ],
+    };
+}
+
+/// GPU buffer version of Instance
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+pub struct Instance {
+    pub model: [[f32; 4]; 4],
+    pub texture_index: u32,
+    pub normal: [[f32; 3]; 3],
+}
+
+impl Instance {
+    pub const LAYOUT: VertexBufferLayout<'static> = VertexBufferLayout {
+        array_stride: std::mem::size_of::<Self>() as BufferAddress,
+        step_mode: VertexStepMode::Instance,
+        attributes: &vertex_attr_array![
+            5 => Float32x4,
+            6 => Float32x4,
+            7 => Float32x4,
+            8 => Float32x4,
+            9 => Uint32,
+            10 => Float32x3,
+            11 => Float32x3,
+            12 => Float32x3,
+        ],
+    };
+}
 
 /// A shader template without data buffers linked
 pub struct TextureShaderPipelineLayout {
@@ -134,7 +181,7 @@ impl TextureShaderPipelineLayout {
             vertex: VertexState {
                 module: &self.shader,
                 entry_point: Some("vs_main"),
-                buffers: &[Vertex::LAYOUT, InstanceRaw::LAYOUT],
+                buffers: &[Vertex::LAYOUT, Instance::LAYOUT],
                 compilation_options: PipelineCompilationOptions::default(),
             },
             // Fragment - The inside of the triangle
@@ -191,18 +238,24 @@ pub struct TextureShaderPipeline {
 }
 
 impl TextureShaderPipeline {
-    /// Loads the data buffers into the right slots in the GPU
-    pub fn setup_rendering_pass(
+    pub fn draw(
         &self,
         render_pass: &mut RenderPass,
-        vertex_buffer: &Buffer,
-        index_buffer: &Buffer,
+        mesh: &Mesh,
         texture_bind_group: &BindGroup,
+        instance_buffer: &Buffer,
+        num_instances: usize,
     ) {
-        render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-        render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        render_pass.set_pipeline(&self.render_pipeline);
+
+        render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+        render_pass.set_vertex_buffer(1, instance_buffer.slice(..));
+        render_pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+
         render_pass.set_bind_group(0, texture_bind_group, &[]);
         render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
         render_pass.set_bind_group(2, &self.lighting_bind_group, &[]);
+
+        render_pass.draw_indexed(0..mesh.num_elements, 0, 0..num_instances as u32);
     }
 }

@@ -7,7 +7,7 @@ use wgpu::{
     ShaderModuleDescriptor, ShaderStages, StencilState, TextureFormat, VertexState,
 };
 
-use crate::render::{state::Vertex, texture::Texture};
+use crate::render::{model::Mesh, shaders::texture::Vertex, texture::Texture};
 
 /// A shader template without data buffers linked
 pub struct LightingShaderPipelineLayout {
@@ -160,16 +160,14 @@ pub struct LightingShaderPipeline {
 }
 
 impl LightingShaderPipeline {
-    /// Loads the data buffers into the right slots in the GPU
-    pub fn setup_rendering_pass(
-        &self,
-        render_pass: &mut RenderPass,
-        vertex_buffer: &Buffer,
-        index_buffer: &Buffer,
-    ) {
-        render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-        render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+    pub fn draw(&self, render_pass: &mut RenderPass, mesh: &Mesh, num_instances: usize) {
+        render_pass.set_pipeline(&self.render_pipeline);
+
+        render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
         render_pass.set_bind_group(1, &self.lighting_bind_group, &[]);
+
+        render_pass.draw_indexed(0..mesh.num_elements, 0, 0..num_instances as u32);
     }
 }
