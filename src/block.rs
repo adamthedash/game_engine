@@ -1,23 +1,25 @@
 use cgmath::{ElementWise, EuclideanSpace, Matrix3, Matrix4, One};
-use num_traits::ToPrimitive;
 
 use crate::{
     bbox::AABB,
+    data::{block::BlockType, loader::BLOCKS},
     render::shaders::texture::{self, Instance},
-    world::{BlockPos, BlockType},
+    world::BlockPos,
 };
 
 #[derive(Debug)]
 pub struct Block {
     pub block_pos: BlockPos,
-    pub block_type: BlockType,
+    pub block_type: Option<BlockType>,
 }
 
 impl Block {
     pub fn to_instance(&self) -> Instance {
+        let block_type = self.block_type.expect("Can't create instance for air!");
+        let texture_index = BLOCKS.get().unwrap()[block_type].texture_index;
         texture::Instance {
             model: Matrix4::from_translation(self.block_pos.to_world_pos().0.to_vec()).into(),
-            texture_index: self.block_type.to_u32().unwrap(),
+            texture_index,
             normal: Matrix3::one().into(),
         }
     }

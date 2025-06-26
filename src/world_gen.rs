@@ -1,9 +1,6 @@
 use libnoise::{Generator, ImprovedPerlin};
 
-use crate::{
-    perlin_cdf::perlin_cdf,
-    world::{Biome, BlockPos, BlockType, Chunk},
-};
+use crate::world::{BlockPos, Chunk};
 
 #[derive(Debug)]
 pub struct Perlin {
@@ -68,13 +65,14 @@ impl Perlin {
 }
 
 /// Represents an partitioned interval over -1 .. 1 that can be sampled
-pub struct Intervals<T> {
+#[derive(Clone)]
+pub struct Intervals<T: Clone> {
     intervals: Vec<f64>,
     values: Vec<T>,
 }
 
-impl<T> Intervals<T> {
-    fn new(dividers: Vec<f64>, values: Vec<T>) -> Self {
+impl<T: Clone> Intervals<T> {
+    pub fn new(dividers: Vec<f64>, values: Vec<T>) -> Self {
         assert!(dividers.is_sorted());
         assert!(dividers.len() == values.len() - 1);
         assert!(dividers.iter().all(|d| { (-1_f64..=1.).contains(d) }));
@@ -86,7 +84,7 @@ impl<T> Intervals<T> {
         Self { intervals, values }
     }
 
-    fn sample(&self, t: f64) -> &T {
+    pub fn sample(&self, t: f64) -> &T {
         assert!((-1_f64..=1.).contains(&t));
 
         self.intervals
@@ -98,79 +96,8 @@ impl<T> Intervals<T> {
     }
 }
 
-pub struct ChunkGenerator {
-    density: Perlin,
-    biome: Perlin,
-}
-
-impl ChunkGenerator {
-    pub fn new(density: Perlin, biome: Perlin) -> Self {
-        Self { density, biome }
-    }
-
-    pub fn generate_chunk(&self, world_pos: BlockPos) -> Chunk {
-        let biome_interval = Intervals::new(
-            [0.33, 0.66].into_iter().map(perlin_cdf).collect(),
-            vec![Biome::DirtLand, Biome::StoneLand, Biome::DenseCaves],
-        );
-
-        let dirtland_interval = Intervals::new(
-            [0.05, 0.5, 0.55, 0.65]
-                .into_iter()
-                .map(perlin_cdf)
-                .collect(),
-            vec![
-                BlockType::VoidStone,
-                BlockType::Air,
-                BlockType::Dirt,
-                BlockType::MossyStone,
-                BlockType::Stone,
-            ],
-        );
-        let stone_interval = Intervals::new(
-            [0.05, 0.5, 0.75].into_iter().map(perlin_cdf).collect(),
-            vec![
-                BlockType::RadioactiveStone,
-                BlockType::Air,
-                BlockType::Stone,
-                BlockType::DarkStone,
-            ],
-        );
-        let dense_caves_interval = Intervals::new(
-            [0.2, 0.3].into_iter().map(perlin_cdf).collect(),
-            vec![BlockType::Air, BlockType::Stone, BlockType::DarkStone],
-        );
-
-        // TODO: Perf - uninit array
-        let mut blocks =
-            [[[BlockType::Air; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE];
-        for (i, x) in (world_pos.0.x..).take(Chunk::CHUNK_SIZE).enumerate() {
-            for (j, y) in (world_pos.0.y..).take(Chunk::CHUNK_SIZE).enumerate() {
-                for (k, z) in (world_pos.0.z..).take(Chunk::CHUNK_SIZE).enumerate() {
-                    let density = self.density.sample(x as f64, y as f64, z as f64);
-                    let biome = self.biome.sample(x as f64, y as f64, z as f64);
-
-                    let biome_type = biome_interval.sample(biome);
-                    let sampler = match biome_type {
-                        Biome::DirtLand => &dirtland_interval,
-                        Biome::StoneLand => &stone_interval,
-                        Biome::DenseCaves => &dense_caves_interval,
-                    };
-
-                    blocks[i][j][k] = *sampler.sample(density);
-                }
-            }
-        }
-
-        let (chunk_pos, _) = world_pos.to_chunk_offset();
-        Chunk {
-            chunk_pos,
-            world_pos,
-            blocks,
-            // WARN: exposed_blocks must be populated elsewhere as chunk-to-chunk info is needed
-            exposed_blocks: Default::default(),
-        }
-    }
+pub trait ChunkGenerator {
+    fn generate_chunk(&self, world_pos: BlockPos) -> Chunk;
 }
 
 #[cfg(test)]

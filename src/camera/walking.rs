@@ -6,7 +6,8 @@ use winit::{event::KeyEvent, keyboard::PhysicalKey};
 use super::{angles_to_vec3, traits::CameraController};
 use crate::{
     camera::Camera,
-    world::{BlockPos, BlockType, World},
+    world::{BlockPos, World},
+    world_gen::ChunkGenerator,
 };
 
 /// Handles user input to adjust camera
@@ -111,7 +112,12 @@ impl CameraController for WalkingCameraController {
     }
 
     /// Update the camera position
-    fn update_camera(&mut self, camera: &mut Camera, world: &World, duration: &Duration) {
+    fn update_camera<G: ChunkGenerator>(
+        &mut self,
+        camera: &mut Camera,
+        world: &World<G>,
+        duration: &Duration,
+    ) {
         // Step 1: figure out the direction vector the player wants to move in
         let forward = angles_to_vec3(camera.yaw.get(), Rad(0.));
         let right = forward.cross(Vector3::unit_y()).normalize();
@@ -144,7 +150,7 @@ impl CameraController for WalkingCameraController {
         let player_aabb = camera.aabb();
         let colliding_with = |pos: &BlockPos| {
             if let Some(block) = world.get_block(pos) {
-                if block.block_type == BlockType::Air {
+                if block.block_type.is_none() {
                     false
                 } else {
                     player_aabb.intersects(&block.aabb().to_f32())

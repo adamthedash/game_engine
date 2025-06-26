@@ -3,11 +3,11 @@ use std::{cell::RefCell, rc::Rc};
 use egui::{Align2, Color32, Context, FontId, Frame, Sense, Stroke, Ui, Window};
 
 use super::{Drawable, inventory::Inventory};
-use crate::item::{ITEMS, ItemId};
+use crate::data::{item::ItemType, loader::ITEMS};
 
 pub struct Hotbar {
     // Each slot holds one item ID
-    pub slots: [Option<ItemId>; 10],
+    pub slots: [Option<ItemType>; 10],
     // Slot selected
     pub selected: usize,
 
@@ -30,17 +30,16 @@ impl Hotbar {
     }
 
     /// Set a favourite slot to an item
-    pub fn set_favourite(&mut self, slot: usize, item_id: usize) {
-        *self.slots.get_mut(slot).expect("Slot out of range") = Some(item_id);
+    pub fn set_favourite(&mut self, slot: usize, item: ItemType) {
+        *self.slots.get_mut(slot).expect("Slot out of range") = Some(item);
     }
 
     /// Get the player's selected item & count
-    pub fn get_selected_item(&self) -> Option<(ItemId, usize)> {
+    pub fn get_selected_item(&self) -> Option<(ItemType, usize)> {
         let item_id = self.slots[self.selected]?;
-        let inventory = self.inventory.borrow();
-        let count = inventory.items.get(&item_id)?;
+        let count = self.inventory.borrow().items[item_id];
 
-        Some((item_id, *count))
+        Some((item_id, count))
     }
 }
 
@@ -81,8 +80,9 @@ impl Drawable for Hotbar {
 
                 // Get icon for the item
                 let (icon, count) = if let Some(id) = self.slots[i] {
-                    let icon = items.get(&id).and_then(|item| item.icon.as_ref());
-                    let count = *self.inventory.borrow().items.get(&id).unwrap_or(&0);
+                    let icon = Some(&items[id].texture);
+
+                    let count = self.inventory.borrow().items[id];
                     (icon, count)
                 } else {
                     (None, 0)

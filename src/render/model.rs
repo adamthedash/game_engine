@@ -37,6 +37,7 @@ pub struct Mesh {
 }
 
 impl Mesh {
+    /// Load the mesh onto the GPU
     pub fn new<V: NoUninit>(device: &Device, vertices: &[V], indices: &[u32], name: &str) -> Self {
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some(&format!("Vertex Buffer: {name:?}")),

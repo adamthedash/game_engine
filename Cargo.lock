@@ -1518,6 +1518,7 @@ dependencies = [
  "egui-wgpu",
  "egui-winit",
  "egui_extras",
+ "enum-map",
  "env_logger",
  "fs_extra",
  "glob",

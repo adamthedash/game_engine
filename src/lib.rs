@@ -5,9 +5,9 @@
 pub mod bbox;
 pub mod block;
 pub mod camera;
+pub mod data;
 pub mod game;
-pub mod item;
-pub(crate) mod perlin_cdf;
+pub mod perlin_cdf;
 pub mod player;
 pub mod render;
 pub mod ui;

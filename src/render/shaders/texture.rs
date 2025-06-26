@@ -231,7 +231,7 @@ impl TextureShaderPipelineLayout {
 
 /// An instantiated shader ready to go for rendering
 pub struct TextureShaderPipeline {
-    layouts: TextureShaderPipelineLayout,
+    pub layouts: TextureShaderPipelineLayout,
     camera_bind_group: BindGroup,
     lighting_bind_group: BindGroup,
     pub render_pipeline: wgpu::RenderPipeline,

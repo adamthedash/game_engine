@@ -374,8 +374,14 @@ Here's what the terrain looks like now, I'm pretty happy with it for now:
 ## Day 15
 Today: Wireframe shader for targeted block highlighting  
 
-I'm going to implement a genertic wireframe shader which I can pass a set of lines in world space. I was going to use a geometric shader to render a block wireframe given a block position, but I might want to use the wireframes for other things down the line.  
+I'm going to implement a generic wireframe shader which I can pass a set of lines in world space. I was going to use a geometric shader to render a block wireframe given a block position, but I might want to use the wireframes for other things down the line.  
 My shader renders line primatives rather than triangles, and for now I've just hard-coded the vertices & indices for the block. I'll move this to a data file soon. Here's what it looks like:  
 ![](./images/day15_block.png)  
+
+Now that I have most of the outstanding niggles dealt with, I wanted to go back and take a look at how I'm representing the game data, namely blocks and items. Since I'm focusing on creating a game engine rather than an actual game, I want to pull out the specifics about items and blocks so that users can easily extend or modify them. In particular I want a central place where things like icons/textures, physical attributes of blocks, on-break events, links between in-world blocks and items, etc... are defined.  
+What I want to avoid at all costs is runtime dynamic dispatch as this will end up hitting performance badly in hot paths. I also want to avoid explit numeric or string IDs as they circumvent the benefits of Rust's type system. So I'll be opting for enums as the main identifier system here.  
+I found [this cool crate](https://docs.rs/enum-map/2.7.3/enum_map/index.html) which provides an array indexable by an enum. This not only gives me the semantics I want, it's also much much faster as it avoids using a hashmap for lookups.  
+During the large refactor, I also changed how blocks are stored from a `BlockType` to an `Option<BlockType>`, which makes dealing with empty space (previously `BlockType::Air`) much more explicit. The world generation code was also brought out and made generic. At some point during this last part there was a performance regression and the render loop is taking 3x as long. But that's a problem for tomorrow.  
+
 
 

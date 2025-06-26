@@ -8,17 +8,19 @@ use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
 use crate::{
     InteractionMode,
     block::Block,
+    data::loader::{BLOCKS, ITEMS},
     player::Player,
-    world::{BlockPos, BlockType, Chunk, World, WorldPos},
+    world::{BlockPos, Chunk, World, WorldPos},
+    world_gen::ChunkGenerator,
 };
 
 /// Holds state information about the game independent of the rendering
-pub struct GameState {
+pub struct GameState<G: ChunkGenerator> {
     pub player: Player,
-    pub world: World,
+    pub world: World<G>,
 }
 
-impl GameState {
+impl<G: ChunkGenerator> GameState<G> {
     /// Once-off stuff to do when a new game state is created
     pub fn init(&mut self) {
         self.generate_chunks();
@@ -138,7 +140,7 @@ impl GameState {
                 chunk
                     .iter_blocks()
                     // Can't target air
-                    .filter(|b| b.block_type != BlockType::Air)
+                    .filter(|b| b.block_type.is_some())
                     // Check which blocks are within arm's length
                     .filter(|b| {
                         b.block_pos
@@ -170,24 +172,13 @@ impl GameState {
     fn break_block(&mut self) {
         if let Some(target_block) = self.get_player_target_block() {
             // Break block
-            let old_block = std::mem::replace(
-                self.world.get_block_mut(&target_block.block_pos).unwrap(),
-                BlockType::Air,
-            );
+            let old_block =
+                std::mem::take(self.world.get_block_mut(&target_block.block_pos).unwrap())
+                    .expect("Can't break air blocks!");
 
             // Give an item to the player
-            // TODO: Abstract this out
-            match old_block {
-                BlockType::Air => unreachable!("Can't break Air block!"),
-                BlockType::Dirt => self.player.inventory.borrow_mut().add_item(1, 1),
-                BlockType::Stone => self.player.inventory.borrow_mut().add_item(2, 1),
-                BlockType::Smiley => todo!(),
-                BlockType::Smiley2 => todo!(),
-                BlockType::DarkStone => self.player.inventory.borrow_mut().add_item(3, 1),
-                BlockType::MossyStone => self.player.inventory.borrow_mut().add_item(4, 1),
-                BlockType::RadioactiveStone => self.player.inventory.borrow_mut().add_item(5, 1),
-                BlockType::VoidStone => self.player.inventory.borrow_mut().add_item(6, 1),
-            }
+            let item = BLOCKS.get().unwrap()[old_block].item_on_break;
+            self.player.inventory.borrow_mut().add_item(item, 1);
 
             // Update block exposure information
             // TODO: Change to block-level updates instead of chunk level
@@ -201,7 +192,10 @@ impl GameState {
         if let Some((id, count)) = self.player.hotbar.get_selected_item() {
             assert!(count > 0);
 
-            if let Some((_, intersect, target_block)) = self.get_player_target_block_verbose() {
+            // Check if item is placeable
+            if let Some(new_block_type) = ITEMS.get().unwrap()[id].block
+                && let Some((_, intersect, target_block)) = self.get_player_target_block_verbose()
+            {
                 // Get the adjacent block
                 let direction_vector = intersect.0 - target_block.block_pos.centre().0;
                 let offset = to_cardinal_offset(&direction_vector);
@@ -209,14 +203,10 @@ impl GameState {
 
                 if let Some(block_type) = self.world.get_block_mut(&adjacent_block_pos)
                     // Only place in air blocks
-                    && *block_type == BlockType::Air
+                    && block_type.is_none()
                 {
                     // TODO: move this selection logic elsewhere
-                    *block_type = match id {
-                        1 => BlockType::Dirt,
-                        2 => BlockType::Stone,
-                        _ => unreachable!("Holding dodgy item!"),
-                    };
+                    *block_type = Some(new_block_type);
                     self.player.inventory.borrow_mut().remove_item(id, 1);
 
                     // Update block exposure information

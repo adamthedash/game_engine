@@ -13,7 +13,9 @@ use wgpu::{
     StoreOp, TextureFormat, TextureView,
 };
 
-use crate::{InteractionMode, game::GameState, render::context::DrawContext};
+use crate::{
+    InteractionMode, game::GameState, render::context::DrawContext, world_gen::ChunkGenerator,
+};
 
 /// Trait to enable easy drawing of UI elements
 pub trait Drawable {
@@ -52,12 +54,12 @@ impl UI {
     }
 
     /// Render the UI
-    pub fn render(
+    pub fn render<G: ChunkGenerator>(
         &mut self,
         draw_context: &DrawContext,
         encoder: &mut CommandEncoder,
         view: &TextureView,
-        game: &GameState,
+        game: &GameState<G>,
         game_mode: &InteractionMode,
         debug_lines: &[String],
     ) {

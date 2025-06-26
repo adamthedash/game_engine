@@ -1,32 +1,24 @@
 use egui::{Align2, Color32, FontId, Frame, Vec2, Window};
-use rustc_hash::FxHashMap;
+use enum_map::EnumMap;
 
 use super::Drawable;
-use crate::item::{ITEMS, ItemId};
+use crate::data::{item::ItemType, loader::ITEMS};
 
 #[derive(Default)]
 pub struct Inventory {
     // How much of each item the player is holding
-    pub items: FxHashMap<ItemId, usize>,
+    pub items: EnumMap<ItemType, usize>,
 }
 
 impl Inventory {
-    pub fn add_item(&mut self, item: ItemId, count: usize) {
-        *self.items.entry(item).or_insert(0) += count;
+    pub fn add_item(&mut self, item: ItemType, count: usize) {
+        self.items[item] += count;
     }
 
-    pub fn remove_item(&mut self, item: ItemId, count: usize) {
-        assert!(
-            self.items.get(&item).is_some_and(|x| *x >= count),
-            "Not enough items!"
-        );
+    pub fn remove_item(&mut self, item: ItemType, count: usize) {
+        assert!(self.items[item] >= count, "Not enough items!");
 
-        *self.items.get_mut(&item).unwrap() -= count;
-
-        // Remove from inventory if we've ran out
-        if *self.items.get(&item).unwrap() == 0 {
-            self.items.remove(&item);
-        }
+        self.items[item] -= count;
     }
 }
 
@@ -49,28 +41,31 @@ impl Drawable for Inventory {
                 ui.set_width(window_size.x);
                 ui.set_height(window_size.y);
 
-                self.items.iter().for_each(|(id, count)| {
-                    // Get icon for the item
-                    let icon = items.get(id).unwrap().icon.as_ref().unwrap();
+                self.items
+                    .iter()
+                    .filter(|(_, count)| **count > 0)
+                    .for_each(|(id, count)| {
+                        // Get icon for the item
+                        let icon = &items[id].texture;
 
-                    let frame = Frame::NONE;
-                    frame.show(ui, |ui| {
-                        let resp = ui.add(
-                            egui::Image::new(icon.clone())
-                                .fit_to_exact_size([icon_size, icon_size].into()),
-                        );
-                        let rect = resp.rect;
+                        let frame = Frame::NONE;
+                        frame.show(ui, |ui| {
+                            let resp = ui.add(
+                                egui::Image::new(icon.clone())
+                                    .fit_to_exact_size([icon_size, icon_size].into()),
+                            );
+                            let rect = resp.rect;
 
-                        // Draw item count in bottom right
-                        let painter = ui.painter();
-                        let font_id = FontId::monospace(font_size);
-                        let text =
-                            painter.layout_no_wrap(format!("{count}"), font_id, Color32::WHITE);
+                            // Draw item count in bottom right
+                            let painter = ui.painter();
+                            let font_id = FontId::monospace(font_size);
+                            let text =
+                                painter.layout_no_wrap(format!("{count}"), font_id, Color32::WHITE);
 
-                        let pos = rect.right_bottom() - text.size();
-                        painter.galley(pos, text, Color32::WHITE);
+                            let pos = rect.right_bottom() - text.size();
+                            painter.galley(pos, text, Color32::WHITE);
+                        });
                     });
-                });
             });
     }
 

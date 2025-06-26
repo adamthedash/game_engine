@@ -2,8 +2,9 @@ use std::{path::Path, sync::Arc};
 
 use cgmath::{Matrix3, Matrix4, One, Vector3};
 use wgpu::{
-    Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, Device, LoadOp, Operations,
-    RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor, StoreOp,
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, Buffer, BufferDescriptor,
+    BufferUsages, CommandEncoderDescriptor, Device, LoadOp, Operations, RenderPassColorAttachment,
+    RenderPassDepthStencilAttachment, RenderPassDescriptor, StoreOp,
     util::{BufferInitDescriptor, DeviceExt},
 };
 use winit::{dpi::PhysicalSize, window::Window};
@@ -13,8 +14,8 @@ use crate::{
     InteractionMode,
     block::Block,
     camera::{Camera, CameraUniform},
+    data::loader::{BLOCK_TEXTURES, init_block_info, init_item_info},
     game::GameState,
-    item::init_item_info,
     render::{
         context::DrawContext,
         light::LightingUniform,
@@ -28,7 +29,8 @@ use crate::{
     },
     ui::UI,
     util::{counter::Counter, stopwatch::StopWatch},
-    world::{BlockPos, BlockType, Chunk},
+    world::{BlockPos, Chunk},
+    world_gen::ChunkGenerator,
 };
 
 /// Create a new instance buffer for the given type
@@ -50,6 +52,7 @@ pub struct RenderState {
     wireframe_pipeline: WireframeShaderPipeline,
     lighting_shader_pipeline: LightingShaderPipeline,
     depth_texture: Texture,
+    block_texture_bind_group: BindGroup,
     // Instance buffers
     block_textured_instance_buffer: Buffer,
     block_wireframe_instance_buffer: Buffer,
@@ -182,6 +185,23 @@ impl RenderState {
 
         // Item textures
         init_item_info(&draw_context, &mut ui.egui_renderer);
+        init_block_info(&draw_context);
+
+        let block_texture_bind_group =
+            draw_context.device.create_bind_group(&BindGroupDescriptor {
+                layout: &texture_shader_pipeline.layouts.texture_layout,
+                entries: &[
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: BindingResource::TextureView(&BLOCK_TEXTURES.get().unwrap().view),
+                    },
+                    BindGroupEntry {
+                        binding: 1,
+                        resource: BindingResource::Sampler(&BLOCK_TEXTURES.get().unwrap().sampler),
+                    },
+                ],
+                label: Some("Bind group: Block Textures"),
+            });
 
         Self {
             draw_context,
@@ -202,6 +222,7 @@ impl RenderState {
             wireframe_pipeline,
             block_wireframe_instance_buffer,
             block_wireframe_mesh,
+            block_texture_bind_group,
         }
     }
 
@@ -251,7 +272,11 @@ impl RenderState {
     }
 
     /// Perform the actual rendering to the screen
-    pub fn render(&mut self, game: &GameState, interaction_mode: &InteractionMode) {
+    pub fn render<G: ChunkGenerator>(
+        &mut self,
+        game: &GameState<G>,
+        interaction_mode: &InteractionMode,
+    ) {
         let mut stopwatch = StopWatch::new();
         let mut total_stopwatch = StopWatch::new();
         let mut counter = Counter::new();
@@ -290,7 +315,7 @@ impl RenderState {
                         counter.increment("All blocks");
                     })
                     // Don't render air blocks
-                    .filter(|b| b.block_type != BlockType::Air)
+                    .filter(|b| b.block_type.is_some())
                     .inspect(|_| {
                         counter.increment("Non-air blocks");
                     })
@@ -377,11 +402,10 @@ impl RenderState {
 
             // Draw our mesh cubes
             let mesh = &self.block_model.meshes[0];
-            let material = &self.block_model.materials[0];
             self.texture_shader_pipeline.draw(
                 &mut render_pass,
                 mesh,
-                &material.bind_group,
+                &self.block_texture_bind_group,
                 &self.block_textured_instance_buffer,
                 self.instances_cpu.len(),
             );

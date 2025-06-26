@@ -2,17 +2,18 @@
 use std::{cell::RefCell, f32, path::Path, rc::Rc, sync::Arc, time::Instant};
 
 use cgmath::{Deg, Rad};
-use egui::ahash::HashMapExt;
+use enum_map::EnumMap;
 use game_engine::{
     InteractionMode,
     camera::{Camera, basic_flight::BasicFlightCameraController, traits::CameraController},
+    data::{item::ItemType, world_gen::DefaultGenerator},
     game::GameState,
     player::Player,
     render::state::RenderState,
     ui::{hotbar::Hotbar, inventory::Inventory},
-    world::{BlockPos, BlockType, World, WorldPos},
+    world::{World, WorldPos},
+    world_gen::ChunkGenerator,
 };
-use rustc_hash::FxHashMap;
 use tokio::runtime::Runtime;
 use winit::{
     application::ApplicationHandler,
@@ -23,22 +24,22 @@ use winit::{
     window::{CursorGrabMode, Window, WindowId},
 };
 
-struct App<C: CameraController> {
+struct App<C: CameraController, G: ChunkGenerator> {
     runtime: Runtime,
     render_state: Option<RenderState>,
     camera_controller: C,
-    game_state: GameState,
+    game_state: GameState<G>,
     last_update: Option<Instant>,
     interaction_mode: InteractionMode,
 }
 
-impl App<BasicFlightCameraController> {
+impl App<BasicFlightCameraController, DefaultGenerator> {
     fn new() -> Self {
         let inventory = Inventory {
             items: {
-                let mut items = FxHashMap::new();
-                items.insert(1, 5);
-                items.insert(2, 12);
+                let mut items = EnumMap::default();
+                items[ItemType::Dirt] = 5;
+                items[ItemType::Stone] = 12;
 
                 items
             },
@@ -47,8 +48,8 @@ impl App<BasicFlightCameraController> {
         let hotbar = Hotbar {
             slots: {
                 let mut slots = [None; 10];
-                slots[4] = Some(1);
-                slots[2] = Some(2);
+                slots[4] = Some(ItemType::Dirt);
+                slots[2] = Some(ItemType::Stone);
 
                 slots
             },
@@ -57,7 +58,7 @@ impl App<BasicFlightCameraController> {
         };
 
         let mut game_state = GameState {
-            world: World::default(),
+            world: World::<DefaultGenerator>::default(),
             player: Player {
                 camera: Camera::new(
                     WorldPos((-7., -20., -14.).into()),
@@ -98,7 +99,7 @@ impl App<BasicFlightCameraController> {
     }
 }
 
-impl<C: CameraController> ApplicationHandler for App<C> {
+impl<C: CameraController, G: ChunkGenerator> ApplicationHandler for App<C, G> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         // Initialise RenderState once
         if self.render_state.is_none() {
@@ -151,15 +152,6 @@ impl<C: CameraController> ApplicationHandler for App<C> {
                 .egui_state
                 .on_window_event(&render_state.draw_context.window, &event);
         }
-
-        // Debug block
-        if let Some(block) = self
-            .game_state
-            .world
-            .get_block_mut(&BlockPos::new(-4, 23, -5))
-        {
-            *block = BlockType::Smiley;
-        };
 
         match &event {
             WindowEvent::CloseRequested => event_loop.exit(),

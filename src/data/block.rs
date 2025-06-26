@@ -1,0 +1,61 @@
+use enum_map::Enum;
+use num_derive::{FromPrimitive, ToPrimitive};
+
+use crate::data::item::ItemType;
+
+#[derive(Debug, Enum, PartialEq, Eq, Clone, Copy, ToPrimitive, FromPrimitive)]
+pub enum BlockType {
+    Dirt,
+    Stone,
+    DarkStone,
+    MossyStone,
+    VoidStone,
+    RadioactiveStone,
+}
+
+pub(super) struct BlockData {
+    pub block_type: BlockType,
+    pub breakable: bool,
+    pub item_on_break: ItemType,
+    pub texture_path: &'static str,
+}
+
+pub(super) const TEXTURE_FOLDER: &str = "res/meshes";
+pub(super) const BLOCK_DATA: [BlockData; 6] = [
+    BlockData {
+        block_type: BlockType::Dirt,
+        breakable: true,
+        item_on_break: ItemType::Dirt,
+        texture_path: "dirt.png",
+    },
+    BlockData {
+        block_type: BlockType::Stone,
+        breakable: true,
+        item_on_break: ItemType::Stone,
+        texture_path: "stone.png",
+    },
+    BlockData {
+        block_type: BlockType::DarkStone,
+        breakable: true,
+        item_on_break: ItemType::DarkStone,
+        texture_path: "darkstone.png",
+    },
+    BlockData {
+        block_type: BlockType::MossyStone,
+        breakable: true,
+        item_on_break: ItemType::MossyStone,
+        texture_path: "mossystone.png",
+    },
+    BlockData {
+        block_type: BlockType::VoidStone,
+        breakable: true,
+        item_on_break: ItemType::VoidStone,
+        texture_path: "voidstone.png",
+    },
+    BlockData {
+        block_type: BlockType::RadioactiveStone,
+        breakable: true,
+        item_on_break: ItemType::RadioactiveStone,
+        texture_path: "radioactivestone.png",
+    },
+];
