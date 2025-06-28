@@ -69,5 +69,5 @@ impl Drawable for Inventory {
             });
     }
 
-    fn show_widget(&self, ui: &mut egui::Ui) {}
+    fn show_widget(&self, _ui: &mut egui::Ui) {}
 }

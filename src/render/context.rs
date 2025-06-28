@@ -16,7 +16,7 @@ pub struct DrawContext {
     surface: Surface<'static>,
     pub config: SurfaceConfiguration,
 
-    gpu_handle: Instance,
+    _gpu_handle: Instance,
     pub device: Device,
     pub queue: Queue,
 }
@@ -29,7 +29,7 @@ impl DrawContext {
             window,
             surface,
             config,
-            gpu_handle,
+            _gpu_handle: gpu_handle,
             device,
             queue,
         }

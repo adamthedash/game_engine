@@ -74,7 +74,6 @@ impl CameraController for WalkingCameraController {
         if let KeyEvent {
             state,
             physical_key: PhysicalKey::Code(key),
-            repeat,
             ..
         } = *event
         {

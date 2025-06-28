@@ -30,11 +30,11 @@ impl<G: ChunkGenerator> GameState<G> {
     }
 
     /// Update the world by a game tick
-    pub fn update(&mut self, time_passed: &Duration) {
+    pub fn update(&mut self, _time_passed: &Duration) {
         self.generate_chunks();
     }
 
-    pub fn handle_keypress(&mut self, event: &KeyEvent) {}
+    pub fn handle_keypress(&mut self, _event: &KeyEvent) {}
 
     pub fn handle_mouse_key(&mut self, event: &WindowEvent, mode: &InteractionMode) {
         assert!(matches!(event, WindowEvent::MouseInput { .. }));

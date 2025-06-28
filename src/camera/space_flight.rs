@@ -70,7 +70,6 @@ impl CameraController for SpaceFlightCameraController {
         if let KeyEvent {
             state,
             physical_key: PhysicalKey::Code(key),
-            repeat,
             ..
         } = *event
         {

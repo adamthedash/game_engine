@@ -308,19 +308,6 @@ impl<G: ChunkGenerator> World<G> {
         world
     }
 
-    pub fn default() -> World<DefaultGenerator> {
-        // This is a nice one
-        let chunk_gen = DefaultGenerator::new(
-            Perlin::new(42, 4, 1., 0.5, 1. / 16.),
-            Perlin::new(42, 1, 1., 0.5, 1. / 256.),
-        );
-
-        World {
-            chunks: Default::default(),
-            generator: chunk_gen,
-        }
-    }
-
     fn update_all_exposed_blocks(&mut self) {
         let chunks_to_update = self.chunks.keys().cloned().collect::<Vec<_>>();
         chunks_to_update
@@ -394,5 +381,20 @@ impl<G: ChunkGenerator> World<G> {
         self.chunks
             .get_mut(&chunk_pos)
             .map(|chunk| chunk.get_block_mut(offset))
+    }
+}
+
+impl Default for World<DefaultGenerator> {
+    fn default() -> World<DefaultGenerator> {
+        // This is a nice one
+        let chunk_gen = DefaultGenerator::new(
+            Perlin::new(42, 4, 1., 0.5, 1. / 16.),
+            Perlin::new(42, 1, 1., 0.5, 1. / 256.),
+        );
+
+        World {
+            chunks: Default::default(),
+            generator: chunk_gen,
+        }
     }
 }

@@ -143,7 +143,7 @@ impl LightingShaderPipelineLayout {
         });
 
         LightingShaderPipeline {
-            layouts: self,
+            _layouts: self,
             camera_bind_group,
             render_pipeline: pipeline,
             lighting_bind_group,
@@ -153,7 +153,7 @@ impl LightingShaderPipelineLayout {
 
 /// An instantiated shader ready to go for rendering
 pub struct LightingShaderPipeline {
-    layouts: LightingShaderPipelineLayout,
+    _layouts: LightingShaderPipelineLayout,
     camera_bind_group: BindGroup,
     lighting_bind_group: BindGroup,
     pub render_pipeline: wgpu::RenderPipeline,

@@ -66,7 +66,6 @@ impl CameraController for BasicFlightCameraController {
         if let KeyEvent {
             state,
             physical_key: PhysicalKey::Code(key),
-            repeat,
             ..
         } = *event
         {

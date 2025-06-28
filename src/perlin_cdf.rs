@@ -23,6 +23,7 @@ pub fn perlin_cdf(percentile: f64) -> f64 {
 
 /// Pre-calculated CDF for the perlin noise function
 /// (percentile, value)
+#[allow(clippy::approx_constant)]
 const PERLIN_CDF: [(f64, f64); 1009] = [
     (0., -1.),
     (0.00001, -0.9526267555904006),

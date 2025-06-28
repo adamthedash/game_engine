@@ -68,8 +68,8 @@ pub struct RenderState {
     camera_uniform: CameraUniform,
     camera_buffer: Buffer,
     // Lighting stuff
-    lighting_uniform: LightingUniform,
-    lighting_buffer: Buffer,
+    _lighting_uniform: LightingUniform,
+    _lighting_buffer: Buffer,
     // GUI stuff
     pub ui: UI,
     // Re-usable CPU buffers
@@ -216,8 +216,8 @@ impl RenderState {
             block_textured_instance_buffer,
             sibeal_instance_buffer,
             depth_texture,
-            lighting_uniform,
-            lighting_buffer,
+            _lighting_uniform: lighting_uniform,
+            _lighting_buffer: lighting_buffer,
             lighting_shader_pipeline,
             ui,
             instances_cpu: vec![],
@@ -454,7 +454,7 @@ impl RenderState {
         stopwatch.stamp_and_reset("Render pass");
 
         let debug_block_pos = BlockPos::new(-4, 23, -5);
-        let debug_frustum = game.player.camera.frustum.with(|f| {
+        let _debug_frustum = game.player.camera.frustum.with(|f| {
             [
                 f.near.signed_distance(&debug_block_pos.to_world_pos()),
                 f.far.signed_distance(&debug_block_pos.to_world_pos()),

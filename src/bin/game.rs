@@ -124,7 +124,7 @@ impl<C: CameraController, G: ChunkGenerator> ApplicationHandler for App<C, G> {
         }
     }
 
-    fn exiting(&mut self, event_loop: &ActiveEventLoop) {
+    fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
         println!("Saving world...");
         self.game_state.world.save(Path::new("./saves"));
     }

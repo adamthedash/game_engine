@@ -158,7 +158,7 @@ impl WireframeShaderPipelineLayout {
         });
 
         WireframeShaderPipeline {
-            layouts: self,
+            _layouts: self,
             camera_bind_group,
             render_pipeline: pipeline,
         }
@@ -167,7 +167,7 @@ impl WireframeShaderPipelineLayout {
 
 /// An instantiated shader ready to go for rendering
 pub struct WireframeShaderPipeline {
-    layouts: WireframeShaderPipelineLayout,
+    _layouts: WireframeShaderPipelineLayout,
     camera_bind_group: BindGroup,
     pub render_pipeline: wgpu::RenderPipeline,
 }

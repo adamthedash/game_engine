@@ -38,7 +38,7 @@ impl StopWatch {
         self.trackers
             .iter()
             .map(|(name, durations)| {
-                let last = durations.last().expect("Should have at least 1 duration");
+                let _last = durations.last().expect("Should have at least 1 duration");
                 let last_5 = durations.iter().rev().take(5).collect::<Vec<_>>();
                 let sum = last_5.iter().fold(Duration::ZERO, |acc, d| acc + **d);
                 let avg = sum / last_5.len() as u32;
