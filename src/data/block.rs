@@ -5,6 +5,7 @@ use crate::data::item::ItemType;
 
 #[derive(Debug, Enum, PartialEq, Eq, Clone, Copy, ToPrimitive, FromPrimitive)]
 pub enum BlockType {
+    Air,
     Dirt,
     Stone,
     DarkStone,
@@ -21,7 +22,13 @@ pub(super) struct BlockData {
 }
 
 pub(super) const TEXTURE_FOLDER: &str = "res/meshes";
-pub(super) const BLOCK_DATA: [BlockData; 6] = [
+pub(super) const BLOCK_DATA: [BlockData; 7] = [
+    BlockData {
+        block_type: BlockType::Air,
+        breakable: false,
+        item_on_break: ItemType::Dirt,
+        texture_path: "dirt.png",
+    },
     BlockData {
         block_type: BlockType::Dirt,
         breakable: true,

@@ -4,7 +4,7 @@ use cgmath::{Angle, InnerSpace, Rad, Vector3, Zero};
 use winit::{event::KeyEvent, keyboard::PhysicalKey};
 
 use super::{Camera, angles_to_vec3, traits::CameraController};
-use crate::{world::BlockPos, world_gen::ChunkGenerator};
+use crate::{data::block::BlockType, world::BlockPos, world_gen::ChunkGenerator};
 
 pub struct SpaceFlightCameraController {
     acceleration: f32,
@@ -187,7 +187,7 @@ impl CameraController for SpaceFlightCameraController {
 
         let colliding_with = |pos: &BlockPos| {
             if let Some(block) = world.get_block(pos) {
-                if block.block_type.is_none() {
+                if block.block_type == BlockType::Air {
                     false
                 } else {
                     player_aabb.intersects(&block.aabb().to_f32())

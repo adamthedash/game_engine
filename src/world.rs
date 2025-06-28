@@ -120,7 +120,7 @@ pub enum Biome {
 pub struct Chunk {
     pub chunk_pos: ChunkPos, // Position of chunk in chunk space
     pub world_pos: BlockPos, // Position of corner block in world space
-    pub blocks: [[[Option<BlockType>; Self::CHUNK_SIZE]; Self::CHUNK_SIZE]; Self::CHUNK_SIZE], // Block type IDs
+    pub blocks: [[[BlockType; Self::CHUNK_SIZE]; Self::CHUNK_SIZE]; Self::CHUNK_SIZE], // Block type IDs
     pub exposed_blocks: [[[bool; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE],
 }
 
@@ -159,16 +159,16 @@ impl Chunk {
     }
 
     /// Get a reference to a block in this chunk
-    pub fn get_block(&self, pos: (i32, i32, i32)) -> Option<&BlockType> {
+    pub fn get_block(&self, pos: (i32, i32, i32)) -> &BlockType {
         assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.0));
         assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.1));
         assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.2));
 
-        self.blocks[pos.0 as usize][pos.1 as usize][pos.2 as usize].as_ref()
+        &self.blocks[pos.0 as usize][pos.1 as usize][pos.2 as usize]
     }
 
     /// Get a reference to a block in this chunk
-    pub fn get_block_mut(&mut self, pos: (i32, i32, i32)) -> &mut Option<BlockType> {
+    pub fn get_block_mut(&mut self, pos: (i32, i32, i32)) -> &mut BlockType {
         assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.0));
         assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.1));
         assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.2));
@@ -235,12 +235,7 @@ impl<G: ChunkGenerator> World<G> {
                 .iter()
                 .flatten()
                 .flatten()
-                .flat_map(|x| {
-                    // 0 for Air, rest start at index 1
-                    x.map(|x| x.to_u16().unwrap() + 1)
-                        .unwrap_or(0)
-                        .to_le_bytes()
-                })
+                .flat_map(|x| x.to_u16().unwrap().to_le_bytes())
                 .collect::<Vec<_>>();
 
             let filename = folder.join(format!("{}_{}_{}.chunk", pos.0.x, pos.0.y, pos.0.z));
@@ -275,11 +270,7 @@ impl<G: ChunkGenerator> World<G> {
                     .chunks_exact(std::mem::size_of::<u16>())
                     .map(|c| {
                         let id = u16::from_le_bytes(c.try_into().unwrap());
-                        if id == 0 {
-                            None
-                        } else {
-                            Some(BlockType::from_u16(id - 1).unwrap())
-                        }
+                        BlockType::from_u16(id).unwrap()
                     })
                     .collect::<Vec<_>>()
                     .chunks_exact(Chunk::CHUNK_SIZE)
@@ -344,7 +335,7 @@ impl<G: ChunkGenerator> World<G> {
             .get(chunk_pos)
             .expect("Chunk doesn't exist!")
             .iter_blocks()
-            .filter(|b| b.block_type.is_none())
+            .filter(|b| b.block_type == BlockType::Air)
             .collect::<Vec<_>>();
 
         blocks_to_update.iter().for_each(|b| {
@@ -394,11 +385,11 @@ impl<G: ChunkGenerator> World<G> {
         let (chunk_pos, offset) = pos.to_chunk_offset();
         self.chunks.get(&chunk_pos).map(|chunk| Block {
             block_pos: pos.clone(),
-            block_type: chunk.get_block(offset).copied(),
+            block_type: *chunk.get_block(offset),
         })
     }
 
-    pub fn get_block_mut(&mut self, pos: &BlockPos) -> Option<&mut Option<BlockType>> {
+    pub fn get_block_mut(&mut self, pos: &BlockPos) -> Option<&mut BlockType> {
         let (chunk_pos, offset) = pos.to_chunk_offset();
         self.chunks
             .get_mut(&chunk_pos)

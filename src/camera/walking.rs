@@ -6,6 +6,7 @@ use winit::{event::KeyEvent, keyboard::PhysicalKey};
 use super::{angles_to_vec3, traits::CameraController};
 use crate::{
     camera::Camera,
+    data::block::BlockType,
     world::{BlockPos, World},
     world_gen::ChunkGenerator,
 };
@@ -150,7 +151,7 @@ impl CameraController for WalkingCameraController {
         let player_aabb = camera.aabb();
         let colliding_with = |pos: &BlockPos| {
             if let Some(block) = world.get_block(pos) {
-                if block.block_type.is_none() {
+                if block.block_type == BlockType::Air {
                     false
                 } else {
                     player_aabb.intersects(&block.aabb().to_f32())

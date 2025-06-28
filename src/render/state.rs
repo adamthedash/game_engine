@@ -14,7 +14,10 @@ use crate::{
     InteractionMode,
     block::Block,
     camera::{Camera, CameraUniform},
-    data::loader::{BLOCK_TEXTURES, init_block_info, init_item_info},
+    data::{
+        block::BlockType,
+        loader::{BLOCK_TEXTURES, init_block_info, init_item_info},
+    },
     game::GameState,
     render::{
         context::DrawContext,
@@ -315,7 +318,7 @@ impl RenderState {
                         counter.increment("All blocks");
                     })
                     // Don't render air blocks
-                    .filter(|b| b.block_type.is_some())
+                    .filter(|b| b.block_type != BlockType::Air)
                     .inspect(|_| {
                         counter.increment("Non-air blocks");
                     })

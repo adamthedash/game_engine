@@ -8,7 +8,10 @@ use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
 use crate::{
     InteractionMode,
     block::Block,
-    data::loader::{BLOCKS, ITEMS},
+    data::{
+        block::BlockType,
+        loader::{BLOCKS, ITEMS},
+    },
     player::Player,
     world::{BlockPos, Chunk, World, WorldPos},
     world_gen::ChunkGenerator,
@@ -140,7 +143,7 @@ impl<G: ChunkGenerator> GameState<G> {
                 chunk
                     .iter_blocks()
                     // Can't target air
-                    .filter(|b| b.block_type.is_some())
+                    .filter(|b| b.block_type == BlockType::Air)
                     // Check which blocks are within arm's length
                     .filter(|b| {
                         b.block_pos
@@ -172,9 +175,10 @@ impl<G: ChunkGenerator> GameState<G> {
     fn break_block(&mut self) {
         if let Some(target_block) = self.get_player_target_block() {
             // Break block
-            let old_block =
-                std::mem::take(self.world.get_block_mut(&target_block.block_pos).unwrap())
-                    .expect("Can't break air blocks!");
+            let old_block = std::mem::replace(
+                self.world.get_block_mut(&target_block.block_pos).unwrap(),
+                BlockType::Air,
+            );
 
             // Give an item to the player
             let item = BLOCKS.get().unwrap()[old_block].item_on_break;
@@ -203,10 +207,10 @@ impl<G: ChunkGenerator> GameState<G> {
 
                 if let Some(block_type) = self.world.get_block_mut(&adjacent_block_pos)
                     // Only place in air blocks
-                    && block_type.is_none()
+                    && *block_type == BlockType::Air
                 {
                     // TODO: move this selection logic elsewhere
-                    *block_type = Some(new_block_type);
+                    *block_type = new_block_type;
                     self.player.inventory.borrow_mut().remove_item(id, 1);
 
                     // Update block exposure information

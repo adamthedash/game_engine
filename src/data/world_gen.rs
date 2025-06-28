@@ -11,7 +11,7 @@ pub struct DefaultGenerator {
     density: Perlin,
     biome: Perlin,
     biome_selector: Intervals<Biome>,
-    block_selectors: EnumMap<Biome, Intervals<Option<BlockType>>>,
+    block_selectors: EnumMap<Biome, Intervals<BlockType>>,
 }
 impl DefaultGenerator {
     pub fn new(density: Perlin, biome: Perlin) -> Self {
@@ -26,25 +26,25 @@ impl DefaultGenerator {
                 .map(perlin_cdf)
                 .collect(),
             vec![
-                Some(BlockType::VoidStone),
-                None,
-                Some(BlockType::Dirt),
-                Some(BlockType::MossyStone),
-                Some(BlockType::Stone),
+                BlockType::VoidStone,
+                BlockType::Air,
+                BlockType::Dirt,
+                BlockType::MossyStone,
+                BlockType::Stone,
             ],
         );
         let stone_interval = Intervals::new(
             [0.05, 0.5, 0.75].into_iter().map(perlin_cdf).collect(),
             vec![
-                Some(BlockType::RadioactiveStone),
-                None,
-                Some(BlockType::Stone),
-                Some(BlockType::DarkStone),
+                BlockType::RadioactiveStone,
+                BlockType::Air,
+                BlockType::Stone,
+                BlockType::DarkStone,
             ],
         );
         let dense_caves_interval = Intervals::new(
             [0.2, 0.3].into_iter().map(perlin_cdf).collect(),
-            vec![None, Some(BlockType::Stone), Some(BlockType::DarkStone)],
+            vec![BlockType::Air, BlockType::Stone, BlockType::DarkStone],
         );
         let block_selectors = enum_map! {
             Biome::DirtLand => dirtland_interval.clone(),
@@ -64,7 +64,8 @@ impl DefaultGenerator {
 impl ChunkGenerator for DefaultGenerator {
     fn generate_chunk(&self, world_pos: BlockPos) -> Chunk {
         // TODO: Perf - uninit array
-        let mut blocks = [[[None; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE];
+        let mut blocks =
+            [[[BlockType::Air; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE]; Chunk::CHUNK_SIZE];
 
         for (i, x) in (world_pos.0.x..).take(Chunk::CHUNK_SIZE).enumerate() {
             for (j, y) in (world_pos.0.y..).take(Chunk::CHUNK_SIZE).enumerate() {

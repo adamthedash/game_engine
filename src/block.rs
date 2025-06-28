@@ -10,13 +10,12 @@ use crate::{
 #[derive(Debug)]
 pub struct Block {
     pub block_pos: BlockPos,
-    pub block_type: Option<BlockType>,
+    pub block_type: BlockType,
 }
 
 impl Block {
     pub fn to_instance(&self) -> Instance {
-        let block_type = self.block_type.expect("Can't create instance for air!");
-        let texture_index = BLOCKS.get().unwrap()[block_type].texture_index;
+        let texture_index = BLOCKS.get().unwrap()[self.block_type].texture_index;
         texture::Instance {
             model: Matrix4::from_translation(self.block_pos.to_world_pos().0.to_vec()).into(),
             texture_index,
