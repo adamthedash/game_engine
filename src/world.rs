@@ -322,6 +322,8 @@ impl<G: ChunkGenerator> World<G> {
             .get(chunk_pos)
             .expect("Chunk doesn't exist!")
             .iter_blocks()
+            // TODO: change this over to BlockData.renderable once I separate texture init to game
+            // state init
             .filter(|b| b.block_type == BlockType::Air)
             .collect::<Vec<_>>();
 

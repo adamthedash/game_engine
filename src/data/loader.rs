@@ -77,6 +77,7 @@ pub struct BlockData {
     pub item_on_break: ItemType,
     // Textures are loaded separately as a 3D texture array. This indexes into it.
     pub texture_index: u32,
+    pub renderable: bool,
 }
 
 /// Global static item information, will be set when the renderer loads
@@ -110,6 +111,7 @@ pub fn init_block_info(draw_context: &DrawContext) {
             breakable: b.breakable,
             item_on_break: b.item_on_break,
             texture_index: i as u32,
+            renderable: b.renderable,
         })
         .collect::<Vec<_>>();
 

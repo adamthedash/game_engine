@@ -14,10 +14,7 @@ use crate::{
     InteractionMode,
     block::Block,
     camera::{Camera, CameraUniform},
-    data::{
-        block::BlockType,
-        loader::{BLOCK_TEXTURES, init_block_info, init_item_info},
-    },
+    data::loader::{BLOCK_TEXTURES, BLOCKS, init_block_info, init_item_info},
     game::GameState,
     render::{
         context::DrawContext,
@@ -298,6 +295,7 @@ impl RenderState {
         let player_vision_chunks =
             (game.player.camera.zfar.get() as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
 
+        let blocks = BLOCKS.get().expect("Block data not initalised!");
         self.visible_blocks.clear();
         player_chunk
             // Only render chunks within vision distance of the player (plus 1 chunk buffer)
@@ -318,7 +316,7 @@ impl RenderState {
                         counter.increment("All blocks");
                     })
                     // Don't render air blocks
-                    .filter(|b| b.block_type != BlockType::Air)
+                    .filter(|b| blocks[b.block_type].renderable)
                     .inspect(|_| {
                         counter.increment("Non-air blocks");
                     })

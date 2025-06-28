@@ -137,13 +137,14 @@ impl<G: ChunkGenerator> GameState<G> {
 
         let candidate_chunks = player_chunk.into_iter().chain(candidate_chunks);
 
+        let blocks = BLOCKS.get().expect("Block data not initalised!");
         candidate_chunks
             .flat_map(|chunk| {
                 // Process blocks chunk-by-chunk
                 chunk
                     .iter_blocks()
                     // Can't target air
-                    .filter(|b| b.block_type == BlockType::Air)
+                    .filter(|b| blocks[b.block_type].renderable)
                     // Check which blocks are within arm's length
                     .filter(|b| {
                         b.block_pos
