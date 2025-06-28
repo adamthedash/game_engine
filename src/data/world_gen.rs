@@ -1,9 +1,9 @@
 use enum_map::{EnumMap, enum_map};
 
 use crate::{
-    data::block::BlockType,
+    data::{biome::Biome, block::BlockType},
     perlin_cdf::perlin_cdf,
-    world::{Biome, BlockPos, Chunk},
+    world::{BlockPos, Chunk},
     world_gen::{ChunkGenerator, Intervals, Perlin},
 };
 

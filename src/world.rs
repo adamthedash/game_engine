@@ -5,7 +5,6 @@ use std::{
 };
 
 use cgmath::{InnerSpace, Point3, Vector3};
-use enum_map::Enum;
 use glob::glob;
 use num_traits::{Euclid, FromPrimitive, ToPrimitive};
 use rustc_hash::FxHashMap;
@@ -116,13 +115,6 @@ impl WorldPos {
             self.0.z.floor() as i32,
         )
     }
-}
-
-#[derive(PartialEq, Eq, Debug, Copy, Clone, Enum)]
-pub enum Biome {
-    DirtLand,
-    StoneLand,
-    DenseCaves,
 }
 
 #[derive(Debug)]
