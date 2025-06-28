@@ -395,3 +395,13 @@ I tried some performance profiling with [cargo flamegraph](https://github.com/fl
 
 A big mistake I made last time was having one massive commit with both a refactor and a few of these new changes. I'm not able to step through the changes atomically to see where the hit was introduced. I think my best bet is to revert back to before yesterday and re-implement the changes one by one. I also thing I'll end up going back to a flat enum for `BlockType`, reintroducing `Air` as a type. It also means I'll be able to have more transparent block types down the line rather than an "empty" block.  
 
+
+## Day 17
+I've started reverting some of the changes from last time. First off I've reverted from `Option<BlockType>` to `BlockType`. I've instead added a `BlockData.renderable` flag which can be user defined. As I suspected, this didn't have any impact on performance, still sitting at ~30ms for the block elimination step.  
+As an aside, I took some time to address a lot of the clippy warnings for unused variables. This'll reduce the noise in error messages going forward.  
+
+I decided to do what I should have done in the first place and do an ablation test with all of the steps during block elimination. To my surprise the time spiked from 8ms -> 32ms just at the exposure check, which I didn't touch during the refactoring. I assumed this means that the functions are not being inlined given they're either simple math operations or array lookups.  
+To find out, I found the [cargo-show-asm](https://github.com/pacak/cargo-show-asm) tool, which lets me dump out the generated assembly. I found lines like `call qword ptr [rip + game_engine::world::BlockPos::to_chunk_offset@GOTPCREL]`, which is a function call. After annotating the function with `#[inline(always)]` it disappeared. I repeated this across a lot of the small hot-path functions, and ended up almost completely eliminating the overhead introduced, and I'm back down to ~11ms per frame.  
+I'm not sure why it suddenly stopped being inlined, my guess it's due to the introduction of the generic `ChunkGenerator` parameter on the `RenderState`. According to [this](https://std-dev-guide.rust-lang.org/policy/inline.html) I shouldn't need to do this when generics are in play.  
+
+
