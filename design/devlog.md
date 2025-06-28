@@ -385,3 +385,13 @@ During the large refactor, I also changed how blocks are stored from a `BlockTyp
 
 
 
+## Day 16
+Short day investigating the performance hit from last time.  
+I've ruled out that it's due to extra memory overhead of the `Option`, as rust has a [nice optimisation](https://www.0xatticus.com/posts/understanding_rust_niche/) which cant fit Option<T> into a single byte.  
+I've ruled out the overhead due to runtime loading of block data with `OnceCell`, with Claude calling it "essentially free" with ~0.1ns overhead per `.get()` call.  
+My best guess is there's some overhead due to handling the wrapped option in the hot loop. There's a couple places where I'm converting `&Option<BlockType>` -> `Option<&BlockType>`, unwrapping to get the raw `BlockType`, etc.  
+
+I tried some performance profiling with [cargo flamegraph](https://github.com/flamegraph-rs/flamegraph) to see where the increased time is spent. However rust's incredibly aggressive inlining in release mode meant that the flamegraphs didn't give much insight. Debug profile is essentially useless as there's so much performance hit from not inlining a lot of these lower level math functions.  
+
+A big mistake I made last time was having one massive commit with both a refactor and a few of these new changes. I'm not able to step through the changes atomically to see where the hit was introduced. I think my best bet is to revert back to before yesterday and re-implement the changes one by one. I also thing I'll end up going back to a flat enum for `BlockType`, reintroducing `Air` as a type. It also means I'll be able to have more transparent block types down the line rather than an "empty" block.  
+
