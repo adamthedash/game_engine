@@ -21,7 +21,7 @@ impl Counter {
     }
 
     /// Increment a value, or insert a new entry
-    #[inline(always)]
+    #[inline]
     pub fn increment(&self, key: &str) {
         if !self.enabled {
             return;

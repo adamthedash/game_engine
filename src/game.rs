@@ -225,6 +225,7 @@ impl<G: ChunkGenerator> GameState<G> {
 }
 
 /// Convert a vector offset to it's closest unit offset along one cardinal direction
+#[inline]
 fn to_cardinal_offset(vec: &Vector3<f32>) -> Vector3<i32> {
     // Get the axis with the largest magnitude
     let largest_mag = [vec[0], vec[1], vec[2]]

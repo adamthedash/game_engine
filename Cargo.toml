@@ -32,7 +32,3 @@ winit = { version = "0.30.11", features = ["rwh_06", "wayland", "x11"], default-
 fs_extra = "1.3.0"
 anyhow = "1.0.98"
 
-[profile.release]
-debug=true
-opt-level=2
-lto=false

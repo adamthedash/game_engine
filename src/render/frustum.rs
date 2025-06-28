@@ -16,6 +16,7 @@ pub struct Frustum {
 
 impl Frustum {
     /// Checks if a point is within the frustum
+    #[inline]
     pub fn contains_point(&self, point: &WorldPos) -> bool {
         [
             &self.near,
@@ -30,6 +31,7 @@ impl Frustum {
     }
 
     /// Checks if there is any overlap between this and an AABB
+    #[inline]
     pub fn intersects_aabb(&self, aabb: &AABB<f32>) -> bool {
         // https://gdbooks.gitbooks.io/3dcollisions/content/Chapter6/aabb_in_frustum.html
         // If there is any plane where the aabb is full behind it, then there's no intersection
@@ -56,6 +58,7 @@ pub struct Plane {
 }
 
 impl Plane {
+    #[inline]
     pub fn from_normal_point(normal: &Vector3<f32>, point: &Point3<f32>) -> Self {
         let normal = normal.normalize();
         let d = -normal.dot(point.to_vec());
@@ -64,11 +67,13 @@ impl Plane {
     }
 
     /// Distance from the plane. Positive == infront
+    #[inline]
     pub fn signed_distance(&self, point: &WorldPos) -> f32 {
         self.normal.dot(point.0.to_vec()) + self.d
     }
 
     /// Checks if an AABB is fully behind of the plane
+    #[inline]
     pub fn is_behind(&self, aabb: &AABB<f32>) -> bool {
         aabb.iter_points()
             .all(|p| self.signed_distance(&WorldPos(p)) < 0.)

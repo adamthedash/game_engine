@@ -7,6 +7,7 @@ pub struct Ray {
 }
 
 impl Ray {
+    #[inline]
     pub fn new(pos: Point3<f32>, direction: Vector3<f32>) -> Self {
         assert!(direction.magnitude2() > 0.);
         Self {

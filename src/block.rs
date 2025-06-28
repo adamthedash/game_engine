@@ -14,6 +14,7 @@ pub struct Block {
 }
 
 impl Block {
+    #[inline]
     pub fn to_instance(&self) -> Instance {
         let texture_index = BLOCKS.get().unwrap()[self.block_type].texture_index;
         texture::Instance {
@@ -24,6 +25,7 @@ impl Block {
     }
 
     /// Return the axis-aligned bounding box for this block
+    #[inline]
     pub fn aabb(&self) -> AABB<i32> {
         let p0 = self.block_pos.0;
         let p1 = p0.add_element_wise(1);

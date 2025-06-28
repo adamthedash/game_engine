@@ -47,6 +47,7 @@ impl Perlin {
         }
     }
 
+    #[inline]
     pub fn sample(&self, x: f64, y: f64, z: f64) -> f64 {
         self.frequencies
             .iter()
@@ -84,6 +85,7 @@ impl<T: Clone> Intervals<T> {
         Self { intervals, values }
     }
 
+    #[inline]
     pub fn sample(&self, t: f64) -> &T {
         assert!((-1_f64..=1.).contains(&t));
 

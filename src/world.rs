@@ -22,12 +22,13 @@ use crate::{
 pub struct ChunkPos(pub Point3<i32>);
 
 impl ChunkPos {
+    #[inline]
     pub fn new(x: i32, y: i32, z: i32) -> Self {
         Self(Point3::new(x, y, z))
     }
 
     /// Convert to the position of the chunk's origin block
-    #[inline(always)]
+    #[inline]
     pub fn to_block_pos(&self) -> BlockPos {
         BlockPos(self.0 * Chunk::CHUNK_SIZE as i32)
     }
@@ -48,6 +49,7 @@ impl ChunkPos {
     }
 
     /// Returns the AABB in block coordinates
+    #[inline]
     pub fn aabb(&self) -> AABB<i32> {
         AABB::new(
             &self.to_block_pos().0,
@@ -61,12 +63,13 @@ impl ChunkPos {
 pub struct BlockPos(pub Point3<i32>);
 
 impl BlockPos {
+    #[inline]
     pub fn new(x: i32, y: i32, z: i32) -> Self {
         Self(Point3::new(x, y, z))
     }
 
     /// Convert to a chunk position and the block position relative to the chunk
-    #[inline(always)]
+    #[inline]
     pub fn to_chunk_offset(&self) -> (ChunkPos, (i32, i32, i32)) {
         let chunk_index = ChunkPos::new(
             self.0.x.div_euclid(Chunk::CHUNK_SIZE as i32),
@@ -82,17 +85,18 @@ impl BlockPos {
         (chunk_index, within_chunk_pos)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn to_world_pos(&self) -> WorldPos {
         WorldPos(self.0.cast().expect("Failed to cast BlockPos -> WorldPos"))
     }
 
     /// Centre point of the block in world space
-    #[inline(always)]
+    #[inline]
     pub fn centre(&self) -> WorldPos {
         WorldPos(self.to_world_pos().0 + Vector3::new(0.5, 0.5, 0.5))
     }
 
+    #[inline]
     pub fn aabb(&self) -> AABB<i32> {
         AABB::new(&self.0, &(self.0 + Vector3::new(1, 1, 1)))
     }
@@ -104,7 +108,7 @@ pub struct WorldPos(pub Point3<f32>);
 
 impl WorldPos {
     /// Convert to a block position, rounding down
-    #[inline(always)]
+    #[inline]
     pub fn to_block_pos(&self) -> BlockPos {
         BlockPos::new(
             self.0.x.floor() as i32,
@@ -164,7 +168,7 @@ impl Chunk {
     }
 
     /// Get a reference to a block in this chunk
-    #[inline(always)]
+    #[inline]
     pub fn get_block(&self, pos: (i32, i32, i32)) -> &BlockType {
         assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.0));
         assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.1));
@@ -174,7 +178,7 @@ impl Chunk {
     }
 
     /// Get a reference to a block in this chunk
-    #[inline(always)]
+    #[inline]
     pub fn get_block_mut(&mut self, pos: (i32, i32, i32)) -> &mut BlockType {
         assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.0));
         assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.1));
@@ -183,7 +187,7 @@ impl Chunk {
         &mut self.blocks[pos.0 as usize][pos.1 as usize][pos.2 as usize]
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn is_block_exposed(&self, pos: (i32, i32, i32)) -> bool {
         assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.0));
         assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.1));
@@ -347,6 +351,7 @@ impl<G: ChunkGenerator> World<G> {
     }
 
     /// Check if the given block has any side that isn't surrounded
+    #[inline]
     pub fn is_block_exposed(&self, pos: &BlockPos) -> bool {
         let (chunk_pos, (x, y, z)) = pos.to_chunk_offset();
         self.chunks
@@ -378,6 +383,7 @@ impl<G: ChunkGenerator> World<G> {
         self.chunks.get(pos).expect("Chunk not found!")
     }
 
+    #[inline]
     pub fn get_block(&self, pos: &BlockPos) -> Option<Block> {
         let (chunk_pos, offset) = pos.to_chunk_offset();
         self.chunks.get(&chunk_pos).map(|chunk| Block {
@@ -386,6 +392,7 @@ impl<G: ChunkGenerator> World<G> {
         })
     }
 
+    #[inline]
     pub fn get_block_mut(&mut self, pos: &BlockPos) -> Option<&mut BlockType> {
         let (chunk_pos, offset) = pos.to_chunk_offset();
         self.chunks

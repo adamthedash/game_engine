@@ -1,6 +1,7 @@
 use itertools::Itertools;
 
 /// Get the value of a given percentile for perlin noise
+#[inline]
 pub fn perlin_cdf(percentile: f64) -> f64 {
     assert!((0_f64..=1.).contains(&percentile));
 
