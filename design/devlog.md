@@ -413,5 +413,7 @@ One worry I have with the second approach is conflicting events. For example, tw
 I came across [this](https://gamedev.stackexchange.com/questions/7718/event-driven-communication-in-a-game-engine-yes-or-no) Stack Overflow question which suggests an event queue system works well for games.  
 
 
+## Day 19 
+I've gone down the rabbit hole with the message queue. In order to make dispatching the events to subscribers as efficient as possible, I wanted to use an enum array to do static dispatch. However the `enum_map` crate has a different behaviour for variants with data than I want. I only ever want to index based on the top-level variant identifier. This led me down the path of implementing my own enum arrays, proc macros, const generics and lots of unstable features. The result is something I'm pretty happy with. One thing that is bugging me right now is that I can't index into the array without a fully instantiated variant. So down the line if I wanted to set a subscriber to a `EnemyDied { .. }` event, I have to provide a concrete variant with data in it.  
 
 
