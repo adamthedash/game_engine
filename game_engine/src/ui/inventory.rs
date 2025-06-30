@@ -1,4 +1,4 @@
-use egui::{Align2, Color32, FontId, Frame, Vec2, Window};
+use egui::{Align2, Color32, FontId, Frame, Key, Vec2, Window};
 use enum_map::EnumMap;
 
 use super::Drawable;
@@ -64,6 +64,11 @@ impl Drawable for Inventory {
 
                             let pos = rect.right_bottom() - text.size();
                             painter.galley(pos, text, Color32::WHITE);
+
+                            // Hotbar assignment
+                            if resp.hovered() && ui.input(|i| i.key_pressed(Key::Num1)) {
+                                println!("Setting {:?} to slot 1", id);
+                            }
                         });
                     });
             });

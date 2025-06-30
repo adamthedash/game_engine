@@ -405,3 +405,13 @@ To find out, I found the [cargo-show-asm](https://github.com/pacak/cargo-show-as
 I'm not sure why it suddenly stopped being inlined, my guess it's due to the introduction of the generic `ChunkGenerator` parameter on the `RenderState`. According to [this](https://std-dev-guide.rust-lang.org/policy/inline.html) I shouldn't need to do this when generics are in play.  
 
 
+## Day 18
+Now that performance is back at a good level, it's time to come back to the UI.  
+I want to allow the player to customise their favourited items by hovering over the item in their inventory and pressing the correspoding button. One thing I'm immediately running into is that my previous separation of the Hotbar and Inventory data structures make it difficult to have one affect the state of the other (and especially in both directions). One way I could solve this is replicating the `Rc<RefCell>` approach which I have for the Hotbar -> inventory link. This would mean they both have a reference to each other, which rubs me the wrong way.  
+Another one I'm thinking of which might be a bit cleaner is a Kafka-style event queue. I could have interactions with UI emit an event to the queue, then at the start of each frame I could process the queue to update the game state. This might make other events down the line easier to implement while maintaining separation between the components.  
+One worry I have with the second approach is conflicting events. For example, two events might be emitted which were valid for the game state at the time. After the first event is processed, the second event may be invalid. I'll probably just use a first-come first-served approach, discarding later events that cannot be processed.  
+I came across [this](https://gamedev.stackexchange.com/questions/7718/event-driven-communication-in-a-game-engine-yes-or-no) Stack Overflow question which suggests an event queue system works well for games.  
+
+
+
+

@@ -1,6 +1,7 @@
 #![feature(int_roundings)]
 #![feature(iter_collect_into)]
 #![feature(array_windows)]
+#![feature(array_repeat)]
 
 pub mod bbox;
 pub mod block;
@@ -14,6 +15,7 @@ pub mod ui;
 pub mod util;
 pub mod world;
 pub mod world_gen;
+pub mod event;
 
 #[derive(PartialEq)]
 pub enum InteractionMode {

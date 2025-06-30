@@ -1,0 +1,8 @@
+[package]
+name = "enum_array"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+enum_array_derive = {path = "../enum_array_derive"}
+enum_array_trait = {path = "../enum_array_trait"}
