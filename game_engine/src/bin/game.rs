@@ -225,10 +225,9 @@ impl<C: CameraController, G: ChunkGenerator> ApplicationHandler for App<C, G> {
                     if let Some(render_state) = &mut self.render_state {
                         match self.interaction_mode {
                             InteractionMode::Game => {
-                                render_state
-                                    .draw_context
-                                    .grab_cursor()
-                                    .expect("Failed to grab cursor");
+                                if render_state.draw_context.grab_cursor().is_err() {
+                                    println!("WARNING: Failed to grab cursor!");
+                                }
                             }
                             InteractionMode::UI => {
                                 render_state.draw_context.ungrab_cursor();
@@ -266,10 +265,9 @@ impl<C: CameraController, G: ChunkGenerator> ApplicationHandler for App<C, G> {
                         delta.0 / config.width as f32,
                         delta.1 / config.height as f32,
                     );
-                    render_state
-                        .draw_context
-                        .centre_cursor()
-                        .expect("Failed to centre cursor");
+                    if render_state.draw_context.centre_cursor().is_err() {
+                        println!("WARNING: Failed to centre cursor!");
+                    }
 
                     self.camera_controller
                         .handle_mouse_move(normalised_delta, &mut self.game_state.player.camera);

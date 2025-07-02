@@ -200,9 +200,9 @@ impl<G: ChunkGenerator> GameState<G> {
 
     /// Attempt the place a block where the player is looking
     fn place_block(&mut self) {
-        if let Some((id, count)) = self.player.hotbar.get_selected_item() {
-            assert!(count > 0);
-
+        if let Some((id, count)) = self.player.hotbar.get_selected_item()
+            && count > 0
+        {
             // Check if item is placeable
             if let Some(new_block_type) = ITEMS.get().unwrap()[id].block
                 && let Some((_, intersect, target_block)) = self.get_player_target_block_verbose()
