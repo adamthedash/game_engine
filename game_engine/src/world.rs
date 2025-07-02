@@ -13,6 +13,7 @@ use crate::{
     bbox::AABB,
     block::Block,
     data::{block::BlockType, world_gen::DefaultGenerator},
+    event::{Message, Subscriber},
     world_gen::{ChunkGenerator, Perlin},
 };
 
@@ -404,6 +405,24 @@ impl Default for World<DefaultGenerator> {
         World {
             chunks: Default::default(),
             generator: chunk_gen,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct BlockChangedMessage {
+    pub pos: BlockPos,
+    pub prev_block: BlockType,
+    pub new_block: BlockType,
+}
+
+impl<G: ChunkGenerator> Subscriber for World<G> {
+    fn handle_message(&mut self, event: &Message) {
+        use Message::*;
+        if let BlockChanged(BlockChangedMessage { pos, .. }) = event {
+            // TODO: Change to block-level updates instead of chunk level
+            let (chunk_pos, _) = pos.to_chunk_offset();
+            self.update_exposed_blocks(&chunk_pos);
         }
     }
 }

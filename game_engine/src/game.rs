@@ -12,8 +12,9 @@ use crate::{
         block::BlockType,
         loader::{BLOCKS, ITEMS},
     },
+    event::{MESSAGE_QUEUE, Message},
     player::Player,
-    world::{BlockPos, Chunk, World, WorldPos},
+    world::{BlockChangedMessage, BlockPos, Chunk, World, WorldPos},
     world_gen::ChunkGenerator,
 };
 
@@ -185,10 +186,15 @@ impl<G: ChunkGenerator> GameState<G> {
             let item = BLOCKS.get().unwrap()[old_block].item_on_break;
             self.player.inventory.borrow_mut().add_item(item, 1);
 
-            // Update block exposure information
-            // TODO: Change to block-level updates instead of chunk level
-            let (chunk_pos, _) = target_block.block_pos.to_chunk_offset();
-            self.world.update_exposed_blocks(&chunk_pos);
+            // Tell the world a block has changed
+            MESSAGE_QUEUE
+                .lock()
+                .unwrap()
+                .push_back(Message::BlockChanged(BlockChangedMessage {
+                    pos: target_block.block_pos,
+                    prev_block: old_block,
+                    new_block: BlockType::Air,
+                }));
         }
     }
 
@@ -210,14 +216,18 @@ impl<G: ChunkGenerator> GameState<G> {
                     // Only place in air blocks
                     && *block_type == BlockType::Air
                 {
-                    // TODO: move this selection logic elsewhere
                     *block_type = new_block_type;
                     self.player.inventory.borrow_mut().remove_item(id, 1);
 
-                    // Update block exposure information
-                    // TODO: Change to block-level updates instead of chunk level
-                    let (chunk_pos, _) = target_block.block_pos.to_chunk_offset();
-                    self.world.update_exposed_blocks(&chunk_pos);
+                    // Tell the world a block has changed
+                    MESSAGE_QUEUE
+                        .lock()
+                        .unwrap()
+                        .push_back(Message::BlockChanged(BlockChangedMessage {
+                            pos: target_block.block_pos,
+                            prev_block: BlockType::Air,
+                            new_block: new_block_type,
+                        }));
                 }
             }
         }

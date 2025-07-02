@@ -7,6 +7,7 @@ pub mod bbox;
 pub mod block;
 pub mod camera;
 pub mod data;
+pub mod event;
 pub mod game;
 pub mod perlin_cdf;
 pub mod player;
@@ -15,7 +16,6 @@ pub mod ui;
 pub mod util;
 pub mod world;
 pub mod world_gen;
-pub mod event;
 
 #[derive(PartialEq)]
 pub enum InteractionMode {

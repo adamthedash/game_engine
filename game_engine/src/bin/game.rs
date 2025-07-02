@@ -7,6 +7,7 @@ use game_engine::{
     InteractionMode,
     camera::{Camera, basic_flight::BasicFlightCameraController, traits::CameraController},
     data::{item::ItemType, world_gen::DefaultGenerator},
+    event::{MESSAGE_QUEUE, Message, Subscriber},
     game::GameState,
     player::Player,
     render::state::RenderState,
@@ -99,6 +100,24 @@ impl App<BasicFlightCameraController, DefaultGenerator> {
     }
 }
 
+impl<C: CameraController, G: ChunkGenerator> App<C, G> {
+    /// Process all the messages in the queue, routing them to their subscribers
+    pub fn process_message_queue(&mut self) {
+        use Message::*;
+        MESSAGE_QUEUE
+            .lock()
+            .unwrap()
+            .drain(..)
+            .for_each(|m| match &m {
+                ItemFavourited(_) => {
+                    self.game_state.player.hotbar.handle_message(&m);
+                }
+                BlockChanged(_) => self.game_state.world.handle_message(&m),
+                _ => (),
+            });
+    }
+}
+
 impl<C: CameraController, G: ChunkGenerator> ApplicationHandler for App<C, G> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         // Initialise RenderState once
@@ -156,6 +175,9 @@ impl<C: CameraController, G: ChunkGenerator> ApplicationHandler for App<C, G> {
         match &event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::RedrawRequested => {
+                // Process message queue
+                self.process_message_queue();
+
                 // Game update pass
                 if let Some(last_updated) = self.last_update {
                     let duration = Instant::now().duration_since(last_updated);

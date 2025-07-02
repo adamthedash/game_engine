@@ -31,13 +31,14 @@ pub fn init_item_info(draw_context: &DrawContext, egui_renderer: &mut Renderer) 
     let icons = ITEM_DATA
         .iter()
         .map(|p| {
+            let path = icon_folder.join(p.icon_path);
             let tex = Texture::from_image(
-                &icon_folder.join(p.icon_path),
+                &path,
                 &draw_context.device,
                 &draw_context.queue,
                 p.icon_path,
             )
-            .unwrap();
+            .unwrap_or_else(|_| panic!("Failed to load texture: {path:?}"));
 
             let texture_id = egui_renderer.register_native_texture(
                 &draw_context.device,

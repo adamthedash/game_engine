@@ -2,7 +2,10 @@ use egui::{Align2, Color32, FontId, Frame, Key, Vec2, Window};
 use enum_map::EnumMap;
 
 use super::Drawable;
-use crate::data::{item::ItemType, loader::ITEMS};
+use crate::{
+    data::{item::ItemType, loader::ITEMS},
+    event::{MESSAGE_QUEUE, Message},
+};
 
 #[derive(Default)]
 pub struct Inventory {
@@ -20,6 +23,12 @@ impl Inventory {
 
         self.items[item] -= count;
     }
+}
+
+#[derive(Debug)]
+pub struct ItemFavouritedMessage {
+    pub item: ItemType,
+    pub slot: usize,
 }
 
 impl Drawable for Inventory {
@@ -67,7 +76,13 @@ impl Drawable for Inventory {
 
                             // Hotbar assignment
                             if resp.hovered() && ui.input(|i| i.key_pressed(Key::Num1)) {
-                                println!("Setting {:?} to slot 1", id);
+                                MESSAGE_QUEUE
+                                    .lock()
+                                    .expect("Failed to lock message queue")
+                                    .push_back(Message::ItemFavourited(ItemFavouritedMessage {
+                                        item: id,
+                                        slot: 1,
+                                    }));
                             }
                         });
                     });

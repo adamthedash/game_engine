@@ -3,7 +3,11 @@ use std::{cell::RefCell, rc::Rc};
 use egui::{Align2, Color32, Context, FontId, Frame, Sense, Stroke, Ui, Window};
 
 use super::{Drawable, inventory::Inventory};
-use crate::data::{item::ItemType, loader::ITEMS};
+use crate::{
+    data::{item::ItemType, loader::ITEMS},
+    event::{Message, Subscriber},
+    ui::inventory::ItemFavouritedMessage,
+};
 
 pub struct Hotbar {
     // Each slot holds one item ID
@@ -115,5 +119,13 @@ impl Drawable for Hotbar {
                 });
             });
         });
+    }
+}
+
+impl Subscriber for Hotbar {
+    fn handle_message(&mut self, event: &Message) {
+        if let &Message::ItemFavourited(ItemFavouritedMessage { item, slot }) = event {
+            self.set_favourite(slot, item);
+        }
     }
 }
