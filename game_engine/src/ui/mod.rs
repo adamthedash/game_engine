@@ -77,13 +77,12 @@ impl UI {
             .show_window(ctx);
 
             match game_mode {
-                InteractionMode::Game => {
-                    game.player.hotbar.show_window(ctx);
-                }
+                InteractionMode::Game => {}
                 InteractionMode::UI => {
                     game.player.inventory.borrow().show_window(ctx);
                 }
             }
+            game.player.hotbar.show_window(ctx);
         });
 
         let screen_descriptor = ScreenDescriptor {

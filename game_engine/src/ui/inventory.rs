@@ -35,10 +35,8 @@ impl Drawable for Inventory {
     fn show_window(&self, ctx: &egui::Context) {
         let icon_size = 32.;
         let num_slots = 8;
-        let font_size = 15.;
 
         let window_size = Vec2::new(icon_size, icon_size) * num_slots as f32;
-        let items = ITEMS.get().expect("Items info not initialised!");
 
         Window::new("Inventory")
             .title_bar(false)
@@ -50,44 +48,57 @@ impl Drawable for Inventory {
                 ui.set_width(window_size.x);
                 ui.set_height(window_size.y);
 
-                self.items
-                    .iter()
-                    .filter(|(_, count)| **count > 0)
-                    .for_each(|(id, count)| {
-                        // Get icon for the item
-                        let icon = &items[id].texture;
-
-                        let frame = Frame::NONE;
-                        frame.show(ui, |ui| {
-                            let resp = ui.add(
-                                egui::Image::new(icon.clone())
-                                    .fit_to_exact_size([icon_size, icon_size].into()),
-                            );
-                            let rect = resp.rect;
-
-                            // Draw item count in bottom right
-                            let painter = ui.painter();
-                            let font_id = FontId::monospace(font_size);
-                            let text =
-                                painter.layout_no_wrap(format!("{count}"), font_id, Color32::WHITE);
-
-                            let pos = rect.right_bottom() - text.size();
-                            painter.galley(pos, text, Color32::WHITE);
-
-                            // Hotbar assignment
-                            if resp.hovered() && ui.input(|i| i.key_pressed(Key::Num1)) {
-                                MESSAGE_QUEUE
-                                    .lock()
-                                    .expect("Failed to lock message queue")
-                                    .push_back(Message::ItemFavourited(ItemFavouritedMessage {
-                                        item: id,
-                                        slot: 1,
-                                    }));
-                            }
-                        });
-                    });
+                self.show_widget(ui);
             });
     }
 
-    fn show_widget(&self, _ui: &mut egui::Ui) {}
+    fn show_widget(&self, ui: &mut egui::Ui) {
+        let font_size = 15.;
+        let icon_size = 32.;
+
+        let items = ITEMS.get().expect("Items info not initialised!");
+
+        self.items
+            .iter()
+            .filter(|(_, count)| **count > 0)
+            .for_each(|(id, count)| {
+                // Get icon for the item
+                let icon = &items[id].texture;
+
+                let frame = Frame::NONE;
+                frame.show(ui, |ui| {
+                    let resp = ui.add(
+                        egui::Image::new(icon.clone())
+                            .fit_to_exact_size([icon_size, icon_size].into()),
+                    );
+                    let rect = resp.rect;
+
+                    // Draw item count in bottom right
+                    let painter = ui.painter();
+                    let font_id = FontId::monospace(font_size);
+                    let text = painter.layout_no_wrap(format!("{count}"), font_id, Color32::WHITE);
+
+                    let pos = rect.right_bottom() - text.size();
+                    painter.galley(pos, text, Color32::WHITE);
+
+                    // Hotbar assignment
+                    if resp.hovered() {
+                        use Key::*;
+                        [Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9, Num0]
+                            .into_iter()
+                            .enumerate()
+                            .for_each(|(slot, key)| {
+                                if ui.input(|i| i.key_pressed(key)) {
+                                    MESSAGE_QUEUE
+                                        .lock()
+                                        .expect("Failed to lock message queue")
+                                        .push_back(Message::ItemFavourited(
+                                            ItemFavouritedMessage { item: id, slot },
+                                        ));
+                                }
+                            });
+                    }
+                });
+            });
+    }
 }

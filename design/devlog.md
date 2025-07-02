@@ -423,6 +423,8 @@ Unfortunately I ran into a lot of problems when trying to hold callback-like han
 Another way I could solve this is slapping Rc<RefCell<>> on every past of my game state, but I really want to avoid this because it means I'll have to deal wth the `.borrow()` / `.borrow_mut()` at every point I touch state which will be cumersome as hell.  
 I think most likely what I'll end up doing is splitting the responsibiity. I'll implement the handling logic via a `Subscriber` trait on each game state object. I'll have the message queue at the top level, then manually manage a big matching function which dispatches to all the subscribers.
 
+Now that I have a simple message queue, I can go back to what I actually wanted to implement: item favouriting in the inventory window. I'm doing this the detecting when a player hovers over an item and presses one of the hotbar keys. This triggers a message to the queue, which updates the hotbar in the next game tick.  
+
 
 
 
