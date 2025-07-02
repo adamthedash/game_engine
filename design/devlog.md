@@ -417,3 +417,15 @@ I came across [this](https://gamedev.stackexchange.com/questions/7718/event-driv
 I've gone down the rabbit hole with the message queue. In order to make dispatching the events to subscribers as efficient as possible, I wanted to use an enum array to do static dispatch. However the `enum_map` crate has a different behaviour for variants with data than I want. I only ever want to index based on the top-level variant identifier. This led me down the path of implementing my own enum arrays, proc macros, const generics and lots of unstable features. The result is something I'm pretty happy with. One thing that is bugging me right now is that I can't index into the array without a fully instantiated variant. So down the line if I wanted to set a subscriber to a `EnemyDied { .. }` event, I have to provide a concrete variant with data in it.  
 
 
+## Day 20
+Still on the topic of message queues. This time I'm trying to tackle how I can subscribe to different events with handers for each `GameState` component. My first idea was to encapsulate these in the `MessageQueue` struct, having a list of messages and a list of subscribers. It would then drive the execution by calling the subscriber handling function with each message. 
+Unfortunately I ran into a lot of problems when trying to hold callback-like handler functions as they had references to the game state objects. I tried for a while to get around this by moving the reference ownership elsewhere, however this seems to all fall under Rust's rule of not having [self-referential structs]().  
+Another way I could solve this is slapping Rc<RefCell<>> on every past of my game state, but I really want to avoid this because it means I'll have to deal wth the `.borrow()` / `.borrow_mut()` at every point I touch state which will be cumersome as hell.  
+I think most likely what I'll end up doing is splitting the responsibiity. I'll implement the handling logic via a `Subscriber` trait on each game state object. I'll have the message queue at the top level, then manually manage a big matching function which dispatches to all the subscribers.
+
+
+
+
+
+
+

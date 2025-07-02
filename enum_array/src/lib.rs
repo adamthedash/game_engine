@@ -1,10 +1,10 @@
 #![feature(min_generic_const_args)]
+#![allow(incomplete_features)]
 
 use std::ops::{Index, IndexMut};
 
 pub use enum_array_derive;
 pub use enum_array_trait;
-
 use enum_array_trait::EnumDiscriminant;
 
 #[derive(Debug)]
