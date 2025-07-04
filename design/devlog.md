@@ -419,11 +419,37 @@ I've gone down the rabbit hole with the message queue. In order to make dispatch
 
 ## Day 20
 Still on the topic of message queues. This time I'm trying to tackle how I can subscribe to different events with handers for each `GameState` component. My first idea was to encapsulate these in the `MessageQueue` struct, having a list of messages and a list of subscribers. It would then drive the execution by calling the subscriber handling function with each message. 
-Unfortunately I ran into a lot of problems when trying to hold callback-like handler functions as they had references to the game state objects. I tried for a while to get around this by moving the reference ownership elsewhere, however this seems to all fall under Rust's rule of not having [self-referential structs]().  
+Unfortunately I ran into a lot of problems when trying to hold callback-like handler functions as they had references to the game state objects. I tried for a while to get around this by moving the reference ownership elsewhere, however this seems to all fall under Rust's rule of not having [self-referential structs](https://arunanshub.hashnode.dev/self-referential-structs-in-rust).  
 Another way I could solve this is slapping Rc<RefCell<>> on every past of my game state, but I really want to avoid this because it means I'll have to deal wth the `.borrow()` / `.borrow_mut()` at every point I touch state which will be cumersome as hell.  
 I think most likely what I'll end up doing is splitting the responsibiity. I'll implement the handling logic via a `Subscriber` trait on each game state object. I'll have the message queue at the top level, then manually manage a big matching function which dispatches to all the subscribers.
 
-Now that I have a simple message queue, I can go back to what I actually wanted to implement: item favouriting in the inventory window. I'm doing this the detecting when a player hovers over an item and presses one of the hotbar keys. This triggers a message to the queue, which updates the hotbar in the next game tick.  
+Now that I have a simple message queue, I can go back to what I actually wanted to implement: item favouriting in the inventory window. I'm doing this by detecting when a player hovers over an item and presses one of the hotbar keys. This triggers a message to the queue, which updates the hotbar in the next game tick.  
+
+
+## Day 21
+Now that I have my basic inventory system and block breaking/building, I want the player to be able to do interesting stuff with the things they dig up. It's time to implement crafting!  
+
+There's a few different systems I've seen across games I've played:  
+1) In minecraft, the crafting is "shaped". This means that depending on how you organise the ingredients in the crafting window, it produces a different think. One example is a door, which is a vertical 2x3 of wood blocks, vs a pressure plate, which is a horizontal 3x2 of wood. There's also different placeable workstations which allow you to craft different types of things; a furnace for smelting ores, an anvil for repairing equipment, and so on.  
+2) In [Core Keeper](https://core-keeper.fandom.com/wiki/Crafting), there are several different types of crafting stations for different types ofcrafting. Additionally, there are several "tiers" of crafting, each locked behind a type of material harvestable by the tier below.  
+3) In Terraria, crafting stations are non-interactive. Instead they allow players to craft new things in their inventory when they are in the vicinity. Chests in terraria act similarly, allowing players to craft with items contained in them without manually transferring them to their inventory. This encourages having dedicated [crafting rooms](https://terraria.fandom.com/wiki/Guide:Crafting_101) where lots of stations and chests are nearby.  
+4) A lot of survival RPGs like Valheim also have a crafting time where the player needs to wait for the items to be crafted. I'm not a huge fan of this as the player usually can't do anything while this is happening.  
+5) Some games also have prerequisites before a player can craft certain items. [RuneScape](https://oldschool.runescape.wiki/w/Crafting) locks crafting behind skill levels. Others have [recipes](https://www.wowhead.com/skill=164/blacksmithing#blacksmithing-plans) or [technology research](https://wiki.factorio.com/Technologies).  
+6) [Path of Exile](https://www.poewiki.net/wiki/Guide:Crafting) takes a different approach to crafting. There are "base" item types, and players can use crafting currency to change modifiers on the items.  
+
+Crafting is an important part of the gameplay loop, and there's a few considerations to make sure it feels good. The player should feel rewarded when they craft something, and that it was worth the effort to collect the ingredients. Ingredient requirements should be balanced such that it doesn't feel like a chore to grind them out. There should also be form of item "sink", such as consumables or ammo so that ingredients don't become obsolete once the player has crafted everything.  
+
+I like Factorio's approach, where advanced crafting recipes need a large variety of ingredients from the tiers below.  
+I like the quality of life of Terraria, where players can craft using nearby stations and stockpiles without having to manually search through.  
+I like Path of Exile's crafting system for gear, where items are near infinitely customisable and act as a sink for currency.  
+I like World of Warcraft's recipe system, where players are encouraged to engage in a variety of content to collect rare recipes.  
+I like some form of tier progression, although I think I would prefer a more continuous upward and sideward progression rather than strict tiers tied to materials.  
+
+
+To start off, I'm just going to introduce the ability to craft. Given the player has the required items in their inventory, they should be able to click a button and craft the thing.  
+
+
+
 
 
 
