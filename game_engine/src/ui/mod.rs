@@ -1,11 +1,12 @@
 pub mod axes;
+pub mod crafting;
 pub mod debug;
 pub mod hotbar;
 pub mod inventory;
 
 use axes::Axes;
 use debug::DebugWindow;
-use egui::{Context, Ui};
+use egui::{Color32, Context, FontId, ImageSource, Response, Ui};
 use egui_wgpu::{Renderer, ScreenDescriptor};
 use egui_winit::State;
 use wgpu::{
@@ -14,7 +15,8 @@ use wgpu::{
 };
 
 use crate::{
-    InteractionMode, game::GameState, render::context::DrawContext, world_gen::ChunkGenerator,
+    InteractionMode, game::GameState, render::context::DrawContext, ui::crafting::CraftingWindow,
+    world_gen::ChunkGenerator,
 };
 
 /// Trait to enable easy drawing of UI elements
@@ -80,6 +82,11 @@ impl UI {
                 InteractionMode::Game => {}
                 InteractionMode::UI => {
                     game.player.inventory.borrow().show_window(ctx);
+
+                    CraftingWindow {
+                        inventory: game.player.inventory.clone(),
+                    }
+                    .show_window(ctx);
                 }
             }
             game.player.hotbar.show_window(ctx);
@@ -144,4 +151,28 @@ impl UI {
             self.egui_renderer.free_texture(id);
         });
     }
+}
+
+pub fn draw_icon(
+    ui: &mut Ui,
+    texture: &ImageSource,
+    count: Option<usize>,
+    icon_size: f32,
+    font_size: f32,
+) -> Response {
+    let resp =
+        ui.add(egui::Image::new(texture.clone()).fit_to_exact_size([icon_size, icon_size].into()));
+    let rect = resp.rect;
+
+    // Draw item count in bottom right
+    if let Some(count) = count {
+        let painter = ui.painter();
+        let font_id = FontId::monospace(font_size);
+        let text = painter.layout_no_wrap(format!("{count}"), font_id, Color32::WHITE);
+
+        let pos = rect.right_bottom() - text.size();
+        painter.galley(pos, text, Color32::WHITE);
+    }
+
+    resp
 }

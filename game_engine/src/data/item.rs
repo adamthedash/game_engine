@@ -2,7 +2,7 @@ use enum_map::Enum;
 
 use crate::data::block::BlockType;
 
-#[derive(Enum, Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Enum, Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum ItemType {
     Dirt,
     Stone,

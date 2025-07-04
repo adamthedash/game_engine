@@ -1,12 +1,12 @@
 use std::{cell::RefCell, rc::Rc};
 
-use egui::{Align2, Color32, Context, FontId, Frame, Sense, Stroke, Ui, Window};
+use egui::{Align2, Color32, Context, Frame, Sense, Stroke, Ui, Window};
 
 use super::{Drawable, inventory::Inventory};
 use crate::{
     data::{item::ItemType, loader::ITEMS},
     event::{Message, Subscriber},
-    ui::inventory::ItemFavouritedMessage,
+    ui::{draw_icon, inventory::ItemFavouritedMessage},
 };
 
 pub struct Hotbar {
@@ -94,24 +94,8 @@ impl Drawable for Hotbar {
 
                 frame.show(c, |ui| {
                     if let Some(icon) = icon {
-                        // Draw image
-                        let rect = ui
-                            .add(
-                                egui::Image::new(icon.clone())
-                                    .fit_to_exact_size([icon_size, icon_size].into()),
-                            )
-                            .rect;
-
-                        // Draw item count in bottom right
-                        if count > 0 {
-                            let painter = ui.painter();
-                            let font_id = FontId::monospace(font_size);
-                            let text =
-                                painter.layout_no_wrap(format!("{count}"), font_id, Color32::WHITE);
-
-                            let pos = rect.right_bottom() - text.size();
-                            painter.galley(pos, text, Color32::WHITE);
-                        }
+                        let count = if count > 0 { Some(count) } else { None };
+                        draw_icon(ui, icon, count, icon_size, font_size);
                     } else {
                         // Blank icon
                         ui.allocate_exact_size([icon_size, icon_size].into(), Sense::empty());

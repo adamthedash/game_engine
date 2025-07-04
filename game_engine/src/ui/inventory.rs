@@ -1,10 +1,15 @@
-use egui::{Align2, Color32, FontId, Frame, Key, Vec2, Window};
+use egui::{Align2, Frame, Key, Vec2, Window};
 use enum_map::EnumMap;
 
 use super::Drawable;
 use crate::{
-    data::{item::ItemType, loader::ITEMS},
+    data::{
+        item::ItemType,
+        loader::ITEMS,
+        recipe::{RECIPES, Recipe},
+    },
     event::{MESSAGE_QUEUE, Message},
+    ui::draw_icon,
 };
 
 #[derive(Default)]
@@ -22,6 +27,26 @@ impl Inventory {
         assert!(self.items[item] >= count, "Not enough items!");
 
         self.items[item] -= count;
+    }
+
+    /// Get the recipes the player can currently craft based on what they have on them
+    pub fn get_craftable_recipes(&self) -> impl Iterator<Item = &'static Recipe> {
+        RECIPES.iter().filter(|r| {
+            r.inputs
+                .iter()
+                .all(|(item, count)| self.items[*item] >= *count)
+        })
+    }
+
+    /// Craft the given recipe. panics if the player doesn't have eough ingredients
+    pub fn craft_recipe(&mut self, recipe: &Recipe) {
+        // Remove input items
+        recipe.inputs.iter().for_each(|(item, count)| {
+            self.remove_item(*item, *count);
+        });
+
+        // Add output items
+        self.add_item(recipe.output.0, recipe.output.1);
     }
 }
 
@@ -67,19 +92,7 @@ impl Drawable for Inventory {
 
                 let frame = Frame::NONE;
                 frame.show(ui, |ui| {
-                    let resp = ui.add(
-                        egui::Image::new(icon.clone())
-                            .fit_to_exact_size([icon_size, icon_size].into()),
-                    );
-                    let rect = resp.rect;
-
-                    // Draw item count in bottom right
-                    let painter = ui.painter();
-                    let font_id = FontId::monospace(font_size);
-                    let text = painter.layout_no_wrap(format!("{count}"), font_id, Color32::WHITE);
-
-                    let pos = rect.right_bottom() - text.size();
-                    painter.galley(pos, text, Color32::WHITE);
+                    let resp = draw_icon(ui, icon, Some(*count), icon_size, font_size);
 
                     // Hotbar assignment
                     if resp.hovered() {
