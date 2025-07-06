@@ -448,6 +448,15 @@ I like some form of tier progression, although I think I would prefer a more con
 
 To start off, I'm just going to introduce the ability to craft. Given the player has the required items in their inventory, they should be able to click a button and craft the thing.  
 
+## Day 22
+There's been a hip new version control system that I've seen people praise lately, called [Jujutsu](https://github.com/jj-vcs/jj). I'm going to be giving that a shot for the next few weeks.  
+
+Today I finished up the basic crafting interface. I spent a lot of time struggling to get each recipe to be clickable. As it turns out, it has to be handled in a [different way](https://docs.rs/egui/latest/egui/response/struct.Response.html#method.interact) as the group of widgets aren't "traditionally" clickable things.  
+The result now is a floating window which automatically populates with recipes the player can make. When a recipe is clicked it makes one batch of that thing.  
+
+![](./images/day22.png)  
+
+
 
 
 
