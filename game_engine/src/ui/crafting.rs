@@ -1,6 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
-use egui::{Align, Color32, Frame, Layout, Sense, Stroke, Vec2, Window};
+use egui::{
+    Align, Color32, FontId, Frame, Label, Layout, Sense, Stroke, TextFormat, Vec2, Window, text,
+};
 
 use crate::{
     data::loader::ITEMS,
@@ -14,14 +16,13 @@ pub struct CraftingWindow {
 impl Drawable for CraftingWindow {
     fn show_window(&self, ctx: &egui::Context) {
         Window::new("Crafting")
-            .title_bar(false)
+            .default_open(false)
             .resizable(false)
-            //.anchor(Align2::CENTER_CENTER, [0., 0.])
             .show(ctx, |ui| {
                 // Workaround for window size not working
                 // https://github.com/emilk/egui/issues/498#issuecomment-1758462225
-                //ui.set_width(window_size.x);
-                //ui.set_height(window_size.y);
+                // ui.set_width(window_size.x);
+                // ui.set_height(window_size.y);
 
                 self.show_widget(ui);
             });
@@ -45,30 +46,37 @@ impl Drawable for CraftingWindow {
                     .stroke(Stroke::new(1., Color32::DARK_GRAY))
                     .show(ui, |ui| {
                         // Inputs on the left
-                        let mut resps = r
-                            .inputs
-                            .iter()
-                            .map(|(item, count)| {
-                                let icon = &items[*item].texture;
-                                draw_icon(ui, icon, Some(*count), icon_size, font_size)
-                            })
-                            .collect::<Vec<_>>();
+                        r.inputs.iter().for_each(|(item, count)| {
+                            let icon = &items[*item].texture;
+                            draw_icon(ui, icon, Some(*count), icon_size, font_size);
+                        });
 
                         // Space between input & output
-                        let (_, resp) =
-                            ui.allocate_exact_size([icon_size, icon_size].into(), Sense::empty());
-                        resps.push(resp);
+                        let mut arrow = text::LayoutJob::default();
+                        arrow.append(
+                            ">",
+                            0.,
+                            TextFormat {
+                                font_id: FontId::new(icon_size / 2., egui::FontFamily::Monospace),
+                                ..Default::default()
+                            },
+                        );
+                        ui.add_sized(Vec2::splat(icon_size), Label::new(arrow));
 
                         // Outputs on the right
                         let (item, count) = r.output;
                         let icon = &items[item].texture;
                         let resp = draw_icon(ui, icon, Some(count), icon_size, font_size);
-                        resps.push(resp);
-                        resps
+                        if resp.clicked() {
+                            println!("icon clicked");
+                        }
                     });
 
+                // Make frame clickable
+                let resp = resp.response.interact(Sense::click());
+
                 // Craft on click
-                if resp.inner.iter().any(|r| r.clicked()) {
+                if resp.clicked() {
                     self.inventory.borrow_mut().craft_recipe(r);
                 }
             });

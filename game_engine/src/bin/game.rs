@@ -218,15 +218,6 @@ impl<C: CameraController, G: ChunkGenerator> ApplicationHandler for App<C, G> {
                     event_loop.exit();
                 }
 
-                // Temporary - craft a thing
-                if *key == KeyCode::KeyK {
-                    let mut inv = self.game_state.player.inventory.borrow_mut();
-                    let recipe = inv.get_craftable_recipes().next();
-                    if let Some(recipe) = recipe {
-                        inv.craft_recipe(recipe);
-                    }
-                }
-
                 if *key == KeyCode::Escape && !repeat && state.is_pressed() {
                     self.camera_controller.toggle();
                     self.interaction_mode.toggle();
