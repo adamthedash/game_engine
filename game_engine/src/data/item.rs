@@ -29,9 +29,10 @@ pub enum ItemType {
 // User-defined
 #[derive(Clone, Debug)]
 pub struct ItemData {
+    pub(super) icon_path: &'static str,
+
     pub item_type: ItemType,
     pub name: &'static str,
-    pub(super) icon_path: &'static str,
     pub weight: f32,
     pub block: Option<BlockType>,
     pub breaking_strength: Option<u32>,

@@ -476,6 +476,11 @@ Next up is the tools. I'll just do some basic tiers from each metal. Each tier c
 
 To implement the tier restrictions, I'm going to add a "hardness" attribute to block types. Tools will have an associated "strength" attribute. The player's breaking strength must be strong enough for the block they are trying to break.  
 
+Finally, world gen for the ores will need to be a bit different than for the general terrain generation. I want to generate random clumps of ores depending on the biome. Perlin noise isn't really suitable for this since it generates a smoothe continuum. Instead I want a pseudo-random generator for seed points, which can then be grown out with a random walk.  
+I still need to maintain some properties of perlin like the ability to generate on-demand per chunk. One issue that I've seen people run into with this is generating across chunk boundaries. Since the base chunk needs to be generated before ores can be added in, it causes a cascade of chunk generation.  
+
+
+
 
 
 

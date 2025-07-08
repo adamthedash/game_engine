@@ -8,6 +8,7 @@ pub mod block;
 pub mod camera;
 pub mod data;
 pub mod event;
+pub mod math;
 pub mod perlin_cdf;
 pub mod render;
 pub mod state;
