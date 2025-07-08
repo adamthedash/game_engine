@@ -8,7 +8,7 @@ use enum_map::EnumMap;
 use crate::{
     data::{
         block::{BLOCK_DATA, BlockType, TEXTURE_FOLDER},
-        item::{ICON_PATH, ITEM_DATA, ItemType},
+        item::{self, ICON_PATH, ITEM_DATA, ItemType},
     },
     render::{context::DrawContext, texture::Texture},
 };
@@ -16,12 +16,8 @@ use crate::{
 /// Instantiated item data
 #[derive(Debug, Clone)]
 pub struct ItemData {
-    pub item_type: ItemType,
-    pub name: &'static str,
-    pub weight: f32,
-    pub block: Option<BlockType>,
     pub texture: ImageSource<'static>,
-    pub breaking_strength: Option<u32>,
+    pub data: item::ItemData,
 }
 
 /// Global static item information, will be set when the renderer loads
@@ -56,20 +52,16 @@ pub fn init_item_info(draw_context: &DrawContext, egui_renderer: &mut Renderer) 
         .collect::<Vec<_>>();
 
     let map = ITEM_DATA
-        .iter()
+        .into_iter()
         .zip(icons)
         .map(|(d, icon)| ItemData {
-            item_type: d.item_type,
-            name: d.name,
-            weight: d.weight,
-            block: d.block,
             texture: icon,
-            breaking_strength: d.breaking_strength,
+            data: d,
         })
         .collect::<Vec<_>>();
 
     let map =
-        EnumMap::from_fn(|k: ItemType| map.iter().find(|x| x.item_type == k).unwrap().clone());
+        EnumMap::from_fn(|k: ItemType| map.iter().find(|x| x.data.item_type == k).unwrap().clone());
 
     ITEMS.set(map).unwrap();
 }

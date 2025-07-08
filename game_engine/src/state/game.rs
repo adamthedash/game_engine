@@ -215,7 +215,7 @@ impl<G: ChunkGenerator> GameState<G> {
             && count > 0
         {
             // Check if item is placeable
-            if let Some(new_block_type) = ITEMS.get().unwrap()[id].block
+            if let Some(new_block_type) = ITEMS.get().unwrap()[id].data.block
                 && let Some((_, intersect, target_block)) = self.get_player_target_block_verbose()
             {
                 // Get the adjacent block

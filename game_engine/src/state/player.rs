@@ -21,7 +21,10 @@ impl Player {
         if let Some((item, count)) = player_item
             && count > 0
         {
-            ITEMS.get().unwrap()[item].breaking_strength.unwrap_or(0)
+            ITEMS.get().unwrap()[item]
+                .data
+                .breaking_strength
+                .unwrap_or(0)
         } else {
             0
         }
