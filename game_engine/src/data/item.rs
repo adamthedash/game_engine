@@ -33,6 +33,7 @@ pub(super) struct ItemData {
     pub icon_path: &'static str,
     pub weight: f32,
     pub block: Option<BlockType>,
+    pub breaking_strength: Option<u32>,
 }
 
 pub(super) const ICON_PATH: &str = "res/icons";
@@ -43,6 +44,7 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         icon_path: "dirt.png",
         weight: 1.,
         block: Some(BlockType::Dirt),
+        breaking_strength: None,
     },
     ItemData {
         item_type: ItemType::Stone,
@@ -50,6 +52,7 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         icon_path: "stone.png",
         weight: 1.,
         block: Some(BlockType::Stone),
+        breaking_strength: None,
     },
     ItemData {
         item_type: ItemType::DarkStone,
@@ -57,6 +60,7 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         icon_path: "darkstone.png",
         weight: 1.,
         block: Some(BlockType::DarkStone),
+        breaking_strength: None,
     },
     ItemData {
         item_type: ItemType::MossyStone,
@@ -64,6 +68,7 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         icon_path: "mossystone.png",
         weight: 1.,
         block: Some(BlockType::MossyStone),
+        breaking_strength: None,
     },
     ItemData {
         item_type: ItemType::VoidStone,
@@ -71,6 +76,7 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         icon_path: "voidstone.png",
         weight: 1.,
         block: Some(BlockType::VoidStone),
+        breaking_strength: None,
     },
     ItemData {
         item_type: ItemType::RadioactiveStone,
@@ -78,6 +84,7 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         icon_path: "radioactivestone.png",
         weight: 1.,
         block: Some(BlockType::RadioactiveStone),
+        breaking_strength: None,
     },
     // Ores
     ItemData {
@@ -86,6 +93,7 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         icon_path: "copper.png",
         weight: 1.,
         block: Some(BlockType::Copper),
+        breaking_strength: None,
     },
     ItemData {
         item_type: ItemType::Tin,
@@ -93,6 +101,7 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         icon_path: "tin.png",
         weight: 1.,
         block: Some(BlockType::Tin),
+        breaking_strength: None,
     },
     ItemData {
         item_type: ItemType::Bronze,
@@ -100,6 +109,7 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         icon_path: "bronze.png",
         weight: 1.,
         block: None,
+        breaking_strength: None,
     },
     ItemData {
         item_type: ItemType::Coal,
@@ -107,6 +117,7 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         icon_path: "coal.png",
         weight: 1.,
         block: Some(BlockType::Coal),
+        breaking_strength: None,
     },
     ItemData {
         item_type: ItemType::Iron,
@@ -114,6 +125,7 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         icon_path: "iron.png",
         weight: 1.,
         block: Some(BlockType::Iron),
+        breaking_strength: None,
     },
     ItemData {
         item_type: ItemType::Steel,
@@ -121,6 +133,7 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         icon_path: "steel.png",
         weight: 1.,
         block: None,
+        breaking_strength: None,
     },
     ItemData {
         item_type: ItemType::MagicMetal,
@@ -128,6 +141,7 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         icon_path: "magic_metal.png",
         weight: 1.,
         block: Some(BlockType::MagicMetal),
+        breaking_strength: None,
     },
     // Tools
     ItemData {
@@ -136,6 +150,7 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         icon_path: "copper_pickaxe.png",
         weight: 1.,
         block: None,
+        breaking_strength: Some(100),
     },
     ItemData {
         item_type: ItemType::BronzePickaxe,
@@ -143,6 +158,7 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         icon_path: "bronze_pickaxe.png",
         weight: 1.,
         block: None,
+        breaking_strength: Some(200),
     },
     ItemData {
         item_type: ItemType::IronPickaxe,
@@ -150,6 +166,7 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         icon_path: "iron_pickaxe.png",
         weight: 1.,
         block: None,
+        breaking_strength: Some(300),
     },
     ItemData {
         item_type: ItemType::SteelPickaxe,
@@ -157,6 +174,7 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         icon_path: "steel_pickaxe.png",
         weight: 1.,
         block: None,
+        breaking_strength: Some(400),
     },
     ItemData {
         item_type: ItemType::MagicMetalPickaxe,
@@ -164,5 +182,6 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         icon_path: "magic_metal_pickaxe.png",
         weight: 1.,
         block: None,
+        breaking_strength: Some(500),
     },
 ];

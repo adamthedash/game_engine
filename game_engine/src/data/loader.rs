@@ -75,9 +75,9 @@ pub fn init_item_info(draw_context: &DrawContext, egui_renderer: &mut Renderer) 
 #[derive(Debug, Clone)]
 pub struct BlockData {
     pub block_type: BlockType,
-    pub breakable: bool,
+    pub hardness: Option<u32>,
     pub item_on_break: ItemType,
-    // Textures are loaded separately as a 3D texture array. This indexes into it.
+    /// Textures are loaded separately as a 3D texture array. This indexes into it.
     pub texture_index: u32,
     pub renderable: bool,
 }
@@ -111,7 +111,7 @@ pub fn init_block_info(draw_context: &DrawContext) {
         .enumerate()
         .map(|(i, b)| BlockData {
             block_type: b.block_type,
-            breakable: b.breakable,
+            hardness: b.hardness,
             item_on_break: b.item_on_break,
             texture_index: i as u32,
             renderable: b.renderable,

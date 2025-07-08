@@ -176,14 +176,25 @@ impl<G: ChunkGenerator> GameState<G> {
     /// Attempt to break the block the player is targeting
     fn break_block(&mut self) {
         if let Some(target_block) = self.get_player_target_block() {
+            let blocks = BLOCKS.get().unwrap();
+
+            // Check if player can break the block
+            let player_break_strength = 100; // TODO
+
+            let block_type = self.world.get_block_mut(&target_block.block_pos).unwrap();
+            if blocks[*block_type]
+                .hardness
+                .is_none_or(|h| h > player_break_strength)
+            {
+                // Block is too hard
+                return;
+            }
+
             // Break block
-            let old_block = std::mem::replace(
-                self.world.get_block_mut(&target_block.block_pos).unwrap(),
-                BlockType::Air,
-            );
+            let old_block = std::mem::replace(block_type, BlockType::Air);
 
             // Give an item to the player
-            let item = BLOCKS.get().unwrap()[old_block].item_on_break;
+            let item = blocks[old_block].item_on_break;
             self.player.inventory.borrow_mut().add_item(item, 1);
 
             // Tell the world a block has changed
