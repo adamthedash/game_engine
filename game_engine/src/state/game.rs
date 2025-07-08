@@ -147,7 +147,7 @@ impl<G: ChunkGenerator> GameState<G> {
                 chunk
                     .iter_blocks()
                     // Can't target air
-                    .filter(|b| blocks[b.block_type].renderable)
+                    .filter(|b| blocks[b.block_type].data.renderable)
                     // Check which blocks are within arm's length
                     .filter(|b| {
                         b.block_pos
@@ -183,6 +183,7 @@ impl<G: ChunkGenerator> GameState<G> {
             // Check if player can break the block
             let block_type = self.world.get_block_mut(&target_block.block_pos).unwrap();
             if blocks[*block_type]
+                .data
                 .hardness
                 .is_none_or(|h| h > self.player.get_breaking_strength())
             {
@@ -194,7 +195,7 @@ impl<G: ChunkGenerator> GameState<G> {
             let old_block = std::mem::replace(block_type, BlockType::Air);
 
             // Give an item to the player
-            let item = blocks[old_block].item_on_break;
+            let item = blocks[old_block].data.item_on_break;
             self.player.inventory.borrow_mut().add_item(item, 1);
 
             // Tell the world a block has changed

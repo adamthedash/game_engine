@@ -20,12 +20,14 @@ pub enum BlockType {
     MagicMetal,
 }
 
-pub(super) struct BlockData {
+#[derive(Debug, Clone)]
+pub struct BlockData {
+    pub(super) texture_path: &'static str,
+
     pub block_type: BlockType,
     /// None == unbreakable, 0 == broken by anything, bigger == harder to break
     pub hardness: Option<u32>,
     pub item_on_break: ItemType,
-    pub texture_path: &'static str,
     pub renderable: bool,
 }
 

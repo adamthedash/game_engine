@@ -7,7 +7,7 @@ use enum_map::EnumMap;
 
 use crate::{
     data::{
-        block::{BLOCK_DATA, BlockType, TEXTURE_FOLDER},
+        block::{self, BLOCK_DATA, BlockType, TEXTURE_FOLDER},
         item::{self, ICON_PATH, ITEM_DATA, ItemType},
     },
     render::{context::DrawContext, texture::Texture},
@@ -68,12 +68,9 @@ pub fn init_item_info(draw_context: &DrawContext, egui_renderer: &mut Renderer) 
 
 #[derive(Debug, Clone)]
 pub struct BlockData {
-    pub block_type: BlockType,
-    pub hardness: Option<u32>,
-    pub item_on_break: ItemType,
     /// Textures are loaded separately as a 3D texture array. This indexes into it.
     pub texture_index: u32,
-    pub renderable: bool,
+    pub data: block::BlockData,
 }
 
 /// Global static item information, will be set when the renderer loads
@@ -101,21 +98,18 @@ pub fn init_block_info(draw_context: &DrawContext) {
     .unwrap();
 
     let block_data = BLOCK_DATA
-        .iter()
+        .into_iter()
         .enumerate()
         .map(|(i, b)| BlockData {
-            block_type: b.block_type,
-            hardness: b.hardness,
-            item_on_break: b.item_on_break,
             texture_index: i as u32,
-            renderable: b.renderable,
+            data: b,
         })
         .collect::<Vec<_>>();
 
     let map = EnumMap::from_fn(|k| {
         block_data
             .iter()
-            .find(|x| x.block_type == k)
+            .find(|x| x.data.block_type == k)
             .unwrap()
             .clone()
     });

@@ -318,7 +318,7 @@ impl RenderState {
                         counter.increment("All blocks");
                     })
                     // Don't render air blocks
-                    .filter(|b| blocks[b.block_type].renderable)
+                    .filter(|b| blocks[b.block_type].data.renderable)
                     .inspect(|_| {
                         counter.increment("Non-air blocks");
                     })
