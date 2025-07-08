@@ -10,6 +10,14 @@ pub enum ItemType {
     MossyStone,
     VoidStone,
     RadioactiveStone,
+    // Ores
+    Copper,
+    Tin,
+    Bronze,
+    Coal,
+    Iron,
+    Steel,
+    MagicMetal,
 }
 
 // User-defined
@@ -22,7 +30,7 @@ pub(super) struct ItemData {
 }
 
 pub(super) const ICON_PATH: &str = "res/icons";
-pub(super) const ITEM_DATA: [ItemData; 6] = [
+pub(super) const ITEM_DATA: [ItemData; 13] = [
     ItemData {
         item_type: ItemType::Dirt,
         name: "Dirt",
@@ -64,5 +72,55 @@ pub(super) const ITEM_DATA: [ItemData; 6] = [
         icon_path: "radioactivestone.png",
         weight: 1.,
         block: Some(BlockType::RadioactiveStone),
+    },
+    // Ores
+    ItemData {
+        item_type: ItemType::Copper,
+        name: "Copper Ore",
+        icon_path: "copper.png",
+        weight: 1.,
+        block: Some(BlockType::Copper),
+    },
+    ItemData {
+        item_type: ItemType::Tin,
+        name: "Tin Ore",
+        icon_path: "tin.png",
+        weight: 1.,
+        block: Some(BlockType::Tin),
+    },
+    ItemData {
+        item_type: ItemType::Bronze,
+        name: "Bronze Bar",
+        icon_path: "bronze.png",
+        weight: 1.,
+        block: None,
+    },
+    ItemData {
+        item_type: ItemType::Coal,
+        name: "Coal",
+        icon_path: "coal.png",
+        weight: 1.,
+        block: Some(BlockType::Coal),
+    },
+    ItemData {
+        item_type: ItemType::Iron,
+        name: "Iron Ore",
+        icon_path: "iron.png",
+        weight: 1.,
+        block: Some(BlockType::Iron),
+    },
+    ItemData {
+        item_type: ItemType::Steel,
+        name: "Steel Bar",
+        icon_path: "steel.png",
+        weight: 1.,
+        block: None,
+    },
+    ItemData {
+        item_type: ItemType::MagicMetal,
+        name: "Magic Metal Bar",
+        icon_path: "magic_metal.png",
+        weight: 1.,
+        block: Some(BlockType::MagicMetal),
     },
 ];

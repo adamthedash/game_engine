@@ -1,5 +1,6 @@
 use std::{path::Path, sync::OnceLock};
 
+use anyhow::Context;
 use egui::{ImageSource, load::SizedTexture};
 use egui_wgpu::Renderer;
 use enum_map::EnumMap;
@@ -102,6 +103,7 @@ pub fn init_block_info(draw_context: &DrawContext) {
         &draw_context.queue,
         "Block Textures",
     )
+    .context("Failed to load block textures.")
     .unwrap();
 
     let block_data = BLOCK_DATA

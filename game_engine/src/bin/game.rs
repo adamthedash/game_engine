@@ -41,6 +41,13 @@ impl App<BasicFlightCameraController, DefaultGenerator> {
                 let mut items = EnumMap::default();
                 items[ItemType::Dirt] = 5;
                 items[ItemType::Stone] = 12;
+                items[ItemType::Coal] = 12;
+                items[ItemType::Iron] = 12;
+                items[ItemType::Copper] = 12;
+                items[ItemType::Tin] = 12;
+                items[ItemType::Bronze] = 12;
+                items[ItemType::Steel] = 12;
+                items[ItemType::MagicMetal] = 12;
 
                 items
             },

@@ -12,6 +12,12 @@ pub enum BlockType {
     MossyStone,
     VoidStone,
     RadioactiveStone,
+    // Ores
+    Copper,
+    Tin,
+    Iron,
+    Coal,
+    MagicMetal,
 }
 
 pub(super) struct BlockData {
@@ -23,7 +29,7 @@ pub(super) struct BlockData {
 }
 
 pub(super) const TEXTURE_FOLDER: &str = "res/meshes";
-pub(super) const BLOCK_DATA: [BlockData; 7] = [
+pub(super) const BLOCK_DATA: [BlockData; 12] = [
     BlockData {
         block_type: BlockType::Air,
         breakable: false,
@@ -71,6 +77,42 @@ pub(super) const BLOCK_DATA: [BlockData; 7] = [
         breakable: true,
         item_on_break: ItemType::RadioactiveStone,
         texture_path: "radioactivestone.png",
+        renderable: true,
+    },
+    // Ores
+    BlockData {
+        block_type: BlockType::Copper,
+        breakable: true,
+        item_on_break: ItemType::Copper,
+        texture_path: "copper.png",
+        renderable: true,
+    },
+    BlockData {
+        block_type: BlockType::Tin,
+        breakable: true,
+        item_on_break: ItemType::Tin,
+        texture_path: "tin.png",
+        renderable: true,
+    },
+    BlockData {
+        block_type: BlockType::Iron,
+        breakable: true,
+        item_on_break: ItemType::Iron,
+        texture_path: "iron.png",
+        renderable: true,
+    },
+    BlockData {
+        block_type: BlockType::MagicMetal,
+        breakable: true,
+        item_on_break: ItemType::MagicMetal,
+        texture_path: "magic_metal.png",
+        renderable: true,
+    },
+    BlockData {
+        block_type: BlockType::Coal,
+        breakable: true,
+        item_on_break: ItemType::Coal,
+        texture_path: "coal.png",
         renderable: true,
     },
 ];

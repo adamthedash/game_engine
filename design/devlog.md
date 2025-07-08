@@ -458,6 +458,21 @@ The result now is a floating window which automatically populates with recipes t
 
 
 
+## Day 23
+Now that I have some basic systems implemented, I want to give the player some objective to achieve. A simple one is a material progression system.  
+I'm going to add several tiers of items based on ore types. To do this I'll need a few things:  
+1) A way to restrict harvesting blocks based on some criteria of the player. Eg. they are holding a tool of at least a certain tier.  
+2) New blocks and items for the different tiers.  
+3) World gen for the new blocks.  
+4) New crafting recipes for the new items.  
+
+I'm going to add the new items and blocks first, as it'll be a good test of how extensible I've made those systems. This was pretty easy, just adding the new texture files, block and item entries without touching the core engine. Here they are, Copper, Tin, Iron, Coal, Magic Metal:  
+
+![](./images/day23_new_blocks.png)  
+
+
+
+
 
 
 

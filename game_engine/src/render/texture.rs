@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use image::{EncodableLayout, ImageReader, RgbaImage};
 use wgpu::{
     CompareFunction, Device, Extent3d, FilterMode, Origin3d, Queue, Sampler, SamplerDescriptor,
@@ -79,7 +79,12 @@ impl Texture {
     ) -> Result<Self> {
         let mut images = paths
             .iter()
-            .map(|path| Ok(ImageReader::open(path)?.decode()?.to_rgba8()))
+            .map(|path| {
+                Ok(ImageReader::open(path)
+                    .with_context(|| format!("Failed to open image: {path:?}"))?
+                    .decode()?
+                    .to_rgba8())
+            })
             .collect::<Result<Vec<_>>>()?;
         assert!(!images.is_empty(), "No images supplied.");
 
