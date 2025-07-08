@@ -18,6 +18,12 @@ pub enum ItemType {
     Iron,
     Steel,
     MagicMetal,
+    // Tools
+    CopperPickaxe,
+    BronzePickaxe,
+    IronPickaxe,
+    SteelPickaxe,
+    MagicMetalPickaxe,
 }
 
 // User-defined
@@ -30,7 +36,7 @@ pub(super) struct ItemData {
 }
 
 pub(super) const ICON_PATH: &str = "res/icons";
-pub(super) const ITEM_DATA: [ItemData; 13] = [
+pub(super) const ITEM_DATA: [ItemData; 18] = [
     ItemData {
         item_type: ItemType::Dirt,
         name: "Dirt",
@@ -122,5 +128,41 @@ pub(super) const ITEM_DATA: [ItemData; 13] = [
         icon_path: "magic_metal.png",
         weight: 1.,
         block: Some(BlockType::MagicMetal),
+    },
+    // Tools
+    ItemData {
+        item_type: ItemType::CopperPickaxe,
+        name: "Copper Pickaxe",
+        icon_path: "copper_pickaxe.png",
+        weight: 1.,
+        block: None,
+    },
+    ItemData {
+        item_type: ItemType::BronzePickaxe,
+        name: "Bronze Pickaxe",
+        icon_path: "bronze_pickaxe.png",
+        weight: 1.,
+        block: None,
+    },
+    ItemData {
+        item_type: ItemType::IronPickaxe,
+        name: "Iron Pickaxe",
+        icon_path: "iron_pickaxe.png",
+        weight: 1.,
+        block: None,
+    },
+    ItemData {
+        item_type: ItemType::SteelPickaxe,
+        name: "Steel Pickaxe",
+        icon_path: "steel_pickaxe.png",
+        weight: 1.,
+        block: None,
+    },
+    ItemData {
+        item_type: ItemType::MagicMetalPickaxe,
+        name: "Magic Metal Pickaxe",
+        icon_path: "magic_metal_pickaxe.png",
+        weight: 1.,
+        block: None,
     },
 ];

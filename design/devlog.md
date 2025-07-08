@@ -470,6 +470,11 @@ I'm going to add the new items and blocks first, as it'll be a good test of how 
 
 ![](./images/day23_new_blocks.png)  
 
+Next up is the tools. I'll just do some basic tiers from each metal. Each tier can break up to the tier above it. Here they are with their recipes:  
+
+![](./images/day23_new_tools.png)  
+
+
 
 
 

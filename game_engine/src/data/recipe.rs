@@ -20,5 +20,33 @@ pub static RECIPES: LazyLock<Vec<Recipe>> = LazyLock::new(|| {
             inputs: { FxHashMap::from_iter([(ItemType::Dirt, 1), (ItemType::Stone, 2)]) },
             output: (ItemType::MossyStone, 2),
         },
+        Recipe {
+            inputs: { FxHashMap::from_iter([(ItemType::Copper, 1), (ItemType::Tin, 1)]) },
+            output: (ItemType::Bronze, 2),
+        },
+        Recipe {
+            inputs: { FxHashMap::from_iter([(ItemType::Iron, 1), (ItemType::Coal, 1)]) },
+            output: (ItemType::Steel, 1),
+        },
+        Recipe {
+            inputs: { FxHashMap::from_iter([(ItemType::Copper, 5)]) },
+            output: (ItemType::CopperPickaxe, 1),
+        },
+        Recipe {
+            inputs: { FxHashMap::from_iter([(ItemType::Bronze, 5)]) },
+            output: (ItemType::BronzePickaxe, 1),
+        },
+        Recipe {
+            inputs: { FxHashMap::from_iter([(ItemType::Iron, 5)]) },
+            output: (ItemType::IronPickaxe, 1),
+        },
+        Recipe {
+            inputs: { FxHashMap::from_iter([(ItemType::Steel, 5)]) },
+            output: (ItemType::SteelPickaxe, 1),
+        },
+        Recipe {
+            inputs: { FxHashMap::from_iter([(ItemType::MagicMetal, 5)]) },
+            output: (ItemType::MagicMetalPickaxe, 1),
+        },
     ]
 });
