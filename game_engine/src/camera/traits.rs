@@ -3,7 +3,7 @@ use std::time::Duration;
 use winit::event::KeyEvent;
 
 use super::Camera;
-use crate::{world::World, world_gen::ChunkGenerator};
+use crate::{state::world::World, world_gen::ChunkGenerator};
 
 pub trait CameraController {
     fn handle_keypress(&mut self, event: &KeyEvent);

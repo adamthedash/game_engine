@@ -4,7 +4,7 @@ use crate::{
     bbox::AABB,
     data::{block::BlockType, loader::BLOCKS},
     render::shaders::texture::{self, Instance},
-    world::BlockPos,
+    state::world::BlockPos,
 };
 
 #[derive(Debug)]

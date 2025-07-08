@@ -15,7 +15,6 @@ use crate::{
     block::Block,
     camera::{Camera, CameraUniform},
     data::loader::{BLOCK_TEXTURES, BLOCKS, init_block_info, init_item_info},
-    game::GameState,
     render::{
         context::DrawContext,
         light::LightingUniform,
@@ -27,9 +26,12 @@ use crate::{
         },
         texture::Texture,
     },
+    state::{
+        game::GameState,
+        world::{BlockPos, Chunk},
+    },
     ui::UI,
     util::{counter::Counter, stopwatch::StopWatch},
-    world::{BlockPos, Chunk},
     world_gen::ChunkGenerator,
 };
 

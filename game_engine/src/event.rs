@@ -3,7 +3,7 @@ use std::{
     sync::{LazyLock, Mutex},
 };
 
-use crate::{ui::inventory::ItemFavouritedMessage, world::BlockChangedMessage};
+use crate::{state::world::BlockChangedMessage, ui::inventory::ItemFavouritedMessage};
 
 #[derive(Debug)]
 #[non_exhaustive]

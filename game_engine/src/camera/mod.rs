@@ -16,7 +16,7 @@ use crate::{
         frustum::{Frustum, Plane},
         ray::Ray,
     },
-    world::WorldPos,
+    state::world::WorldPos,
 };
 
 /// Matrix used to convert from OpenGL to WebGPU NCD

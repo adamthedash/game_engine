@@ -1,6 +1,6 @@
 use cgmath::{EuclideanSpace, InnerSpace, Point3, Vector3};
 
-use crate::{bbox::AABB, world::WorldPos};
+use crate::{bbox::AABB, state::world::WorldPos};
 
 /// Frustum defined by 6 planes.
 /// Plane normals point inwards.

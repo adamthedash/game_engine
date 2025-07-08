@@ -7,7 +7,7 @@ use super::{angles_to_vec3, traits::CameraController};
 use crate::{
     camera::Camera,
     data::block::BlockType,
-    world::{BlockPos, World},
+    state::world::{BlockPos, World},
     world_gen::ChunkGenerator,
 };
 

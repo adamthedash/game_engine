@@ -13,8 +13,10 @@ use crate::{
         loader::{BLOCKS, ITEMS},
     },
     event::{MESSAGE_QUEUE, Message},
-    player::Player,
-    world::{BlockChangedMessage, BlockPos, Chunk, World, WorldPos},
+    state::{
+        player::Player,
+        world::{BlockChangedMessage, BlockPos, Chunk, World, WorldPos},
+    },
     world_gen::ChunkGenerator,
 };
 

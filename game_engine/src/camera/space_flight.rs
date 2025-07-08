@@ -4,7 +4,11 @@ use cgmath::{Angle, InnerSpace, Rad, Vector3, Zero};
 use winit::{event::KeyEvent, keyboard::PhysicalKey};
 
 use super::{Camera, angles_to_vec3, traits::CameraController};
-use crate::{data::block::BlockType, world::BlockPos, world_gen::ChunkGenerator};
+use crate::{
+    data::block::BlockType,
+    state::world::{BlockPos, World},
+    world_gen::ChunkGenerator,
+};
 
 pub struct SpaceFlightCameraController {
     acceleration: f32,
@@ -112,7 +116,7 @@ impl CameraController for SpaceFlightCameraController {
     fn update_camera<G: ChunkGenerator>(
         &mut self,
         camera: &mut super::Camera,
-        world: &crate::world::World<G>,
+        world: &World<G>,
         duration: &std::time::Duration,
     ) {
         if !self.enabled {

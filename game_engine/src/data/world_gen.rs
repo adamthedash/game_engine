@@ -3,7 +3,7 @@ use enum_map::{EnumMap, enum_map};
 use crate::{
     data::{biome::Biome, block::BlockType},
     perlin_cdf::perlin_cdf,
-    world::{BlockPos, Chunk},
+    state::world::{BlockPos, Chunk},
     world_gen::{ChunkGenerator, Intervals, Perlin},
 };
 

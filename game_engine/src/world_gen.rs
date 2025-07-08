@@ -1,6 +1,6 @@
 use libnoise::{Generator, ImprovedPerlin};
 
-use crate::world::{BlockPos, Chunk};
+use crate::state::world::{BlockPos, Chunk};
 
 #[derive(Debug)]
 pub struct Perlin {

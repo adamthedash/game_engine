@@ -15,8 +15,8 @@ use wgpu::{
 };
 
 use crate::{
-    InteractionMode, game::GameState, render::context::DrawContext, ui::crafting::CraftingWindow,
-    world_gen::ChunkGenerator,
+    InteractionMode, render::context::DrawContext, state::game::GameState,
+    ui::crafting::CraftingWindow, world_gen::ChunkGenerator,
 };
 
 /// Trait to enable easy drawing of UI elements

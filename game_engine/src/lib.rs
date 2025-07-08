@@ -8,13 +8,11 @@ pub mod block;
 pub mod camera;
 pub mod data;
 pub mod event;
-pub mod game;
 pub mod perlin_cdf;
-pub mod player;
 pub mod render;
+pub mod state;
 pub mod ui;
 pub mod util;
-pub mod world;
 pub mod world_gen;
 
 #[derive(PartialEq)]
