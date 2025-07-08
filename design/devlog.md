@@ -474,6 +474,7 @@ Next up is the tools. I'll just do some basic tiers from each metal. Each tier c
 
 ![](./images/day23_new_tools.png)  
 
+To implement the tier restrictions, I'm going to add a "hardness" attribute to block types. Tools will have an associated "strength" attribute. The player's breaking strength must be strong enough for the block they are trying to break.  
 
 
 
