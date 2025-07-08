@@ -21,6 +21,7 @@ pub struct ItemData {
     pub weight: f32,
     pub block: Option<BlockType>,
     pub texture: ImageSource<'static>,
+    pub breaking_strength: Option<u32>,
 }
 
 /// Global static item information, will be set when the renderer loads
@@ -63,6 +64,7 @@ pub fn init_item_info(draw_context: &DrawContext, egui_renderer: &mut Renderer) 
             weight: d.weight,
             block: d.block,
             texture: icon,
+            breaking_strength: d.breaking_strength,
         })
         .collect::<Vec<_>>();
 

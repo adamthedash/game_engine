@@ -181,12 +181,10 @@ impl<G: ChunkGenerator> GameState<G> {
             let blocks = BLOCKS.get().unwrap();
 
             // Check if player can break the block
-            let player_break_strength = 100; // TODO
-
             let block_type = self.world.get_block_mut(&target_block.block_pos).unwrap();
             if blocks[*block_type]
                 .hardness
-                .is_none_or(|h| h > player_break_strength)
+                .is_none_or(|h| h > self.player.get_breaking_strength())
             {
                 // Block is too hard
                 return;

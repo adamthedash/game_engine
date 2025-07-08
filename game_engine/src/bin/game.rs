@@ -8,11 +8,13 @@ use game_engine::{
     camera::{Camera, basic_flight::BasicFlightCameraController, traits::CameraController},
     data::{item::ItemType, world_gen::DefaultGenerator},
     event::{MESSAGE_QUEUE, Message, Subscriber},
-    game::GameState,
-    player::Player,
     render::state::RenderState,
+    state::{
+        game::GameState,
+        player::Player,
+        world::{World, WorldPos},
+    },
     ui::{hotbar::Hotbar, inventory::Inventory},
-    world::{World, WorldPos},
     world_gen::ChunkGenerator,
 };
 use tokio::runtime::Runtime;
