@@ -1,4 +1,5 @@
 pub mod basic_flight;
+pub mod collision;
 pub mod space_flight;
 pub mod traits;
 pub mod walking;
@@ -145,7 +146,7 @@ impl Camera {
     pub fn aabb(&self) -> AABB<f32> {
         let height = 1.8;
         let width = 0.8;
-        let head_height = 1.8;
+        let head_height = 1.5;
 
         let diff = Vector3::new(width / 2., height / 2., width / 2.);
         let head_diff = Vector3::unit_y() * head_height / 2.;

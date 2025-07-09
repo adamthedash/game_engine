@@ -513,6 +513,18 @@ I found [this crate](https://github.com/PPakalns/egui_taffy/) which has better h
 Here's the inventory after the fix, I didn't take a pic of it but there's now a scrollbar that appears when the player has too much stuff.  
 ![](./images/day24_inventory.png)
 
+There's also been a bug with the collision detection pretty much since day 1. If the player flies up from underneath a block, they can go right through it.  
+This happens across all camera controllers. So there's something wrong across the board for how I'm doing collisions.  
+Up until now I've been calculating the position of my "test" block based on an adjacent block from the block the player's eye (camera) is in. As far as I can tell this is because when my head touches the underside of a block, my current block is being rounded up to the next block, so I'm constantly collisions for a block I'll never touch.  
+This also means that I'm only testing one block below me, which is having the effect of chopping my legs off. This is more pronounced with the walking controller, where the camera appears to be 1 block high instead of the intended 1.8.  
+I plan to change this by determining the test block based on the player's AABB rather than camera position. I also want to abstract the collision detection logic out, as it's triplicated across all camera controllers right now.  
+This is definitely better, but it still suffers from the problem that the player isn't going to be colliding on a point, but rather the AABB face. Instead of testing against blocks adjacent to the camera position, I need to be testing against anything infront of the AABB faces in the direction of movement.  
+
+
+
+
+
+
 
 
 

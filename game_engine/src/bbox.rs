@@ -4,8 +4,8 @@ use crate::render::ray::Ray;
 
 #[derive(Debug)]
 pub struct AABB<S: BaseNum> {
-    start: Point3<S>,
-    end: Point3<S>,
+    pub start: Point3<S>,
+    pub end: Point3<S>,
 }
 
 impl<S: BaseNum + PartialOrd> AABB<S> {

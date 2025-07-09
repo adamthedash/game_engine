@@ -5,8 +5,8 @@ use winit::{event::KeyEvent, keyboard::PhysicalKey};
 
 use super::{Camera, angles_to_vec3, traits::CameraController};
 use crate::{
-    data::block::BlockType,
-    state::world::{BlockPos, World},
+    camera::collision::{adjust_movement_vector, detect_collisions},
+    state::world::World,
     world_gen::ChunkGenerator,
 };
 
@@ -185,42 +185,8 @@ impl CameraController for SpaceFlightCameraController {
         }
 
         // Step 4: Figure out if we're colliding with any blocks
-        let player_block_pos = camera.pos.get().to_block_pos();
-        let player_aabb = camera.aabb();
-
-        let colliding_with = |pos: &BlockPos| {
-            if let Some(block) = world.get_block(pos) {
-                if block.block_type == BlockType::Air {
-                    false
-                } else {
-                    player_aabb.intersects(&block.aabb().to_f32())
-                }
-            } else {
-                false
-            }
-        };
-
-        if self.velocity.x != 0.
-            && colliding_with(&BlockPos(
-                player_block_pos.0 + self.velocity.x.signum() as i32 * Vector3::unit_x(),
-            ))
-        {
-            self.velocity.x = 0.;
-        }
-        if self.velocity.y != 0.
-            && colliding_with(&BlockPos(
-                player_block_pos.0 + self.velocity.y.signum() as i32 * Vector3::unit_y(),
-            ))
-        {
-            self.velocity.y = 0.;
-        }
-        if self.velocity.z != 0.
-            && colliding_with(&BlockPos(
-                player_block_pos.0 + self.velocity.z.signum() as i32 * Vector3::unit_z(),
-            ))
-        {
-            self.velocity.z = 0.;
-        }
+        let collisions = detect_collisions(camera, world);
+        self.velocity = adjust_movement_vector(self.velocity, &collisions);
 
         // Step 5: Apply the movement
         camera

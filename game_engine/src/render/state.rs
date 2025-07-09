@@ -481,7 +481,7 @@ impl RenderState {
             .chain(counter.get_debug_strings())
             .chain([
                 format!("pos: {:?}", game.player.camera.pos),
-                // format!("camera: {:#?}", game.player.camera.frustum),
+                format!("camera: {:#?}", game.player.camera.aabb()),
                 format!("block: {debug_block_pos:?} in view: {in_view:?}"),
                 // format!("frustum dists: {:?}", debug_frustum),
                 format!("Blocks rendered: {}", self.instances_cpu.len()),

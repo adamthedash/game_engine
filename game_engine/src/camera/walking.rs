@@ -5,9 +5,11 @@ use winit::{event::KeyEvent, keyboard::PhysicalKey};
 
 use super::{angles_to_vec3, traits::CameraController};
 use crate::{
-    camera::Camera,
-    data::block::BlockType,
-    state::world::{BlockPos, World},
+    camera::{
+        Camera,
+        collision::{adjust_movement_vector, detect_collisions},
+    },
+    state::world::World,
     world_gen::ChunkGenerator,
 };
 
@@ -145,46 +147,16 @@ impl CameraController for WalkingCameraController {
             movement_vector = movement_vector.normalize_to(self.move_speed);
         }
 
-        // Step 2: Figure out if we're colliding with any blocks
-        let player_block_pos = camera.pos.get().to_block_pos();
-        let player_aabb = camera.aabb();
-        let colliding_with = |pos: &BlockPos| {
-            if let Some(block) = world.get_block(pos) {
-                if block.block_type == BlockType::Air {
-                    false
-                } else {
-                    player_aabb.intersects(&block.aabb().to_f32())
-                }
-            } else {
-                false
-            }
-        };
+        // Verical movement
+        let collisions = detect_collisions(camera, world);
 
-        if movement_vector.x != 0.
-            && colliding_with(&BlockPos(
-                player_block_pos.0 + movement_vector.x.signum() as i32 * Vector3::unit_x(),
-            ))
-        {
-            movement_vector.x = 0.;
-        }
-        if movement_vector.z != 0.
-            && colliding_with(&BlockPos(
-                player_block_pos.0 + movement_vector.z.signum() as i32 * Vector3::unit_z(),
-            ))
-        {
-            movement_vector.z = 0.;
-        }
-
-        // Step 3: Verical
-        if self.vertical_velocity > 0.
-            && colliding_with(&BlockPos(player_block_pos.0 + Vector3::unit_y()))
-        {
+        if self.vertical_velocity > 0. && collisions.y_pos {
             // Hit our head on the roof
             self.vertical_velocity = 0.;
         }
 
-        let on_floor = colliding_with(&BlockPos(player_block_pos.0 - Vector3::unit_y()));
-        if !on_floor {
+        // Gravity
+        if !collisions.y_neg {
             // Apply gravity
             self.vertical_velocity -= self.gravity * duration.as_secs_f32();
         } else if self.vertical_velocity < 0. {
@@ -192,15 +164,15 @@ impl CameraController for WalkingCameraController {
             self.vertical_velocity = 0.;
         }
 
-        // Step 3: Jumping
-        if self.up_pressed && on_floor && self.vertical_velocity <= 0. {
+        // Jumping
+        if self.up_pressed && collisions.y_neg && self.vertical_velocity <= 0. {
             self.vertical_velocity += self.jump_force;
         }
 
         movement_vector.y = self.vertical_velocity;
 
-        // TODO: Need to do correct collision detection at high speeds so we don't get stuck inside
-        // walls
+        // Figure out if we're colliding with any blocks
+        movement_vector = adjust_movement_vector(movement_vector, &collisions);
 
         // Apply the movement vector
         camera
