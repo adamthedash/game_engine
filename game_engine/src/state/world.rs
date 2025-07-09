@@ -70,16 +70,16 @@ impl BlockPos {
 
     /// Convert to a chunk position and the block position relative to the chunk
     #[inline]
-    pub fn to_chunk_offset(&self) -> (ChunkPos, (i32, i32, i32)) {
+    pub fn to_chunk_offset(&self) -> (ChunkPos, (usize, usize, usize)) {
         let chunk_index = ChunkPos::new(
             self.0.x.div_euclid(Chunk::CHUNK_SIZE as i32),
             self.0.y.div_euclid(Chunk::CHUNK_SIZE as i32),
             self.0.z.div_euclid(Chunk::CHUNK_SIZE as i32),
         );
         let within_chunk_pos = (
-            self.0.x.rem_euclid(Chunk::CHUNK_SIZE as i32),
-            self.0.y.rem_euclid(Chunk::CHUNK_SIZE as i32),
-            self.0.z.rem_euclid(Chunk::CHUNK_SIZE as i32),
+            self.0.x.rem_euclid(Chunk::CHUNK_SIZE as i32) as usize,
+            self.0.y.rem_euclid(Chunk::CHUNK_SIZE as i32) as usize,
+            self.0.z.rem_euclid(Chunk::CHUNK_SIZE as i32) as usize,
         );
 
         (chunk_index, within_chunk_pos)
@@ -162,31 +162,31 @@ impl Chunk {
 
     /// Get a reference to a block in this chunk
     #[inline]
-    pub fn get_block(&self, pos: (i32, i32, i32)) -> &BlockType {
-        assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.0));
-        assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.1));
-        assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.2));
+    pub fn get_block(&self, pos: (usize, usize, usize)) -> &BlockType {
+        assert!((0..Self::CHUNK_SIZE).contains(&pos.0));
+        assert!((0..Self::CHUNK_SIZE).contains(&pos.1));
+        assert!((0..Self::CHUNK_SIZE).contains(&pos.2));
 
-        &self.blocks[pos.0 as usize][pos.1 as usize][pos.2 as usize]
+        &self.blocks[pos.0][pos.1][pos.2]
     }
 
     /// Get a reference to a block in this chunk
     #[inline]
-    pub fn get_block_mut(&mut self, pos: (i32, i32, i32)) -> &mut BlockType {
-        assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.0));
-        assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.1));
-        assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.2));
+    pub fn get_block_mut(&mut self, pos: (usize, usize, usize)) -> &mut BlockType {
+        assert!((0..Self::CHUNK_SIZE).contains(&pos.0));
+        assert!((0..Self::CHUNK_SIZE).contains(&pos.1));
+        assert!((0..Self::CHUNK_SIZE).contains(&pos.2));
 
-        &mut self.blocks[pos.0 as usize][pos.1 as usize][pos.2 as usize]
+        &mut self.blocks[pos.0][pos.1][pos.2]
     }
 
     #[inline]
-    pub fn is_block_exposed(&self, pos: (i32, i32, i32)) -> bool {
-        assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.0));
-        assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.1));
-        assert!((0..Self::CHUNK_SIZE as i32).contains(&pos.2));
+    pub fn is_block_exposed(&self, pos: (usize, usize, usize)) -> bool {
+        assert!((0..Self::CHUNK_SIZE).contains(&pos.0));
+        assert!((0..Self::CHUNK_SIZE).contains(&pos.1));
+        assert!((0..Self::CHUNK_SIZE).contains(&pos.2));
 
-        self.exposed_blocks[pos.0 as usize][pos.1 as usize][pos.2 as usize]
+        self.exposed_blocks[pos.0][pos.1][pos.2]
     }
 }
 
@@ -337,7 +337,7 @@ impl<G: ChunkGenerator> World<G> {
                 let (chunk_pos, (x, y, z)) = BlockPos(b.block_pos.0 + o).to_chunk_offset();
 
                 if let Some(chunk) = self.chunks.get_mut(&chunk_pos) {
-                    chunk.exposed_blocks[x as usize][y as usize][z as usize] = true;
+                    chunk.exposed_blocks[x][y][z] = true;
                 }
             });
         });
@@ -350,7 +350,7 @@ impl<G: ChunkGenerator> World<G> {
         self.chunks
             .get(&chunk_pos)
             .expect("Chunk doesn't exist!")
-            .exposed_blocks[x as usize][y as usize][z as usize]
+            .exposed_blocks[x][y][z]
     }
 
     /// Returns a reference to a chunk, or generates if it doesn't exist

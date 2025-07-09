@@ -1,9 +1,11 @@
+use cgmath::Vector3;
 use enum_map::{EnumMap, enum_map};
+use itertools::izip;
 use num_traits::Euclid;
 
 use crate::{
     data::{biome::Biome, block::BlockType},
-    math::{LCG, hash_pos},
+    math::{LCG, hash_pos, split_seed_arr, split_seed_iter},
     perlin_cdf::perlin_cdf,
     state::world::{BlockPos, Chunk},
     world_gen::{ChunkGenerator, Intervals, Perlin},
@@ -103,27 +105,81 @@ impl ChunkGenerator for DefaultGenerator {
         // Generate seed points
         let world_seed = 123;
         let seed_points_per_chunk = 10;
-        let seed = hash_pos(world_seed, chunk_pos.0);
-        let seed_points = LCG::new(seed)
-            .map(|val| {
-                // Convert to random float 0-1
-                let rand = val as f32 / (1 << 30) as f32;
+        let blocks_per_vein = 10;
 
+        let chunk_seed = hash_pos(world_seed, chunk_pos.0);
+        let [point_seed, rarity_seed, vein_seed] = split_seed_arr(chunk_seed);
+        let seed_points = LCG::new(point_seed)
+            .map(|val| {
                 // Convert to position
                 let val = val as usize % Chunk::BLOCKS_PER_CHUNK;
                 let (rem, x) = val.div_rem_euclid(&Chunk::CHUNK_SIZE);
                 let (y, z) = rem.div_rem_euclid(&Chunk::CHUNK_SIZE);
 
-                (rand, (x, y, z))
+                (x, y, z)
             })
             .take(seed_points_per_chunk)
             // Only generate ores in the ground
-            .filter(|(_, (x, y, z))| blocks[*x][*y][*z] != BlockType::Air)
+            .filter(|(x, y, z)| blocks[*x][*y][*z] != BlockType::Air)
             .collect::<Vec<_>>();
 
-        seed_points.into_iter().for_each(|(rand, (x, y, z))| {
-            blocks[x][y][z] = *self.ore_selector.sample(rand as f64);
+        let rarity_values = LCG::new(rarity_seed).map(|val| {
+            // Convert to random float 0-1
+            val as f32 / (1 << 30) as f32
         });
+
+        izip!(seed_points, rarity_values, split_seed_iter(vein_seed)).for_each(
+            |((x, y, z), rarity, vein_seed)| {
+                let block_type = *self.ore_selector.sample(rarity as f64);
+
+                // Set the seed point
+                blocks[x][y][z] = block_type;
+                let mut points_generated = vec![(x, y, z)];
+
+                // Init RNGs for this vein
+                let [offset_seed, selection_seed] = split_seed_arr(vein_seed);
+                let mut offset_generator = LCG::new(offset_seed).map(|val| {
+                    Chunk::ADJACENT_OFFSETS[val as usize % Chunk::ADJACENT_OFFSETS.len()]
+                });
+                let mut selection_generator = LCG::new(selection_seed);
+
+                // Attempt to grow the vein
+                for _ in 0..blocks_per_vein {
+                    // Select an existing block
+                    let (x, y, z) = points_generated
+                        [selection_generator.next().unwrap() as usize % points_generated.len()];
+                    let block_pos =
+                        BlockPos(world_pos.0 + Vector3::new(x as i32, y as i32, z as i32));
+
+                    // Select a block next to it
+                    let offset = offset_generator.next().unwrap();
+                    let adjacent_pos = BlockPos(block_pos.0 + offset);
+
+                    // If we've gone over chunk boundaries, discard
+                    // TODO: Once cross-boundary generation is implemented, get rid of this check
+                    let (adjacent_chunk, adjacent_offset) = adjacent_pos.to_chunk_offset();
+                    if adjacent_chunk != chunk_pos {
+                        continue;
+                    }
+
+                    // If we've gone back on ourselves, discard it
+                    if points_generated.contains(&adjacent_offset) {
+                        continue;
+                    }
+
+                    // Don't generate the ores in air
+                    let (x, y, z) = adjacent_offset;
+                    if blocks[x][y][z] == BlockType::Air {
+                        continue;
+                    }
+
+                    // Grow the vein
+                    blocks[x][y][z] = block_type;
+
+                    points_generated.push(adjacent_offset);
+                }
+            },
+        );
 
         Chunk {
             chunk_pos,

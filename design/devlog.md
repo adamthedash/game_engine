@@ -481,6 +481,35 @@ I still need to maintain some properties of perlin like the ability to generate 
 
 
 
+## Day 24
+A pattern that's emerging is the need to generate a sequence of random generations. Eg. I'm first generating seed points, then generating random veins from those points. I want the different levels of randomness to be orthogonal to each other, if I increase the number of seed points being generated, I don't want that to effectively re-seed all of the downstream generation.  
+I really like the approach that [Jax](https://docs.jax.dev/en/latest/jep/263-prng.html) takes, where random generators are stateless and explicitly keyed. Instead of seeding randomness at the start of a program, you split off new sub-keys for each new thing. That might look something like this:  
+```rust
+let world_seed: u32 = 42;
+let chunk_seed: u32 = hash(world_seed, (x, y, z));
+let num_ore_veins = 10;
+let ore_vein_positions: Vec<(i32, i32, i32) = LCG(chunk_seed).take(num_ore_veins).map(rng_to_pos);
+let ore_vein_seeds: Vec<u32> = split_key(chunk_seed, num_ore_veins);
+for (pos, seed) in ore_vein_positions.zip(ore_vein_seeds) {
+    generate_vein(pos, seed);
+}
+```
+
+In a traditional RNG setup, if I increased `num_ore_veins` to 11, it would completely change how the 0-10 veins were generated. However with this method, they will be identical and I just get a new 11th vein.  
+This should also help a lot with debugging world generation as it gets more complex. I'll be able to isolate individual parts of the generation for testing since they won't depend on upstream state.  
+For now I'm actually just going to re-use the LCG to do the splitting. It'll have the undesirable property that downstream LCG's using the resulting keys will be correlated, but for my use case it doesn't matter as the values will be transformed in different ways. Jax uses the [Threefry hash function](https://www.thesalmons.org/john/random123/papers/random123sc11.pdf), so I'll look into that or alternatives down the line.  
+
+Turns out I ran into the correlation issue sooner than I thought. I'm using one LCG for selection of a candidate block to grow, and another for direction to grow in. The correlation was resulting in loops and never successfully growing the vein. There wasn't any implementation of Threefry out of the box for rust I could find, and I didn't really need any of the performance chararcteristics for which it was designed, so I opted for [splitmix64](https://rosettacode.org/wiki/Pseudo-random_numbers/Splitmix64) instead, which is designed for seed splitting.  
+
+With this I now have some basic ore generation implemented. Here's an example:  
+
+![](./images/day24_ore_generation.png)  
+
+Down the line I want to expand the generation to include constraints, such as certain ores only generating in certain biomes. But for now this will do.  
+
+
+
+
 
 
 
