@@ -3,7 +3,7 @@ use std::{
     str::FromStr,
 };
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use bytemuck::NoUninit;
 use tobj::{LoadOptions, load_obj};
 use wgpu::{
@@ -75,7 +75,8 @@ impl Model {
                 triangulate: true,
                 ..Default::default()
             },
-        )?;
+        )
+        .with_context(|| format!("Failed to load obj file: {path:?}"))?;
 
         // Load materials onto GPU as textures
         let texture_paths = materials?
@@ -97,7 +98,8 @@ impl Model {
             device,
             queue,
             &format!("Texture: {:?}", path.file_name()),
-        )?;
+        )
+        .context("Failed to load texture")?;
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
             layout,
             entries: &[

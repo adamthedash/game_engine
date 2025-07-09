@@ -1,5 +1,6 @@
 use std::{path::Path, sync::Arc};
 
+use anyhow::Context;
 use cgmath::{Matrix3, Matrix4, One, Vector3};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, Buffer, BufferDescriptor,
@@ -93,21 +94,23 @@ impl RenderState {
         );
 
         // Mesh
-        let block_path = Path::new(env!("OUT_DIR")).join("res/meshes/block.obj");
+        let block_path = Path::new("res/meshes/block.obj");
         let block_model = Model::load_model(
-            &block_path,
+            block_path,
             &draw_context.device,
             &draw_context.queue,
             &texture_shader.texture_layout,
         )
+        .with_context(|| format!("Failed to load block model: {block_path:?}"))
         .unwrap();
-        let sibeal_path = Path::new(env!("OUT_DIR")).join("res/meshes/sibeal.obj");
+        let sibeal_path = Path::new("res/meshes/sibeal.obj");
         let sibeal_model = Model::load_model(
-            &sibeal_path,
+            sibeal_path,
             &draw_context.device,
             &draw_context.queue,
             &texture_shader.texture_layout,
         )
+        .with_context(|| format!("Failed to load sibeal model: {block_path:?}"))
         .unwrap();
 
         // Camera

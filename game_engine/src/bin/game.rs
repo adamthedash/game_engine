@@ -157,6 +157,31 @@ impl<C: CameraController, G: ChunkGenerator> ApplicationHandler for App<C, G> {
         self.game_state.world.save(Path::new("./saves"));
     }
 
+    fn device_event(
+        &mut self,
+        _event_loop: &ActiveEventLoop,
+        _device_id: winit::event::DeviceId,
+        event: winit::event::DeviceEvent,
+    ) {
+        if let winit::event::DeviceEvent::MouseMotion { delta } = event
+            && let Some(render_state) = &mut self.render_state
+            && self.interaction_mode == InteractionMode::Game
+            && self.camera_controller.enabled()
+        {
+            let config = &render_state.draw_context.config;
+            let normalised_delta = (
+                delta.0 as f32 / config.width as f32,
+                delta.1 as f32 / config.height as f32,
+            );
+            if render_state.draw_context.centre_cursor().is_err() {
+                println!("WARNING: Failed to centre cursor!");
+            }
+
+            self.camera_controller
+                .handle_mouse_move(normalised_delta, &mut self.game_state.player.camera);
+        }
+    }
+
     fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,
@@ -258,29 +283,7 @@ impl<C: CameraController, G: ChunkGenerator> ApplicationHandler for App<C, G> {
                 ..
             } => {
                 if self.interaction_mode == InteractionMode::Game && *y != 0. {
-                    self.game_state.player.hotbar.scroll(*y > 0.);
-                }
-            }
-            WindowEvent::CursorMoved { position, .. } => {
-                if let Some(render_state) = &mut self.render_state
-                    && self.interaction_mode == InteractionMode::Game
-                    && self.camera_controller.enabled()
-                {
-                    let config = &render_state.draw_context.config;
-                    let delta = (
-                        position.x as f32 - (config.width / 2) as f32,
-                        position.y as f32 - (config.height / 2) as f32,
-                    );
-                    let normalised_delta = (
-                        delta.0 / config.width as f32,
-                        delta.1 / config.height as f32,
-                    );
-                    if render_state.draw_context.centre_cursor().is_err() {
-                        println!("WARNING: Failed to centre cursor!");
-                    }
-
-                    self.camera_controller
-                        .handle_mouse_move(normalised_delta, &mut self.game_state.player.camera);
+                    self.game_state.player.hotbar.scroll(*y < 0.);
                 }
             }
             _ => {}
