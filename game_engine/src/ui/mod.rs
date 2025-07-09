@@ -6,7 +6,8 @@ pub mod inventory;
 
 use axes::Axes;
 use debug::DebugWindow;
-use egui::{Color32, Context, FontId, ImageSource, Response, Ui};
+use egui::{Color32, Context, FontId, ImageSource, Response, Ui, Vec2};
+use egui_taffy::{TuiBuilderLogic, TuiWidget};
 use egui_wgpu::{Renderer, ScreenDescriptor};
 use egui_winit::State;
 use wgpu::{
@@ -153,26 +154,38 @@ impl UI {
     }
 }
 
-pub fn draw_icon(
-    ui: &mut Ui,
-    texture: &ImageSource,
-    count: Option<usize>,
-    icon_size: f32,
-    font_size: f32,
-) -> Response {
-    let resp =
-        ui.add(egui::Image::new(texture.clone()).fit_to_exact_size([icon_size, icon_size].into()));
-    let rect = resp.rect;
+#[derive(Clone)]
+pub struct Icon<'a> {
+    pub texture: &'a ImageSource<'static>,
+    pub size: f32,
+    pub count: Option<usize>,
+    pub font_size: f32,
+}
 
-    // Draw item count in bottom right
-    if let Some(count) = count {
-        let painter = ui.painter();
-        let font_id = FontId::monospace(font_size);
-        let text = painter.layout_no_wrap(format!("{count}"), font_id, Color32::WHITE);
+impl<'a> Icon<'a> {
+    pub fn draw(&self, ui: &mut Ui) -> Response {
+        let resp = ui
+            .add(egui::Image::new(self.texture.clone()).fit_to_exact_size(Vec2::splat(self.size)));
+        let rect = resp.rect;
 
-        let pos = rect.right_bottom() - text.size();
-        painter.galley(pos, text, Color32::WHITE);
+        // Draw item count in bottom right
+        if let Some(count) = self.count {
+            let painter = ui.painter();
+            let font_id = FontId::monospace(self.font_size);
+            let text = painter.layout_no_wrap(format!("{count}"), font_id, Color32::WHITE);
+
+            let pos = rect.right_bottom() - text.size();
+            painter.galley(pos, text, Color32::WHITE);
+        }
+
+        resp
     }
+}
 
-    resp
+impl<'a> TuiWidget for Icon<'a> {
+    type Response = egui::Response;
+
+    fn taffy_ui(self, tuib: egui_taffy::TuiBuilder) -> Self::Response {
+        tuib.ui_add_manual(|ui| self.draw(ui), |resp, _| resp)
+    }
 }

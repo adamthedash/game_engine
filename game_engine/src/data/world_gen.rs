@@ -103,6 +103,7 @@ impl ChunkGenerator for DefaultGenerator {
 
         // Ore generation
         // Generate seed points
+        // TODO: lift these parameters out
         let world_seed = 123;
         let seed_points_per_chunk = 10;
         let blocks_per_vein = 10;

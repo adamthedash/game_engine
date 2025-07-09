@@ -507,6 +507,13 @@ With this I now have some basic ore generation implemented. Here's an example:
 
 Down the line I want to expand the generation to include constraints, such as certain ores only generating in certain biomes. But for now this will do.  
 
+**Misc stuff**  
+There's a visual bug with the inventory at the moment, when there's too many items it's not properly expanding, leading to overlapping icons. I also want items to fill the space row-first.  
+I found [this crate](https://github.com/PPakalns/egui_taffy/) which has better handling for grid and flexible UI layouts. I'll probably swap most of my UI over to this.  
+Here's the inventory after the fix, I didn't take a pic of it but there's now a scrollbar that appears when the player has too much stuff.  
+![](./images/day24_inventory.png)
+
+
 
 
 

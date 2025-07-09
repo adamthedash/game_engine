@@ -6,7 +6,7 @@ use super::{Drawable, inventory::Inventory};
 use crate::{
     data::{item::ItemType, loader::ITEMS},
     event::{Message, Subscriber},
-    ui::{draw_icon, inventory::ItemFavouritedMessage},
+    ui::{Icon, inventory::ItemFavouritedMessage},
 };
 
 pub struct Hotbar {
@@ -94,8 +94,13 @@ impl Drawable for Hotbar {
 
                 frame.show(c, |ui| {
                     if let Some(icon) = icon {
-                        let count = if count > 0 { Some(count) } else { None };
-                        draw_icon(ui, icon, count, icon_size, font_size);
+                        Icon {
+                            texture: icon,
+                            size: icon_size,
+                            count: if count > 0 { Some(count) } else { None },
+                            font_size,
+                        }
+                        .draw(ui);
                     } else {
                         // Blank icon
                         ui.allocate_exact_size([icon_size, icon_size].into(), Sense::empty());

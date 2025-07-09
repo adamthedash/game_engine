@@ -1,4 +1,9 @@
-use egui::{Align2, Frame, Key, Vec2, Window};
+use egui::{Align2, Vec2, Vec2b, Window, scroll_area::ScrollBarVisibility};
+use egui_taffy::{
+    TuiBuilderLogic,
+    taffy::{self, AlignItems, prelude::percent},
+    tui,
+};
 use enum_map::EnumMap;
 
 use super::Drawable;
@@ -9,7 +14,7 @@ use crate::{
         recipe::{RECIPES, Recipe},
     },
     event::{MESSAGE_QUEUE, Message},
-    ui::draw_icon,
+    ui::Icon,
 };
 
 #[derive(Default)]
@@ -62,56 +67,75 @@ impl Drawable for Inventory {
         let num_slots = 8;
 
         let window_size = Vec2::new(icon_size, icon_size) * num_slots as f32;
+        let items = ITEMS.get().expect("Items info not initialised!");
 
         Window::new("Inventory")
             .title_bar(false)
             .resizable(false)
             .anchor(Align2::CENTER_CENTER, [0., 0.])
+            // Scroll bar for when we have lots of items
+            .scroll(Vec2b { x: false, y: true })
+            .scroll_bar_visibility(ScrollBarVisibility::VisibleWhenNeeded)
+            .default_width(window_size.x)
             .show(ctx, |ui| {
-                // Workaround for window size not working
-                // https://github.com/emilk/egui/issues/498#issuecomment-1758462225
-                ui.set_width(window_size.x);
-                ui.set_height(window_size.y);
+                // Use egui_taffy to create a grid layout
+                tui(ui, ui.id().with("inventory"))
+                    .reserve_available_width()
+                    .style(taffy::Style {
+                        flex_direction: taffy::FlexDirection::Row,
+                        flex_wrap: taffy::FlexWrap::Wrap,
+                        align_items: Some(AlignItems::Start),
+                        size: taffy::Size {
+                            width: percent(1.),
+                            height: percent(1.),
+                        },
+                        ..Default::default()
+                    })
+                    .show(|ui| {
+                        ui.reuse_style().add(|ui| {
+                            // Draw each item icon if we have some
+                            self.items.iter().filter(|(_, count)| **count > 0).for_each(
+                                |(id, count)| {
+                                    // Create and draw the icon
+                                    let icon = Icon {
+                                        texture: &items[id].texture,
+                                        size: 32.,
+                                        count: Some(*count),
+                                        font_size: 16.,
+                                    };
+                                    let resp = ui.ui_add(icon);
 
-                self.show_widget(ui);
+                                    // Detect keypresses for hotbar assignment
+                                    if resp.hovered() {
+                                        use egui::Key::*;
+                                        [
+                                            Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9,
+                                            Num0,
+                                        ]
+                                        .into_iter()
+                                        .enumerate()
+                                        .for_each(
+                                            |(slot, key)| {
+                                                if ui.egui_ui().input(|i| i.key_pressed(key)) {
+                                                    MESSAGE_QUEUE
+                                                        .lock()
+                                                        .expect("Failed to lock message queue")
+                                                        .push_back(Message::ItemFavourited(
+                                                            ItemFavouritedMessage {
+                                                                item: id,
+                                                                slot,
+                                                            },
+                                                        ));
+                                                }
+                                            },
+                                        );
+                                    }
+                                },
+                            );
+                        });
+                    });
             });
     }
 
-    fn show_widget(&self, ui: &mut egui::Ui) {
-        let font_size = 15.;
-        let icon_size = 32.;
-
-        let items = ITEMS.get().expect("Items info not initialised!");
-
-        self.items
-            .iter()
-            .filter(|(_, count)| **count > 0)
-            .for_each(|(id, count)| {
-                // Get icon for the item
-                let icon = &items[id].texture;
-
-                let frame = Frame::NONE;
-                frame.show(ui, |ui| {
-                    let resp = draw_icon(ui, icon, Some(*count), icon_size, font_size);
-
-                    // Hotbar assignment
-                    if resp.hovered() {
-                        use Key::*;
-                        [Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9, Num0]
-                            .into_iter()
-                            .enumerate()
-                            .for_each(|(slot, key)| {
-                                if ui.input(|i| i.key_pressed(key)) {
-                                    MESSAGE_QUEUE
-                                        .lock()
-                                        .expect("Failed to lock message queue")
-                                        .push_back(Message::ItemFavourited(
-                                            ItemFavouritedMessage { item: id, slot },
-                                        ));
-                                }
-                            });
-                    }
-                });
-            });
-    }
+    fn show_widget(&self, _ui: &mut egui::Ui) {}
 }

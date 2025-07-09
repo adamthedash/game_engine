@@ -6,7 +6,7 @@ use egui::{
 
 use crate::{
     data::loader::ITEMS,
-    ui::{Drawable, draw_icon, inventory::Inventory},
+    ui::{Drawable, Icon, inventory::Inventory},
 };
 
 pub struct CraftingWindow {
@@ -47,8 +47,13 @@ impl Drawable for CraftingWindow {
                     .show(ui, |ui| {
                         // Inputs on the left
                         r.inputs.iter().for_each(|(item, count)| {
-                            let icon = &items[*item].texture;
-                            draw_icon(ui, icon, Some(*count), icon_size, font_size);
+                            Icon {
+                                texture: &items[*item].texture,
+                                size: icon_size,
+                                count: Some(*count),
+                                font_size,
+                            }
+                            .draw(ui);
                         });
 
                         // Space between input & output
@@ -65,8 +70,14 @@ impl Drawable for CraftingWindow {
 
                         // Outputs on the right
                         let (item, count) = r.output;
-                        let icon = &items[item].texture;
-                        let resp = draw_icon(ui, icon, Some(count), icon_size, font_size);
+                        let resp = Icon {
+                            texture: &items[item].texture,
+                            size: icon_size,
+                            count: Some(count),
+                            font_size,
+                        }
+                        .draw(ui);
+
                         if resp.clicked() {
                             println!("icon clicked");
                         }
