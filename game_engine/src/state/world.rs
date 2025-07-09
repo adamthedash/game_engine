@@ -10,10 +10,10 @@ use num_traits::{Euclid, FromPrimitive, ToPrimitive};
 use rustc_hash::FxHashMap;
 
 use crate::{
-    bbox::AABB,
     block::Block,
     data::{block::BlockType, world_gen::DefaultGenerator},
     event::{Message, Subscriber},
+    math::bbox::AABB,
     world_gen::{ChunkGenerator, Perlin},
 };
 

@@ -1,6 +1,6 @@
 use cgmath::{BaseNum, InnerSpace, Point3};
 
-use crate::render::ray::Ray;
+use super::ray::Ray;
 
 #[derive(Debug)]
 pub struct AABB<S: BaseNum> {

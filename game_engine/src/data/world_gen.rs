@@ -5,7 +5,7 @@ use num_traits::Euclid;
 
 use crate::{
     data::{biome::Biome, block::BlockType},
-    math::{LCG, hash_pos, split_seed_arr, split_seed_iter},
+    math::rng::{LCG, hash_pos, split_seed_arr, split_seed_iter},
     perlin_cdf::perlin_cdf,
     state::world::{BlockPos, Chunk},
     world_gen::{ChunkGenerator, Intervals, Perlin},

@@ -12,8 +12,8 @@ use egui::Pos2;
 use sycamore_reactive::{ReadSignal, Signal, create_memo, create_signal};
 
 use crate::{
-    bbox::AABB,
-    render::{
+    math::{
+        bbox::AABB,
         frustum::{Frustum, Plane},
         ray::Ray,
     },

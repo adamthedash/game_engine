@@ -1,8 +1,8 @@
 use cgmath::{ElementWise, EuclideanSpace, Matrix3, Matrix4, One};
 
 use crate::{
-    bbox::AABB,
     data::{block::BlockType, loader::BLOCKS},
+    math::bbox::AABB,
     render::shaders::texture::{self, Instance},
     state::world::BlockPos,
 };

@@ -3,7 +3,6 @@
 #![feature(array_windows)]
 #![feature(array_repeat)]
 
-pub mod bbox;
 pub mod block;
 pub mod camera;
 pub mod data;
