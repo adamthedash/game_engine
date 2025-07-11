@@ -254,67 +254,6 @@ impl<G: ChunkGenerator> World<G> {
         });
     }
 
-    pub fn load(folder: &Path) -> World<DefaultGenerator> {
-        assert!(folder.is_dir());
-        let chunks = glob(&format!("{}/*.chunk", folder.to_str().unwrap()))
-            .unwrap()
-            .map(|f| {
-                let filename = f.unwrap();
-                let [x, y, z] = filename
-                    .file_stem()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .split("_")
-                    .map(|s| s.parse::<i32>().unwrap())
-                    .collect::<Vec<_>>()
-                    .try_into()
-                    .unwrap();
-                let chunk_pos = ChunkPos::new(x, y, z);
-
-                let blocks = fs::read(&filename)
-                    .unwrap()
-                    .chunks_exact(std::mem::size_of::<u16>())
-                    .map(|c| {
-                        let id = u16::from_le_bytes(c.try_into().unwrap());
-                        BlockType::from_u16(id).unwrap()
-                    })
-                    .collect::<Vec<_>>()
-                    .chunks_exact(Chunk::CHUNK_SIZE)
-                    .map(|c| c.try_into().unwrap())
-                    .collect::<Vec<[_; Chunk::CHUNK_SIZE]>>()
-                    .chunks_exact(Chunk::CHUNK_SIZE)
-                    .map(|c| c.try_into().unwrap())
-                    .collect::<Vec<[_; Chunk::CHUNK_SIZE]>>()
-                    .try_into()
-                    .unwrap();
-
-                Chunk {
-                    world_pos: chunk_pos.to_block_pos(),
-                    chunk_pos,
-                    blocks,
-                    exposed_blocks: Default::default(),
-                }
-            })
-            .fold(FxHashMap::default(), |mut hm, chunk| {
-                hm.insert(chunk.chunk_pos.clone(), chunk);
-                hm
-            });
-
-        // TODO: save out chunk generator
-        let chunk_gen = DefaultGenerator::new(
-            Perlin::new(42, 4, 1., 0.5, 1. / 16.),
-            Perlin::new(42, 4, 1., 0.5, 1. / 16.),
-        );
-
-        let mut world = World {
-            chunks,
-            generator: chunk_gen,
-        };
-        world.update_all_exposed_blocks();
-        world
-    }
-
     fn update_all_exposed_blocks(&mut self) {
         let chunks_to_update = self.chunks.keys().cloned().collect::<Vec<_>>();
         chunks_to_update
