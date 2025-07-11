@@ -42,7 +42,7 @@ impl GameState {
     pub fn handle_mouse_key(&mut self, event: &WindowEvent, mode: &InteractionMode) {
         assert!(matches!(event, WindowEvent::MouseInput { .. }));
 
-        if *mode != InteractionMode::Game {
+        if !matches!(mode, InteractionMode::Game) {
             return;
         }
 
@@ -63,7 +63,7 @@ impl GameState {
                 ..
             }
         ) {
-            self.place_block();
+            self.handle_right_click();
         }
     }
 
@@ -205,35 +205,40 @@ impl GameState {
         }
     }
 
-    /// Attempt the place a block where the player is looking
-    fn place_block(&mut self) {
-        if let Some((id, count)) = self.player.hotbar.get_selected_item()
-            && count > 0
-        {
-            // Check if item is placeable
-            if let Some(new_block_type) = ITEMS.get().unwrap()[id].data.block
-                && let Some((target_block, intersect)) = self.get_player_target_block_verbose()
-            {
-                // Get the adjacent block
-                let offset = to_cardinal_offset(&intersect.normal);
-                let adjacent_block_pos = BlockPos(target_block.block_pos.0 + offset);
+    fn handle_right_click(&mut self) {
+        let items = ITEMS.get().unwrap();
+        let blocks = BLOCKS.get().unwrap();
 
-                if let Some(block_type) = self.world.get_block_mut(&adjacent_block_pos)
+        if let Some((target_block, collision)) = self.get_player_target_block_verbose() {
+            if blocks[target_block.block_type].data.interactable {
+                // Interact with the block
+            } else {
+                // Attempt to place block
+                if let Some((item, count)) = self.player.hotbar.get_selected_item()
+                    && count > 0
+                    && let Some(new_block_type) = items[item].data.block
+                {
+                    // Get the adjacent block
+                    let adjacent_block_pos =
+                        BlockPos(target_block.block_pos.0 + collision.normal.cast().unwrap());
+
+                    if let Some(block_type) = self.world.get_block_mut(&adjacent_block_pos)
                     // Only place in air blocks
                     && *block_type == BlockType::Air
-                {
-                    *block_type = new_block_type;
-                    self.player.inventory.borrow_mut().remove_item(id, 1);
+                    {
+                        *block_type = new_block_type;
+                        self.player.inventory.borrow_mut().remove_item(item, 1);
 
-                    // Tell the world a block has changed
-                    MESSAGE_QUEUE
-                        .lock()
-                        .unwrap()
-                        .push_back(Message::BlockChanged(BlockChangedMessage {
-                            pos: target_block.block_pos,
-                            prev_block: BlockType::Air,
-                            new_block: new_block_type,
-                        }));
+                        // Tell the world a block has changed
+                        MESSAGE_QUEUE
+                            .lock()
+                            .unwrap()
+                            .push_back(Message::BlockChanged(BlockChangedMessage {
+                                pos: target_block.block_pos,
+                                prev_block: BlockType::Air,
+                                new_block: new_block_type,
+                            }));
+                    }
                 }
             }
         }

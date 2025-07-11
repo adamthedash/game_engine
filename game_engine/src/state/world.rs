@@ -14,6 +14,7 @@ use crate::{
     data::{block::BlockType, world_gen::DefaultGenerator},
     event::{Message, Subscriber},
     math::bbox::AABB,
+    state::block::BlockState,
     world_gen::{ChunkGenerator, Perlin},
 };
 
@@ -59,7 +60,7 @@ impl ChunkPos {
 }
 
 /// Represents the position of a block in block-space (1 unit moves 1 block length)
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct BlockPos(pub Point3<i32>);
 
 impl BlockPos {
@@ -223,6 +224,7 @@ pub struct World {
     // Generated chunks
     pub chunks: FxHashMap<ChunkPos, Chunk>,
     pub generator: Box<dyn ChunkGenerator>,
+    pub block_states: FxHashMap<BlockPos, BlockState>,
 }
 
 impl World {
@@ -391,6 +393,16 @@ impl World {
         self.chunks
             .get_mut(&chunk_pos)
             .map(|chunk| chunk.get_block_mut(offset))
+    }
+
+    #[inline]
+    pub fn get_block_state(&self, pos: &BlockPos) -> Option<&BlockState> {
+        self.block_states.get(pos)
+    }
+
+    #[inline]
+    pub fn get_block_state_mut(&mut self, pos: &BlockPos) -> Option<&mut BlockState> {
+        self.block_states.get_mut(pos)
     }
 }
 

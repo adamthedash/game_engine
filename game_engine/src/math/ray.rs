@@ -28,6 +28,7 @@ pub struct RayCollision {
     pub ray: Ray,
     pub distance: f32,
     pub intersection: Point3<f32>,
+    // Unit normal vector
     pub normal: Vector3<f32>,
 }
 

@@ -521,6 +521,11 @@ I plan to change this by determining the test block based on the player's AABB r
 This is definitely better, but it still suffers from the problem that the player isn't going to be colliding on a point, but rather the AABB face. Instead of testing against blocks adjacent to the camera position, I need to be testing against anything infront of the AABB faces in the direction of movement.  
 
 
+## Day 25
+In these kinds of games, one of my favourite things to do is automating crafting. I want to have a similar system here, which means that I'm going to need to look at stateful block types.  
+Unless I build a megafactory, the amount of stateful blocks the world has at once will be pretty small, so I'm going to hold the block states in a HashMap rather than densely packed like the chunk block types.  
+
+
 
 ## Day 25
 After taking a bit of a break and playing some new game releases I'm back. I want to properly address the collision detection from last time so I don't have to worry about it. 1) by separating it from the controller logic and 2) by doing proper face to face collision detection.  
