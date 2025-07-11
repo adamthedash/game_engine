@@ -89,6 +89,12 @@ impl UI {
                     }
                     .show_window(ctx);
                 }
+                InteractionMode::Block(block_pos) => {
+                    let block_state = game
+                        .world
+                        .get_block_state_mut(block_pos)
+                        .expect(&format!("Block state doesn't exist for {block_pos:?}"));
+                }
             }
             game.player.hotbar.show_window(ctx);
         });

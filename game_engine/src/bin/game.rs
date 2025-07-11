@@ -6,7 +6,7 @@ use enum_map::EnumMap;
 use game_engine::{
     InteractionMode,
     camera::{Camera, basic_flight::BasicFlightCameraController, traits::CameraController},
-    data::item::ItemType,
+    data::{item::ItemType, world_gen::DefaultGenerator},
     event::{MESSAGE_QUEUE, Message, Subscriber},
     render::state::RenderState,
     state::{
@@ -166,7 +166,7 @@ impl ApplicationHandler for App {
     ) {
         if let winit::event::DeviceEvent::MouseMotion { delta } = event
             && let Some(render_state) = &mut self.render_state
-            && self.interaction_mode == InteractionMode::Game
+            && matches!(self.interaction_mode, InteractionMode::Game)
             && self.camera_controller.enabled()
         {
             let config = &render_state.draw_context.config;
@@ -254,18 +254,32 @@ impl ApplicationHandler for App {
                 }
 
                 if *key == KeyCode::Escape && !repeat && state.is_pressed() {
-                    self.camera_controller.toggle();
                     self.interaction_mode.toggle();
 
                     // Toggle window cursor locking
                     if let Some(render_state) = &mut self.render_state {
                         match self.interaction_mode {
                             InteractionMode::Game => {
+                                // Disable camera controller
+                                if !self.camera_controller.enabled() {
+                                    self.camera_controller.toggle();
+                                }
                                 if render_state.draw_context.grab_cursor().is_err() {
                                     println!("WARNING: Failed to grab cursor!");
                                 }
                             }
                             InteractionMode::UI => {
+                                // Enable camera controller
+                                if self.camera_controller.enabled() {
+                                    self.camera_controller.toggle();
+                                }
+                                render_state.draw_context.ungrab_cursor();
+                            }
+                            InteractionMode::Block(block_pos) => {
+                                // Disable camera controller
+                                if self.camera_controller.enabled() {
+                                    self.camera_controller.toggle();
+                                }
                                 render_state.draw_context.ungrab_cursor();
                             }
                         }
@@ -283,7 +297,7 @@ impl ApplicationHandler for App {
                 delta: MouseScrollDelta::LineDelta(_, y),
                 ..
             } => {
-                if self.interaction_mode == InteractionMode::Game && *y != 0. {
+                if matches!(self.interaction_mode, InteractionMode::Game) && *y != 0. {
                     self.game_state.player.hotbar.scroll(*y < 0.);
                 }
             }
