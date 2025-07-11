@@ -24,6 +24,8 @@ pub enum ItemType {
     IronPickaxe,
     SteelPickaxe,
     MagicMetalPickaxe,
+    // Interactable blocks
+    Chest,
 }
 
 // User-defined
@@ -39,7 +41,7 @@ pub struct ItemData {
 }
 
 pub(super) const ICON_PATH: &str = "res/icons";
-pub(super) const ITEM_DATA: [ItemData; 18] = [
+pub(super) const ITEM_DATA: [ItemData; 19] = [
     ItemData {
         item_type: ItemType::Dirt,
         name: "Dirt",
@@ -185,5 +187,13 @@ pub(super) const ITEM_DATA: [ItemData; 18] = [
         weight: 1.,
         block: None,
         breaking_strength: Some(500),
+    },
+    ItemData {
+        item_type: ItemType::Chest,
+        name: "Chest",
+        icon_path: "smiley.png",
+        weight: 1.,
+        block: Some(BlockType::Chest),
+        breaking_strength: None,
     },
 ];

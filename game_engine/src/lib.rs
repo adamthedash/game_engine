@@ -3,6 +3,8 @@
 #![feature(array_windows)]
 #![feature(array_repeat)]
 
+use crate::state::world::BlockPos;
+
 pub mod block;
 pub mod camera;
 pub mod data;
@@ -19,8 +21,10 @@ pub mod world_gen;
 pub enum InteractionMode {
     // Player can walk around and interact with the world
     Game,
-    // Player is in a menu / interface
+    // Player is in the personal interface (inventory, etc.)
     UI,
+    // Player is in an interface in the world
+    Block(BlockPos),
 }
 
 impl InteractionMode {
@@ -29,6 +33,7 @@ impl InteractionMode {
         *self = match self {
             Game => UI,
             UI => Game,
+            Block(_) => Game,
         }
     }
 }

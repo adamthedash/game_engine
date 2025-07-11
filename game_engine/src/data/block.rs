@@ -18,6 +18,8 @@ pub enum BlockType {
     Iron,
     Coal,
     MagicMetal,
+    // Interactables
+    Chest,
 }
 
 #[derive(Debug, Clone)]
@@ -29,16 +31,18 @@ pub struct BlockData {
     pub hardness: Option<u32>,
     pub item_on_break: ItemType,
     pub renderable: bool,
+    pub interactable: bool,
 }
 
 pub(super) const TEXTURE_FOLDER: &str = "res/meshes";
-pub(super) const BLOCK_DATA: [BlockData; 12] = [
+pub(super) const BLOCK_DATA: [BlockData; 13] = [
     BlockData {
         block_type: BlockType::Air,
         hardness: None,
         item_on_break: ItemType::Dirt,
         texture_path: "dirt.png",
         renderable: false,
+        interactable: false,
     },
     BlockData {
         block_type: BlockType::Dirt,
@@ -46,6 +50,7 @@ pub(super) const BLOCK_DATA: [BlockData; 12] = [
         item_on_break: ItemType::Dirt,
         texture_path: "dirt.png",
         renderable: true,
+        interactable: false,
     },
     BlockData {
         block_type: BlockType::Stone,
@@ -53,6 +58,7 @@ pub(super) const BLOCK_DATA: [BlockData; 12] = [
         item_on_break: ItemType::Stone,
         texture_path: "stone.png",
         renderable: true,
+        interactable: false,
     },
     BlockData {
         block_type: BlockType::DarkStone,
@@ -60,6 +66,7 @@ pub(super) const BLOCK_DATA: [BlockData; 12] = [
         item_on_break: ItemType::DarkStone,
         texture_path: "darkstone.png",
         renderable: true,
+        interactable: false,
     },
     BlockData {
         block_type: BlockType::MossyStone,
@@ -67,6 +74,7 @@ pub(super) const BLOCK_DATA: [BlockData; 12] = [
         item_on_break: ItemType::MossyStone,
         texture_path: "mossystone.png",
         renderable: true,
+        interactable: false,
     },
     BlockData {
         block_type: BlockType::VoidStone,
@@ -74,6 +82,7 @@ pub(super) const BLOCK_DATA: [BlockData; 12] = [
         item_on_break: ItemType::VoidStone,
         texture_path: "voidstone.png",
         renderable: true,
+        interactable: false,
     },
     BlockData {
         block_type: BlockType::RadioactiveStone,
@@ -81,6 +90,7 @@ pub(super) const BLOCK_DATA: [BlockData; 12] = [
         item_on_break: ItemType::RadioactiveStone,
         texture_path: "radioactivestone.png",
         renderable: true,
+        interactable: false,
     },
     // Ores
     BlockData {
@@ -89,6 +99,7 @@ pub(super) const BLOCK_DATA: [BlockData; 12] = [
         item_on_break: ItemType::Copper,
         texture_path: "copper.png",
         renderable: true,
+        interactable: false,
     },
     BlockData {
         block_type: BlockType::Tin,
@@ -96,6 +107,7 @@ pub(super) const BLOCK_DATA: [BlockData; 12] = [
         item_on_break: ItemType::Tin,
         texture_path: "tin.png",
         renderable: true,
+        interactable: false,
     },
     BlockData {
         block_type: BlockType::Iron,
@@ -103,6 +115,7 @@ pub(super) const BLOCK_DATA: [BlockData; 12] = [
         item_on_break: ItemType::Iron,
         texture_path: "iron.png",
         renderable: true,
+        interactable: false,
     },
     BlockData {
         block_type: BlockType::Coal,
@@ -110,6 +123,7 @@ pub(super) const BLOCK_DATA: [BlockData; 12] = [
         item_on_break: ItemType::Coal,
         texture_path: "coal.png",
         renderable: true,
+        interactable: false,
     },
     BlockData {
         block_type: BlockType::MagicMetal,
@@ -117,5 +131,14 @@ pub(super) const BLOCK_DATA: [BlockData; 12] = [
         item_on_break: ItemType::MagicMetal,
         texture_path: "magic_metal.png",
         renderable: true,
+        interactable: false,
+    },
+    BlockData {
+        block_type: BlockType::Chest,
+        hardness: Some(0),
+        item_on_break: ItemType::Chest,
+        texture_path: "smiley.png",
+        renderable: true,
+        interactable: true,
     },
 ];
