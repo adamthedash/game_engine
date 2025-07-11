@@ -148,7 +148,7 @@ impl ApplicationHandler for App {
 
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
         println!("Saving world...");
-        self.game_state.world.save(Path::new("./saves"));
+        //self.game_state.world.save(Path::new("./saves"));
     }
 
     fn device_event(
