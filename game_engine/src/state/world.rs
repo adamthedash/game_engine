@@ -1,12 +1,5 @@
-use std::{
-    fs::{self, File},
-    io::{BufWriter, Write},
-    path::Path,
-};
-
 use cgmath::{InnerSpace, Point3, Vector3};
-use glob::glob;
-use num_traits::{Euclid, FromPrimitive, ToPrimitive};
+use num_traits::Euclid;
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -330,6 +323,7 @@ impl Default for World {
         World {
             chunks: Default::default(),
             generator: Box::new(chunk_gen),
+            block_states: Default::default(),
         }
     }
 }

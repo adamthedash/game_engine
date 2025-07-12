@@ -92,7 +92,7 @@ impl UI {
                 InteractionMode::Block(block_pos) => {
                     let block_state = game
                         .world
-                        .get_block_state_mut(block_pos)
+                        .get_block_state(block_pos)
                         .expect(&format!("Block state doesn't exist for {block_pos:?}"));
                 }
             }

@@ -15,6 +15,7 @@ use crate::{
     event::{MESSAGE_QUEUE, Message},
     math::ray::RayCollision,
     state::{
+        block::StatefulBlock,
         player::Player,
         world::{BlockChangedMessage, BlockPos, Chunk, World},
     },
@@ -39,7 +40,7 @@ impl GameState {
 
     pub fn handle_keypress(&mut self, _event: &KeyEvent) {}
 
-    pub fn handle_mouse_key(&mut self, event: &WindowEvent, mode: &InteractionMode) {
+    pub fn handle_mouse_key(&mut self, event: &WindowEvent, mode: &mut InteractionMode) {
         assert!(matches!(event, WindowEvent::MouseInput { .. }));
 
         if !matches!(mode, InteractionMode::Game) {
@@ -63,7 +64,7 @@ impl GameState {
                 ..
             }
         ) {
-            self.handle_right_click();
+            self.handle_right_click(mode);
         }
     }
 
@@ -205,13 +206,19 @@ impl GameState {
         }
     }
 
-    fn handle_right_click(&mut self) {
+    fn handle_right_click(&mut self, mode: &mut InteractionMode) {
         let items = ITEMS.get().unwrap();
         let blocks = BLOCKS.get().unwrap();
 
         if let Some((target_block, collision)) = self.get_player_target_block_verbose() {
             if blocks[target_block.block_type].data.interactable {
                 // Interact with the block
+                let block_state = self
+                    .world
+                    .get_block_state_mut(&target_block.block_pos)
+                    .expect("Block state doesnt exist!");
+
+                block_state.on_right_click(mode, self, &target_block.block_pos);
             } else {
                 // Attempt to place block
                 if let Some((item, count)) = self.player.hotbar.get_selected_item()
