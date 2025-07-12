@@ -356,6 +356,7 @@ impl Default for World<DefaultGenerator> {
         World {
             chunks: Default::default(),
             generator: chunk_gen,
+            block_states: Default::default()
         }
     }
 }

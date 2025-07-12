@@ -50,6 +50,7 @@ impl App<BasicFlightCameraController, DefaultGenerator> {
                 items[ItemType::Bronze] = 12;
                 items[ItemType::Steel] = 12;
                 items[ItemType::MagicMetal] = 12;
+                items[ItemType::Chest] = 12;
 
                 items
             },
@@ -257,7 +258,7 @@ impl<C: CameraController, G: ChunkGenerator> ApplicationHandler for App<C, G> {
 
                     // Toggle window cursor locking
                     if let Some(render_state) = &mut self.render_state {
-                        match self.interaction_mode {
+                        match &self.interaction_mode {
                             InteractionMode::Game => {
                                 // Disable camera controller
                                 if !self.camera_controller.enabled() {
@@ -290,7 +291,7 @@ impl<C: CameraController, G: ChunkGenerator> ApplicationHandler for App<C, G> {
             }
             event @ WindowEvent::MouseInput { .. } => {
                 self.game_state
-                    .handle_mouse_key(event, &self.interaction_mode);
+                    .handle_mouse_key(event, &mut self.interaction_mode);
             }
             WindowEvent::MouseWheel {
                 delta: MouseScrollDelta::LineDelta(_, y),
