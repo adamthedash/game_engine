@@ -4,7 +4,6 @@ use crate::{
     InteractionMode,
     data::{item::ItemType, recipe::Recipe},
     state::{game::GameState, world::BlockPos},
-    world_gen::ChunkGenerator,
 };
 
 pub enum BlockState {
@@ -12,23 +11,23 @@ pub enum BlockState {
     Crafter(CrafterState),
 }
 
-pub trait StatefulBlock<G: ChunkGenerator> {
+pub trait StatefulBlock {
     /// What happens when a player right clicks on the block in the world
     fn on_right_click(
         &mut self,
         _interaction_mode: &mut InteractionMode,
-        _game: &mut GameState<G>,
+        _game: &mut GameState,
         _block_pos: &BlockPos,
     ) {
     }
 }
 
 /// Pass-through trait calls to inner values
-impl<G: ChunkGenerator> StatefulBlock<G> for BlockState {
+impl StatefulBlock for BlockState {
     fn on_right_click(
         &mut self,
         interaction_mode: &mut InteractionMode,
-        game: &mut GameState<G>,
+        game: &mut GameState,
         block_pos: &BlockPos,
     ) {
         use BlockState::*;
@@ -45,17 +44,17 @@ pub struct CrafterState {
     recipe: Recipe,
 }
 
-impl<G: ChunkGenerator> StatefulBlock<G> for CrafterState {}
+impl StatefulBlock for CrafterState {}
 
 pub struct ChestState {
     items: EnumMap<ItemType, usize>,
 }
 
-impl<G: ChunkGenerator> StatefulBlock<G> for ChestState {
+impl StatefulBlock for ChestState {
     fn on_right_click(
         &mut self,
         interaction_mode: &mut InteractionMode,
-        _game: &mut GameState<G>,
+        _game: &mut GameState,
         block_pos: &BlockPos,
     ) {
         // Go into "Interface mode"
