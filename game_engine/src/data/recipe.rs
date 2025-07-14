@@ -4,7 +4,7 @@ use rustc_hash::FxHashMap;
 
 use crate::data::item::ItemType;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Recipe {
     pub inputs: FxHashMap<ItemType, usize>,
     pub output: (ItemType, usize),

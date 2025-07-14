@@ -1,15 +1,15 @@
 #![feature(int_roundings)]
-use std::{cell::RefCell, f32, path::Path, rc::Rc, sync::Arc, time::Instant};
+use std::{cell::RefCell, f32, rc::Rc, sync::Arc, time::Instant};
 
 use cgmath::{Deg, Rad};
 use enum_map::EnumMap;
 use game_engine::{
     InteractionMode,
     camera::{
-        Camera, basic_flight::BasicFlightCameraController, traits::CameraController,
+        Camera, traits::CameraController,
         walking::WalkingCameraController,
     },
-    data::{item::ItemType, world_gen::DefaultGenerator},
+    data::item::ItemType,
     event::{MESSAGE_QUEUE, Message, Subscriber},
     render::state::RenderState,
     state::{
@@ -112,12 +112,12 @@ impl App {
             .lock()
             .unwrap()
             .drain(..)
-            .for_each(|m| match &m {
+            .for_each(|m| match m {
                 ItemFavourited(_) => {
                     self.game_state.player.hotbar.handle_message(&m);
                 }
                 BlockChanged(_) => self.game_state.world.handle_message(&m),
-                _ => (),
+                SetInteractionMode(interaction_mode) => self.interaction_mode = interaction_mode,
             });
     }
 }

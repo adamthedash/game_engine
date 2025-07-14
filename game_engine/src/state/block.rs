@@ -3,62 +3,52 @@ use enum_map::EnumMap;
 use crate::{
     InteractionMode,
     data::{item::ItemType, recipe::Recipe},
-    state::{game::GameState, world::BlockPos},
-    world_gen::ChunkGenerator,
+    event::{MESSAGE_QUEUE, Message},
+    state::world::BlockPos,
 };
 
+#[derive(Debug, Clone)]
 pub enum BlockState {
     Chest(ChestState),
     Crafter(CrafterState),
 }
 
-pub trait StatefulBlock<G: ChunkGenerator> {
+pub trait StatefulBlock {
     /// What happens when a player right clicks on the block in the world
-    fn on_right_click(
-        &mut self,
-        _interaction_mode: &mut InteractionMode,
-        _game: &mut GameState<G>,
-        _block_pos: &BlockPos,
-    ) {
-    }
+    fn on_right_click(&mut self, _block_pos: &BlockPos) {}
 }
 
 /// Pass-through trait calls to inner values
-impl<G: ChunkGenerator> StatefulBlock<G> for BlockState {
-    fn on_right_click(
-        &mut self,
-        interaction_mode: &mut InteractionMode,
-        game: &mut GameState<G>,
-        block_pos: &BlockPos,
-    ) {
+impl StatefulBlock for BlockState {
+    fn on_right_click(&mut self, block_pos: &BlockPos) {
         use BlockState::*;
         match self {
-            Chest(chest_state) => chest_state.on_right_click(interaction_mode, game, block_pos),
-            Crafter(crafter_state) => {
-                crafter_state.on_right_click(interaction_mode, game, block_pos)
-            }
+            Chest(chest_state) => chest_state.on_right_click(block_pos),
+            Crafter(crafter_state) => crafter_state.on_right_click(block_pos),
         }
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct CrafterState {
     recipe: Recipe,
 }
 
-impl<G: ChunkGenerator> StatefulBlock<G> for CrafterState {}
+impl StatefulBlock for CrafterState {}
 
+#[derive(Default, Debug, Clone)]
 pub struct ChestState {
     items: EnumMap<ItemType, usize>,
 }
 
-impl<G: ChunkGenerator> StatefulBlock<G> for ChestState {
-    fn on_right_click(
-        &mut self,
-        interaction_mode: &mut InteractionMode,
-        _game: &mut GameState<G>,
-        block_pos: &BlockPos,
-    ) {
+impl StatefulBlock for ChestState {
+    fn on_right_click(&mut self, block_pos: &BlockPos) {
         // Go into "Interface mode"
-        *interaction_mode = InteractionMode::Block(block_pos.clone());
+        MESSAGE_QUEUE
+            .lock()
+            .expect("Failed to lock message queue")
+            .push_back(Message::SetInteractionMode(InteractionMode::Block(
+                block_pos.clone(),
+            )));
     }
 }

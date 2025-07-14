@@ -17,7 +17,7 @@ pub mod ui;
 pub mod util;
 pub mod world_gen;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum InteractionMode {
     // Player can walk around and interact with the world
     Game,

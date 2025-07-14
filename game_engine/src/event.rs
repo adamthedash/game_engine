@@ -3,13 +3,16 @@ use std::{
     sync::{LazyLock, Mutex},
 };
 
-use crate::{state::world::BlockChangedMessage, ui::inventory::ItemFavouritedMessage};
+use crate::{state::world::BlockChangedMessage, ui::inventory::ItemFavouritedMessage, InteractionMode};
 
 #[derive(Debug)]
-#[non_exhaustive]
 pub enum Message {
+    // Reactive messages - This thing has happened
     ItemFavourited(ItemFavouritedMessage),
     BlockChanged(BlockChangedMessage),
+
+    // Action messages - Do this thing
+    SetInteractionMode(InteractionMode),
 }
 
 pub type MessageQueue = VecDeque<Message>;

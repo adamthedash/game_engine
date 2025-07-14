@@ -1,7 +1,10 @@
 use enum_map::Enum;
 use num_derive::{FromPrimitive, ToPrimitive};
 
-use crate::data::item::ItemType;
+use crate::{
+    data::item::ItemType,
+    state::block::{BlockState, ChestState},
+};
 
 #[derive(Debug, Enum, PartialEq, Eq, Clone, Copy, ToPrimitive, FromPrimitive)]
 pub enum BlockType {
@@ -32,6 +35,8 @@ pub struct BlockData {
     pub item_on_break: ItemType,
     pub renderable: bool,
     pub interactable: bool,
+    // Default state for the block when placed
+    pub state: Option<fn() -> BlockState>,
 }
 
 pub(super) const TEXTURE_FOLDER: &str = "res/meshes";
@@ -43,6 +48,7 @@ pub(super) const BLOCK_DATA: [BlockData; 13] = [
         texture_path: "dirt.png",
         renderable: false,
         interactable: false,
+        state: None,
     },
     BlockData {
         block_type: BlockType::Dirt,
@@ -51,6 +57,7 @@ pub(super) const BLOCK_DATA: [BlockData; 13] = [
         texture_path: "dirt.png",
         renderable: true,
         interactable: false,
+        state: None,
     },
     BlockData {
         block_type: BlockType::Stone,
@@ -59,6 +66,7 @@ pub(super) const BLOCK_DATA: [BlockData; 13] = [
         texture_path: "stone.png",
         renderable: true,
         interactable: false,
+        state: None,
     },
     BlockData {
         block_type: BlockType::DarkStone,
@@ -67,6 +75,7 @@ pub(super) const BLOCK_DATA: [BlockData; 13] = [
         texture_path: "darkstone.png",
         renderable: true,
         interactable: false,
+        state: None,
     },
     BlockData {
         block_type: BlockType::MossyStone,
@@ -75,6 +84,7 @@ pub(super) const BLOCK_DATA: [BlockData; 13] = [
         texture_path: "mossystone.png",
         renderable: true,
         interactable: false,
+        state: None,
     },
     BlockData {
         block_type: BlockType::VoidStone,
@@ -83,6 +93,7 @@ pub(super) const BLOCK_DATA: [BlockData; 13] = [
         texture_path: "voidstone.png",
         renderable: true,
         interactable: false,
+        state: None,
     },
     BlockData {
         block_type: BlockType::RadioactiveStone,
@@ -91,6 +102,7 @@ pub(super) const BLOCK_DATA: [BlockData; 13] = [
         texture_path: "radioactivestone.png",
         renderable: true,
         interactable: false,
+        state: None,
     },
     // Ores
     BlockData {
@@ -100,6 +112,7 @@ pub(super) const BLOCK_DATA: [BlockData; 13] = [
         texture_path: "copper.png",
         renderable: true,
         interactable: false,
+        state: None,
     },
     BlockData {
         block_type: BlockType::Tin,
@@ -108,6 +121,7 @@ pub(super) const BLOCK_DATA: [BlockData; 13] = [
         texture_path: "tin.png",
         renderable: true,
         interactable: false,
+        state: None,
     },
     BlockData {
         block_type: BlockType::Iron,
@@ -116,6 +130,7 @@ pub(super) const BLOCK_DATA: [BlockData; 13] = [
         texture_path: "iron.png",
         renderable: true,
         interactable: false,
+        state: None,
     },
     BlockData {
         block_type: BlockType::Coal,
@@ -124,6 +139,7 @@ pub(super) const BLOCK_DATA: [BlockData; 13] = [
         texture_path: "coal.png",
         renderable: true,
         interactable: false,
+        state: None,
     },
     BlockData {
         block_type: BlockType::MagicMetal,
@@ -132,6 +148,7 @@ pub(super) const BLOCK_DATA: [BlockData; 13] = [
         texture_path: "magic_metal.png",
         renderable: true,
         interactable: false,
+        state: None,
     },
     BlockData {
         block_type: BlockType::Chest,
@@ -140,5 +157,6 @@ pub(super) const BLOCK_DATA: [BlockData; 13] = [
         texture_path: "smiley.png",
         renderable: true,
         interactable: true,
+        state: Some(|| BlockState::Chest(ChestState::default())),
     },
 ];

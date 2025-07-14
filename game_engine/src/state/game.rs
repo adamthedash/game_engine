@@ -190,6 +190,16 @@ impl GameState {
             // Break block
             let old_block = std::mem::replace(block_type, BlockType::Air);
 
+            // Remove the block state if it was stateful
+            if blocks[old_block].data.state.is_some() {
+                let old_state = self.world.block_states.remove(&target_block.block_pos);
+                assert!(
+                    old_state.is_some(),
+                    "Attempted to remove stateful block, but no state existed! {:?}",
+                    target_block.block_pos
+                );
+            }
+
             // Give an item to the player
             let item = blocks[old_block].data.item_on_break;
             self.player.inventory.borrow_mut().add_item(item, 1);
@@ -218,7 +228,7 @@ impl GameState {
                     .get_block_state_mut(&target_block.block_pos)
                     .expect("Block state doesnt exist!");
 
-                block_state.on_right_click(mode, self, &target_block.block_pos);
+                block_state.on_right_click(&target_block.block_pos);
             } else {
                 // Attempt to place block
                 if let Some((item, count)) = self.player.hotbar.get_selected_item()
@@ -226,6 +236,7 @@ impl GameState {
                     && let Some(new_block_type) = items[item].data.block
                 {
                     // Get the adjacent block
+                    // TODO: This cast might cause issues at some point
                     let adjacent_block_pos =
                         BlockPos(target_block.block_pos.0 + collision.normal.cast().unwrap());
 
@@ -233,7 +244,21 @@ impl GameState {
                     // Only place in air blocks
                     && *block_type == BlockType::Air
                     {
+                        // Place the block
                         *block_type = new_block_type;
+                        // Create a state if the block is stateful
+                        if let Some(state_fn) = blocks[new_block_type].data.state {
+                            let old_state = self
+                                .world
+                                .block_states
+                                .insert(adjacent_block_pos.clone(), state_fn());
+                            assert!(
+                                old_state.is_none(),
+                                "Overwrote existing state at {adjacent_block_pos:?}! {old_state:?} -> {new_block_type:?}"
+                            );
+                        }
+
+                        // Remove the item from the player's inventory
                         self.player.inventory.borrow_mut().remove_item(item, 1);
 
                         // Tell the world a block has changed
@@ -241,7 +266,7 @@ impl GameState {
                             .lock()
                             .unwrap()
                             .push_back(Message::BlockChanged(BlockChangedMessage {
-                                pos: target_block.block_pos,
+                                pos: adjacent_block_pos,
                                 prev_block: BlockType::Air,
                                 new_block: new_block_type,
                             }));

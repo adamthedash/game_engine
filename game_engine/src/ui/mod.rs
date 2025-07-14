@@ -93,7 +93,7 @@ impl UI {
                     let block_state = game
                         .world
                         .get_block_state(block_pos)
-                        .expect(&format!("Block state doesn't exist for {block_pos:?}"));
+                        .unwrap_or_else(|| panic!("Block state doesn't exist for {block_pos:?}"));
                 }
             }
             game.player.hotbar.show_window(ctx);
