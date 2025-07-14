@@ -17,16 +17,15 @@ use crate::{
         player::Player,
         world::{BlockChangedMessage, BlockPos, Chunk, World, WorldPos},
     },
-    world_gen::ChunkGenerator,
 };
 
 /// Holds state information about the game independent of the rendering
-pub struct GameState<G: ChunkGenerator> {
+pub struct GameState {
     pub player: Player,
-    pub world: World<G>,
+    pub world: World,
 }
 
-impl<G: ChunkGenerator> GameState<G> {
+impl GameState {
     /// Once-off stuff to do when a new game state is created
     pub fn init(&mut self) {
         self.generate_chunks();

@@ -219,13 +219,13 @@ impl<'a> Iterator for ChunkIter<'a> {
 }
 
 /// All of the world data
-pub struct World<G: ChunkGenerator> {
+pub struct World {
     // Generated chunks
     pub chunks: FxHashMap<ChunkPos, Chunk>,
-    pub generator: G,
+    pub generator: Box<dyn ChunkGenerator>,
 }
 
-impl<G: ChunkGenerator> World<G> {
+impl World {
     /// Save the world data to disk
     /// 1 chunk = 1 file, block types stored as a flat array
     pub fn save(&self, folder: &Path) {
@@ -252,7 +252,7 @@ impl<G: ChunkGenerator> World<G> {
         });
     }
 
-    pub fn load(folder: &Path) -> World<DefaultGenerator> {
+    pub fn load(folder: &Path) -> Self {
         assert!(folder.is_dir());
         let chunks = glob(&format!("{}/*.chunk", folder.to_str().unwrap()))
             .unwrap()
@@ -307,7 +307,7 @@ impl<G: ChunkGenerator> World<G> {
 
         let mut world = World {
             chunks,
-            generator: chunk_gen,
+            generator: Box::new(chunk_gen),
         };
         world.update_all_exposed_blocks();
         world
@@ -394,8 +394,8 @@ impl<G: ChunkGenerator> World<G> {
     }
 }
 
-impl Default for World<DefaultGenerator> {
-    fn default() -> World<DefaultGenerator> {
+impl Default for World {
+    fn default() -> Self {
         // This is a nice one
         let chunk_gen = DefaultGenerator::new(
             Perlin::new(42, 4, 1., 0.5, 1. / 16.),
@@ -404,7 +404,7 @@ impl Default for World<DefaultGenerator> {
 
         World {
             chunks: Default::default(),
-            generator: chunk_gen,
+            generator: Box::new(chunk_gen),
         }
     }
 }
@@ -416,7 +416,7 @@ pub struct BlockChangedMessage {
     pub new_block: BlockType,
 }
 
-impl<G: ChunkGenerator> Subscriber for World<G> {
+impl Subscriber for World {
     fn handle_message(&mut self, event: &Message) {
         use Message::*;
         if let BlockChanged(BlockChangedMessage { pos, .. }) = event {

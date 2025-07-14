@@ -5,7 +5,6 @@ use crate::{
     camera::Camera,
     data::block::BlockType,
     state::world::{BlockPos, World},
-    world_gen::ChunkGenerator,
 };
 
 /// The result of running collision detection for the player
@@ -20,7 +19,7 @@ pub struct Collisions {
 
 /// Perform collision detection for all 6 directions around the player
 /// TODO: Face-based detection, high velocity collisions
-pub fn detect_collisions<G: ChunkGenerator>(camera: &Camera, world: &World<G>) -> Collisions {
+pub fn detect_collisions(camera: &Camera, world: &World) -> Collisions {
     let camera_pos = camera.pos.get();
     let player_aabb = camera.aabb();
 

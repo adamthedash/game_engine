@@ -10,7 +10,6 @@ use crate::{
         collision::{adjust_movement_vector, detect_collisions},
     },
     state::world::World,
-    world_gen::ChunkGenerator,
 };
 
 /// Handles user input to adjust camera
@@ -114,12 +113,7 @@ impl CameraController for WalkingCameraController {
     }
 
     /// Update the camera position
-    fn update_camera<G: ChunkGenerator>(
-        &mut self,
-        camera: &mut Camera,
-        world: &World<G>,
-        duration: &Duration,
-    ) {
+    fn update_camera(&mut self, camera: &mut Camera, world: &World, duration: &Duration) {
         // Step 1: figure out the direction vector the player wants to move in
         let forward = angles_to_vec3(camera.yaw.get(), Rad(0.));
         let right = forward.cross(Vector3::unit_y()).normalize();

@@ -10,7 +10,6 @@ use crate::{
         collision::{adjust_movement_vector, detect_collisions},
     },
     state::world::World,
-    world_gen::ChunkGenerator,
 };
 
 /// Handles user input to adjust camera
@@ -108,12 +107,7 @@ impl CameraController for BasicFlightCameraController {
     }
 
     /// Update the camera position
-    fn update_camera<G: ChunkGenerator>(
-        &mut self,
-        camera: &mut Camera,
-        world: &World<G>,
-        duration: &Duration,
-    ) {
+    fn update_camera(&mut self, camera: &mut Camera, world: &World, duration: &Duration) {
         if !self.enabled {
             return;
         }

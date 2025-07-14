@@ -5,10 +5,8 @@ use cgmath::{Deg, Rad};
 use enum_map::EnumMap;
 use game_engine::{
     InteractionMode,
-    camera::{
-        Camera, basic_flight::BasicFlightCameraController, traits::CameraController,
-    },
-    data::{item::ItemType, world_gen::DefaultGenerator},
+    camera::{Camera, basic_flight::BasicFlightCameraController, traits::CameraController},
+    data::item::ItemType,
     event::{MESSAGE_QUEUE, Message, Subscriber},
     render::state::RenderState,
     state::{
@@ -17,7 +15,6 @@ use game_engine::{
         world::{World, WorldPos},
     },
     ui::{hotbar::Hotbar, inventory::Inventory},
-    world_gen::ChunkGenerator,
 };
 use tokio::runtime::Runtime;
 use winit::{
@@ -29,16 +26,16 @@ use winit::{
     window::{CursorGrabMode, Window, WindowId},
 };
 
-struct App<C: CameraController, G: ChunkGenerator> {
+struct App {
     runtime: Runtime,
     render_state: Option<RenderState>,
-    camera_controller: C,
-    game_state: GameState<G>,
+    camera_controller: Box<dyn CameraController>,
+    game_state: GameState,
     last_update: Option<Instant>,
     interaction_mode: InteractionMode,
 }
 
-impl App<BasicFlightCameraController, DefaultGenerator> {
+impl App {
     fn new() -> Self {
         let inventory = Inventory {
             items: {
@@ -70,7 +67,7 @@ impl App<BasicFlightCameraController, DefaultGenerator> {
         };
 
         let mut game_state = GameState {
-            world: World::<DefaultGenerator>::default(),
+            world: World::default(),
             player: Player {
                 camera: Camera::new(
                     WorldPos((-7., -20., -14.).into()),
@@ -91,19 +88,21 @@ impl App<BasicFlightCameraController, DefaultGenerator> {
         Self {
             runtime: Runtime::new().unwrap(),
             render_state: None,
-            camera_controller: BasicFlightCameraController::new(5., 2. * f32::consts::PI * 1.),
-            // camera_controller: WalkingCameraController::new(
-            //     5.,
-            //     2. * f32::consts::PI * 0.5,
-            //     10.,
-            //     1.5,
-            // ),
-            // camera_controller: SpaceFlightCameraController::new(
-            //     25.,
-            //     2. * f32::consts::PI * 1.,
-            //     Some(5.),
-            //     0.25,
-            // ),
+            camera_controller: Box::new(
+                BasicFlightCameraController::new(5., 2. * f32::consts::PI * 1.),
+                // camera_controller: WalkingCameraController::new(
+                //     5.,
+                //     2. * f32::consts::PI * 0.5,
+                //     10.,
+                //     1.5,
+                // ),
+                // camera_controller: SpaceFlightCameraController::new(
+                //     25.,
+                //     2. * f32::consts::PI * 1.,
+                //     Some(5.),
+                //     0.25,
+                // ),
+            ),
             game_state,
             last_update: None,
             interaction_mode: InteractionMode::Game,
@@ -111,7 +110,7 @@ impl App<BasicFlightCameraController, DefaultGenerator> {
     }
 }
 
-impl<C: CameraController, G: ChunkGenerator> App<C, G> {
+impl App {
     /// Process all the messages in the queue, routing them to their subscribers
     pub fn process_message_queue(&mut self) {
         use Message::*;
@@ -129,7 +128,7 @@ impl<C: CameraController, G: ChunkGenerator> App<C, G> {
     }
 }
 
-impl<C: CameraController, G: ChunkGenerator> ApplicationHandler for App<C, G> {
+impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         // Initialise RenderState once
         if self.render_state.is_none() {

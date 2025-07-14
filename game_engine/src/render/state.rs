@@ -33,7 +33,6 @@ use crate::{
     },
     ui::UI,
     util::{counter::Counter, stopwatch::StopWatch},
-    world_gen::ChunkGenerator,
 };
 
 /// Create a new instance buffer for the given type
@@ -277,11 +276,7 @@ impl RenderState {
     }
 
     /// Perform the actual rendering to the screen
-    pub fn render<G: ChunkGenerator>(
-        &mut self,
-        game: &GameState<G>,
-        interaction_mode: &InteractionMode,
-    ) {
+    pub fn render(&mut self, game: &GameState, interaction_mode: &InteractionMode) {
         let mut stopwatch = StopWatch::new();
         let mut total_stopwatch = StopWatch::new();
         let mut counter = Counter::new();

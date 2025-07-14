@@ -7,7 +7,6 @@ use super::{Camera, angles_to_vec3, traits::CameraController};
 use crate::{
     camera::collision::{adjust_movement_vector, detect_collisions},
     state::world::World,
-    world_gen::ChunkGenerator,
 };
 
 pub struct SpaceFlightCameraController {
@@ -113,10 +112,10 @@ impl CameraController for SpaceFlightCameraController {
             .update(|p| p.0 = p.0.clamp(-FRAC_PI_2 * 0.99, FRAC_PI_2 * 0.99));
     }
 
-    fn update_camera<G: ChunkGenerator>(
+    fn update_camera(
         &mut self,
         camera: &mut super::Camera,
-        world: &World<G>,
+        world: &World,
         duration: &std::time::Duration,
     ) {
         if !self.enabled {

@@ -17,7 +17,7 @@ use wgpu::{
 
 use crate::{
     InteractionMode, render::context::DrawContext, state::game::GameState,
-    ui::crafting::CraftingWindow, world_gen::ChunkGenerator,
+    ui::crafting::CraftingWindow,
 };
 
 /// Trait to enable easy drawing of UI elements
@@ -57,12 +57,12 @@ impl UI {
     }
 
     /// Render the UI
-    pub fn render<G: ChunkGenerator>(
+    pub fn render(
         &mut self,
         draw_context: &DrawContext,
         encoder: &mut CommandEncoder,
         view: &TextureView,
-        game: &GameState<G>,
+        game: &GameState,
         game_mode: &InteractionMode,
         debug_lines: &[String],
     ) {
