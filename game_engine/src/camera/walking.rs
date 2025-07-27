@@ -5,14 +5,12 @@ use winit::{event::KeyEvent, keyboard::PhysicalKey};
 
 use super::{angles_to_vec3, traits::CameraController};
 use crate::{
-    camera::{
-        Camera,
-        collision::{adjust_movement_vector, detect_collisions},
-    },
+    camera::{Camera, collision::predict_collisions},
     state::world::World,
 };
 
 /// Handles user input to adjust camera
+#[derive(Debug)]
 pub struct WalkingCameraController {
     move_speed: f32,
     turn_speed: f32,
@@ -138,39 +136,27 @@ impl CameraController for WalkingCameraController {
             _ => {}
         }
         if movement_vector.magnitude2() > 0. {
-            movement_vector = movement_vector.normalize_to(self.move_speed);
-        }
-
-        // Verical movement
-        let collisions = detect_collisions(camera, world);
-
-        if self.vertical_velocity > 0. && collisions.y_pos {
-            // Hit our head on the roof
-            self.vertical_velocity = 0.;
+            movement_vector =
+                movement_vector.normalize_to(self.move_speed * duration.as_secs_f32());
         }
 
         // Gravity
-        if !collisions.y_neg {
-            // Apply gravity
-            self.vertical_velocity -= self.gravity * duration.as_secs_f32();
-        } else if self.vertical_velocity < 0. {
-            // Land on the floor
+        self.vertical_velocity -= self.gravity * duration.as_secs_f32();
+        movement_vector.y = self.vertical_velocity * duration.as_secs_f32();
+
+        // Figure out if we're colliding with any blocks
+        // TODO: Fix momentum based controllers after collision detection is fixed
+        let (movement_vector, collisions) = predict_collisions(camera, world, movement_vector);
+        if collisions[1].is_some() {
             self.vertical_velocity = 0.;
         }
 
         // Jumping
-        if self.up_pressed && collisions.y_neg && self.vertical_velocity <= 0. {
-            self.vertical_velocity += self.jump_force;
+        if self.up_pressed && collisions[1].is_some_and(|y| y <= 0.) {
+            self.vertical_velocity = self.jump_force;
         }
 
-        movement_vector.y = self.vertical_velocity;
-
-        // Figure out if we're colliding with any blocks
-        movement_vector = adjust_movement_vector(movement_vector, &collisions);
-
         // Apply the movement vector
-        camera
-            .pos
-            .update(|p| p.0 += movement_vector * duration.as_secs_f32());
+        camera.pos.update(|p| p.0 += movement_vector);
     }
 }

@@ -13,9 +13,10 @@ use crate::{
         loader::{BLOCKS, ITEMS},
     },
     event::{MESSAGE_QUEUE, Message},
+    math::ray::RayCollision,
     state::{
         player::Player,
-        world::{BlockChangedMessage, BlockPos, Chunk, World, WorldPos},
+        world::{BlockChangedMessage, BlockPos, Chunk, World},
     },
 };
 
@@ -103,10 +104,10 @@ impl GameState {
     /// Get the block that the player is looking at
     pub fn get_player_target_block(&self) -> Option<Block> {
         self.get_player_target_block_verbose()
-            .map(|(_, _, block)| block)
+            .map(|(block, _)| block)
     }
 
-    pub fn get_player_target_block_verbose(&self) -> Option<(f32, WorldPos, Block)> {
+    pub fn get_player_target_block_verbose(&self) -> Option<(Block, RayCollision)> {
         let ray = self.player.camera.ray();
         let (player_chunk_pos, _) = self
             .player
@@ -129,13 +130,13 @@ impl GameState {
                     .aabb()
                     .to_f32()
                     .intersect_ray(&ray)
-                    .map(|d| (d, chunk_pos))
+                    .map(|col| (chunk_pos, col))
             })
             // And are within the player's reach
-            .filter(|(d, _)| *d <= self.player.arm_length)
+            .filter(|(_, col)| col.distance <= self.player.arm_length)
             // Process chunks in ascending distance from the player
-            .sorted_by(|(d1, _), (d2, _)| d1.total_cmp(d2))
-            .flat_map(|(_, chunk_pos)| self.world.chunks.get(&chunk_pos));
+            .sorted_by(|(_, c1), (_, c2)| c1.distance.total_cmp(&c2.distance))
+            .flat_map(|(chunk_pos, _)| self.world.chunks.get(&chunk_pos));
 
         let candidate_chunks = player_chunk.into_iter().chain(candidate_chunks);
 
@@ -161,15 +162,10 @@ impl GameState {
                             .aabb()
                             .to_f32()
                             .intersect_ray(&ray)
-                            .map(|d| (d, block))
+                            .map(|col| (block, col))
                     })
                     // Find the closest candidate
-                    .min_by(|(d1, _), (d2, _)| d1.total_cmp(d2))
-                    // Compute the intersection point
-                    .map(|(d, block)| {
-                        let intersect = WorldPos(ray.pos + ray.direction * d);
-                        (d, intersect, block)
-                    })
+                    .sorted_by(|(_, c1), (_, c2)| c1.distance.total_cmp(&c2.distance))
             })
             .next()
     }
@@ -216,11 +212,10 @@ impl GameState {
         {
             // Check if item is placeable
             if let Some(new_block_type) = ITEMS.get().unwrap()[id].data.block
-                && let Some((_, intersect, target_block)) = self.get_player_target_block_verbose()
+                && let Some((target_block, intersect)) = self.get_player_target_block_verbose()
             {
                 // Get the adjacent block
-                let direction_vector = intersect.0 - target_block.block_pos.centre().0;
-                let offset = to_cardinal_offset(&direction_vector);
+                let offset = to_cardinal_offset(&intersect.normal);
                 let adjacent_block_pos = BlockPos(target_block.block_pos.0 + offset);
 
                 if let Some(block_type) = self.world.get_block_mut(&adjacent_block_pos)

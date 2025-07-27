@@ -4,10 +4,7 @@ use cgmath::{Angle, InnerSpace, Rad, Vector3, Zero};
 use winit::{event::KeyEvent, keyboard::PhysicalKey};
 
 use super::{Camera, angles_to_vec3, traits::CameraController};
-use crate::{
-    camera::collision::{adjust_movement_vector, detect_collisions},
-    state::world::World,
-};
+use crate::{camera::collision::predict_collisions, state::world::World};
 
 pub struct SpaceFlightCameraController {
     acceleration: f32,
@@ -184,12 +181,18 @@ impl CameraController for SpaceFlightCameraController {
         }
 
         // Step 4: Figure out if we're colliding with any blocks
-        let collisions = detect_collisions(camera, world);
-        self.velocity = adjust_movement_vector(self.velocity, &collisions);
+        // TODO: Fix momentum based controllers after collision detection is fixed
+        let movement_vector = self.velocity * duration.as_secs_f32();
+        let (movement_vector, collisions) = predict_collisions(camera, world, movement_vector);
+
+        // Null velocity in the direction of a collision
+        [0, 1, 2].into_iter().for_each(|axis| {
+            if collisions[axis].is_some() {
+                self.velocity[axis] = 0.;
+            }
+        });
 
         // Step 5: Apply the movement
-        camera
-            .pos
-            .update(|p| p.0 += self.velocity * duration.as_secs_f32());
+        camera.pos.update(|p| p.0 += movement_vector);
     }
 }

@@ -5,10 +5,7 @@ use winit::{event::KeyEvent, keyboard::PhysicalKey};
 
 use super::{angles_to_vec3, traits::CameraController};
 use crate::{
-    camera::{
-        Camera,
-        collision::{adjust_movement_vector, detect_collisions},
-    },
+    camera::{Camera, collision::predict_collisions},
     state::world::World,
 };
 
@@ -150,12 +147,10 @@ impl CameraController for BasicFlightCameraController {
         movement_vector = movement_vector.normalize();
 
         // Step 2: Figure out if we're colliding with any blocks
-        let collisions = detect_collisions(camera, world);
-        movement_vector = adjust_movement_vector(movement_vector, &collisions);
+        movement_vector *= self.move_speed * duration.as_secs_f32();
+        let (movement_vector, _) = predict_collisions(camera, world, movement_vector);
 
         // Apply the movement vector
-        camera
-            .pos
-            .update(|p| p.0 += movement_vector * self.move_speed * duration.as_secs_f32());
+        camera.pos.update(|p| p.0 += movement_vector);
     }
 }

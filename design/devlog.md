@@ -522,8 +522,22 @@ This is definitely better, but it still suffers from the problem that the player
 
 
 
+## Day 25
+After taking a bit of a break and playing some new game releases I'm back. I want to properly address the collision detection from last time so I don't have to worry about it. 1) by separating it from the controller logic and 2) by doing proper face to face collision detection.  
 
 
+I want my collision detection to work roughly as follows:
+1) The controller proposes a desired direction to move based on it's own logic.  
+2) The collision detection examines the world in the direction, detecting collisions using the cross-sectional area of the player.  
+3) The collision detection returns back an "allowed" movement vector, which may be a truncated version of the original. It also provides information on a collision if it happened.  
+4) The controller updates its own internal state (Eg. zeroing player velocity in the direction).  
+
+Since the player can move in any direction, the movement region won't be an AABB, it'll be a sort of hypercube/rhombus shape. The proper name for this seems to be the [motion envelope](https://en.wikipedia.org/wiki/Envelope_(motion)) or "Configuration Space" in robotics, although I found googling details on these terms pretty difficult. Mathematically it's defined as the [Minkowski Sum]() of the AABB and movement vector.  
+
+The cool thing about the Minkowski sum is that it allows me to simplify the problem by a lot. Instead of detecting the player's AABB against the block's AABB (which is N^2 -ish), I can calculate the Minkowski sum of the two bounding boxes, and test it against a single point. Here's what that looks like:  
+![](./images/day25_collision.png)
+
+It took me most of the day messing around with math edge cases, but I have it in a reasonably good state. [This video](https://www.youtube.com/watch?v=8JJ-4JgR7Dg) helped me take a step back and think about it more fundamentally. I still have one issue which makes me clip on the edges of adjacent blocks when looking at them (Eg. walking along the ground when looking steeply down). I know why this is happening, but don't yet have a great solution to it. For now I'm going to clean up what I've got and return to it next time.  
 
 
 

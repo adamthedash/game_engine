@@ -1,90 +1,105 @@
-use cgmath::Vector3;
-use itertools::Itertools;
+use cgmath::{ElementWise, InnerSpace, Point3, Vector3};
 
 use crate::{
     camera::Camera,
     data::block::BlockType,
-    state::world::{BlockPos, World},
+    math::{bbox::AABB, ray::Ray},
+    state::world::World,
 };
 
-/// The result of running collision detection for the player
-pub struct Collisions {
-    pub x_pos: bool,
-    pub x_neg: bool,
-    pub y_pos: bool,
-    pub y_neg: bool,
-    pub z_pos: bool,
-    pub z_neg: bool,
-}
+/// Predict what we'll collide with if we move in the given direction
+/// Takes a proposed movement vector and returns an allowed one, along with any collisions.
+pub fn predict_collisions(
+    camera: &Camera,
+    world: &World,
+    mut movement_vector: Vector3<f32>,
+) -> (Vector3<f32>, [Option<f32>; 3]) {
+    // Not moving, so we can't hit anything
+    if movement_vector.magnitude2() == 0. {
+        return (movement_vector, [None; 3]);
+    }
 
-/// Perform collision detection for all 6 directions around the player
-/// TODO: Face-based detection, high velocity collisions
-pub fn detect_collisions(camera: &Camera, world: &World) -> Collisions {
-    let camera_pos = camera.pos.get();
     let player_aabb = camera.aabb();
 
-    let colliding_with = |pos: &BlockPos| {
-        if let Some(block) = world.get_block(pos) {
-            if block.block_type == BlockType::Air {
-                false
-            } else {
-                player_aabb.intersects(&block.aabb().to_f32())
-            }
-        } else {
-            false
-        }
-    };
+    // Expand player AABB by block size
+    let test_aabb = player_aabb.minkowski_sum(&AABB::new(
+        &Point3::new(-1., -1., -1.),
+        &Point3::new(0., 0., 0.),
+    ));
 
-    let collisions = [player_aabb.start, player_aabb.end]
-        .into_iter()
-        .flat_map(|point| {
-            (0..3)
-                .map(|axis| {
-                    let mut test_point = camera_pos;
-                    test_point.0[axis] = point[axis];
+    // Coarse selection of blocks we might hit
+    let movement_aabb = player_aabb
+        .minkowski_sum(&AABB::new(
+            &Point3::new(
+                movement_vector.x.min(0.),
+                movement_vector.y.min(0.),
+                movement_vector.z.min(0.),
+            ),
+            &Point3::new(
+                movement_vector.x.max(0.),
+                movement_vector.y.max(0.),
+                movement_vector.z.max(0.),
+            ),
+        ))
+        .to_block_aabb();
+    let candidate_blocks = movement_aabb.iter_blocks();
 
-                    let test_block = test_point.to_block_pos();
-                    colliding_with(&test_block)
-                })
-                .collect_array::<3>()
-                .unwrap()
+    let EPS = 0.01;
+
+    // Test each block for collisions
+    let collisions = candidate_blocks
+        // Don't collide with air blocks
+        .filter(|pos| {
+            world
+                .get_block(pos)
+                .is_some_and(|b| b.block_type != BlockType::Air)
         })
-        .collect_array::<6>()
-        .unwrap();
+        // Point intersection test between block and player
+        .flat_map(|pos| {
+            let ray = Ray::new(pos.to_world_pos().0, -movement_vector);
+            test_aabb.intersect_ray(&ray)
+        })
+        // Collect the closest hits across the blocks
+        .fold([None; 3], |mut acc: [Option<f32>; 3], collision| {
+            // How far from the colliding face is the block
+            let hit_vector = -collision.ray.direction * collision.distance;
+            let abs_normal = collision.normal.mul_element_wise(collision.normal);
+            let normal_distance = hit_vector.mul_element_wise(abs_normal);
+            println!(
+                "{:?} {:?} {:?}",
+                collision.ray.pos, normal_distance, hit_vector
+            );
 
-    Collisions {
-        x_neg: collisions[0],
-        y_neg: collisions[1],
-        z_neg: collisions[2],
-        x_pos: collisions[3],
-        y_pos: collisions[4],
-        z_pos: collisions[5],
-    }
-}
+            // Closest hits
+            [0, 1, 2].into_iter().for_each(|axis| {
+                if movement_vector[axis] > 0. && collision.normal[axis] > 0. {
+                    if let Some(x) = acc[axis].as_mut() {
+                        *x = x.min(hit_vector[axis] - EPS).max(0.);
+                    } else {
+                        acc[axis] = Some(hit_vector[axis] - EPS);
+                    }
+                } else if movement_vector[axis] < 0. && collision.normal[axis] < 0. {
+                    if let Some(x) = acc[axis].as_mut() {
+                        *x = x.max(hit_vector[axis] + EPS).min(0.);
+                    } else {
+                        acc[axis] = Some(hit_vector[axis] + EPS);
+                    }
+                }
+            });
 
-/// Adjust a proposed movement vector with collision detection.  
-pub fn adjust_movement_vector(
-    mut movement_vector: Vector3<f32>,
-    collisions: &Collisions,
-) -> Vector3<f32> {
-    if collisions.x_pos && movement_vector.x > 0. {
-        movement_vector.x = 0.;
-    }
-    if collisions.x_neg && movement_vector.x < 0. {
-        movement_vector.x = 0.;
-    }
-    if collisions.y_pos && movement_vector.y > 0. {
-        movement_vector.y = 0.;
-    }
-    if collisions.y_neg && movement_vector.y < 0. {
-        movement_vector.y = 0.;
-    }
-    if collisions.z_pos && movement_vector.z > 0. {
-        movement_vector.z = 0.;
-    }
-    if collisions.z_neg && movement_vector.z < 0. {
-        movement_vector.z = 0.;
-    }
+            acc
+        });
 
-    movement_vector
+    // Adjust the movement vector
+    collisions.iter().enumerate().for_each(|(axis, hit)| {
+        if let Some(hit) = hit {
+            if movement_vector[axis] > 0. {
+                movement_vector[axis] = movement_vector[axis].min(*hit);
+            } else if movement_vector[axis] < 0. {
+                movement_vector[axis] = movement_vector[axis].max(*hit);
+            }
+        }
+    });
+
+    (movement_vector, collisions)
 }
