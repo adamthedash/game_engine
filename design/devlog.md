@@ -540,6 +540,10 @@ The cool thing about the Minkowski sum is that it allows me to simplify the prob
 It took me most of the day messing around with math edge cases, but I have it in a reasonably good state. [This video](https://www.youtube.com/watch?v=8JJ-4JgR7Dg) helped me take a step back and think about it more fundamentally. I still have one issue which makes me clip on the edges of adjacent blocks when looking at them (Eg. walking along the ground when looking steeply down). I know why this is happening, but don't yet have a great solution to it. For now I'm going to clean up what I've got and return to it next time.  
 
 
+## Day 26
+I got the last piece of the collision detection sorted out. It took a while, but in the end I have a result that I'm very happy with. The new collision detection works at very high speeds and works proactively rather than retroactively, so should avoid a lot of weirdness like players being able to bug their way through blocks. [Here's a demo video](https://youtu.be/0y0xPB7ZTyM).  
+(Note to future me: do a proper in-depth writeup of how this works, because the resources out there clearly didn't make it easy for me.)  
+
 
 
 

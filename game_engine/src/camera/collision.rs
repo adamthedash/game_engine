@@ -1,11 +1,15 @@
-use cgmath::{ElementWise, InnerSpace, Point3, Vector3};
+use cgmath::{InnerSpace, Point3, Vector3};
 
 use crate::{
-    camera::{Camera, collision},
+    camera::Camera,
     data::block::BlockType,
     math::{bbox::AABB, ray::Ray},
     state::world::World,
 };
+
+/// Constant to avoid floating point weirdness
+/// Helps not to get face stuck in walls
+const EPSILON: f32 = 1e-3;
 
 /// Predict what we'll collide with if we move in the given direction
 /// Takes a proposed movement vector and returns an allowed one, along with any collisions.
@@ -44,8 +48,6 @@ pub fn predict_collisions(
         .to_block_aabb();
     let candidate_blocks = movement_aabb.iter_blocks();
 
-    let EPS = 0.01;
-
     // Test each block for collisions
     let collisions = candidate_blocks
         // Don't collide with air blocks
@@ -61,41 +63,36 @@ pub fn predict_collisions(
         })
         // Eliminate blocks we won't actually hit
         .filter(|col| col.distance.powi(2) <= movement_vector.magnitude2())
-        .min_by(|col1, col2| col1.distance.total_cmp(&col2.distance))
-        .map(|col| {
-            // How far from the colliding face is the block
-            let hit_vector = -col.ray.direction * col.distance;
-            let abs_normal = col.normal.mul_element_wise(col.normal);
-            let normal_distance = hit_vector.mul_element_wise(abs_normal);
-            println!("\t{:?}", normal_distance);
-
-            normal_distance
-        });
+        .min_by(|col1, col2| col1.distance.total_cmp(&col2.distance));
 
     let mut collision_returns = [None; 3];
-    if let Some(normal_distance) = collisions {
-        // Adjust the movement vector
-        [0, 1, 2]
+    if let Some(col) = collisions {
+        // Find which axis we've colliding along
+        let axis = [0, 1, 2]
             .into_iter()
-            // todo: normal_distance == 0 -> no collision?
-            .filter(|axis| normal_distance[*axis] != 0.)
-            .for_each(|axis| {
-                collision_returns[axis] = Some(normal_distance[axis]);
-                println!("Colliding axis: {axis} value {}", normal_distance[axis]);
-                if movement_vector[axis] > 0. && movement_vector[axis] >= normal_distance[axis] {
-                    movement_vector[axis] = (normal_distance[axis] - EPS).max(0.);
-                } else if movement_vector[axis] < 0.
-                    && movement_vector[axis] <= normal_distance[axis]
-                {
-                    movement_vector[axis] = (normal_distance[axis] + EPS).min(0.);
-                }
-            });
+            .find(|axis| col.normal[*axis] != 0.)
+            .unwrap();
 
-        // Re-do collision detection
+        // How far along that axis is the collision
+        let collision_distance = (-col.ray.direction * col.distance)[axis];
+
+        collision_returns[axis] = Some(collision_distance);
+
+        // Adjust the movement vector appropriately
+        if movement_vector[axis] > 0. && movement_vector[axis] >= collision_distance {
+            movement_vector[axis] = (collision_distance - EPSILON).max(0.);
+        } else if movement_vector[axis] < 0. && movement_vector[axis] <= collision_distance {
+            movement_vector[axis] = (collision_distance + EPSILON).min(0.);
+        }
+
+        // Re-do collision detection with new movement vector
+        // TODO: There's probably a more efficient way than recursively doing this, but it should
+        // only happen to a maximum depth of 3 (once for each axis)
         let (mv, c) = predict_collisions(camera, world, movement_vector);
         movement_vector = mv;
         collision_returns.iter_mut().zip(c).for_each(|(c1, c2)| {
             if c2.is_some() {
+                assert!(c1.is_none());
                 *c1 = c2
             }
         });

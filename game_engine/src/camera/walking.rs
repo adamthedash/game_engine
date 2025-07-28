@@ -145,7 +145,6 @@ impl CameraController for WalkingCameraController {
         movement_vector.y = self.vertical_velocity * duration.as_secs_f32();
 
         // Figure out if we're colliding with any blocks
-        // TODO: Fix momentum based controllers after collision detection is fixed
         let (movement_vector, collisions) = predict_collisions(camera, world, movement_vector);
         if collisions[1].is_some() {
             self.vertical_velocity = 0.;

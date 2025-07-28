@@ -181,7 +181,6 @@ impl CameraController for SpaceFlightCameraController {
         }
 
         // Step 4: Figure out if we're colliding with any blocks
-        // TODO: Fix momentum based controllers after collision detection is fixed
         let movement_vector = self.velocity * duration.as_secs_f32();
         let (movement_vector, collisions) = predict_collisions(camera, world, movement_vector);
 

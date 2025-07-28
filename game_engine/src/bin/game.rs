@@ -5,7 +5,10 @@ use cgmath::{Deg, Rad};
 use enum_map::EnumMap;
 use game_engine::{
     InteractionMode,
-    camera::{Camera, basic_flight::BasicFlightCameraController, traits::CameraController},
+    camera::{
+        Camera, basic_flight::BasicFlightCameraController, traits::CameraController,
+        walking::WalkingCameraController,
+    },
     data::item::ItemType,
     event::{MESSAGE_QUEUE, Message, Subscriber},
     render::state::RenderState,
@@ -89,19 +92,9 @@ impl App {
             runtime: Runtime::new().unwrap(),
             render_state: None,
             camera_controller: Box::new(
-                BasicFlightCameraController::new(5., 2. * f32::consts::PI * 1.),
-                // camera_controller: WalkingCameraController::new(
-                //     5.,
-                //     2. * f32::consts::PI * 0.5,
-                //     10.,
-                //     1.5,
-                // ),
-                // camera_controller: SpaceFlightCameraController::new(
-                //     25.,
-                //     2. * f32::consts::PI * 1.,
-                //     Some(5.),
-                //     0.25,
-                // ),
+                // BasicFlightCameraController::new(5., 2. * f32::consts::PI * 1.),
+                WalkingCameraController::new(5., 2. * f32::consts::PI * 0.5, 10., 1.5),
+                // SpaceFlightCameraController::new(25., 2. * f32::consts::PI * 1., Some(5.), 0.25),
             ),
             game_state,
             last_update: None,
