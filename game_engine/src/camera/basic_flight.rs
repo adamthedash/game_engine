@@ -148,7 +148,8 @@ impl CameraController for BasicFlightCameraController {
 
         // Step 2: Figure out if we're colliding with any blocks
         movement_vector *= self.move_speed * duration.as_secs_f32();
-        let (movement_vector, _) = predict_collisions(camera, world, movement_vector);
+        let (movement_vector, c) = predict_collisions(camera, world, movement_vector);
+        println!("{c:?}");
 
         // Apply the movement vector
         camera.pos.update(|p| p.0 += movement_vector);

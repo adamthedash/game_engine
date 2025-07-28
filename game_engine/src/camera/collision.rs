@@ -1,7 +1,7 @@
 use cgmath::{ElementWise, InnerSpace, Point3, Vector3};
 
 use crate::{
-    camera::Camera,
+    camera::{Camera, collision},
     data::block::BlockType,
     math::{bbox::AABB, ray::Ray},
     state::world::World,
@@ -59,47 +59,47 @@ pub fn predict_collisions(
             let ray = Ray::new(pos.to_world_pos().0, -movement_vector);
             test_aabb.intersect_ray(&ray)
         })
-        // Collect the closest hits across the blocks
-        .fold([None; 3], |mut acc: [Option<f32>; 3], collision| {
+        // Eliminate blocks we won't actually hit
+        .filter(|col| col.distance.powi(2) <= movement_vector.magnitude2())
+        .min_by(|col1, col2| col1.distance.total_cmp(&col2.distance))
+        .map(|col| {
             // How far from the colliding face is the block
-            let hit_vector = -collision.ray.direction * collision.distance;
-            let abs_normal = collision.normal.mul_element_wise(collision.normal);
+            let hit_vector = -col.ray.direction * col.distance;
+            let abs_normal = col.normal.mul_element_wise(col.normal);
             let normal_distance = hit_vector.mul_element_wise(abs_normal);
-            println!(
-                "{:?} {:?} {:?}",
-                collision.ray.pos, normal_distance, hit_vector
-            );
+            println!("\t{:?}", normal_distance);
 
-            // Closest hits
-            [0, 1, 2].into_iter().for_each(|axis| {
-                if movement_vector[axis] > 0. && collision.normal[axis] > 0. {
-                    if let Some(x) = acc[axis].as_mut() {
-                        *x = x.min(hit_vector[axis] - EPS).max(0.);
-                    } else {
-                        acc[axis] = Some(hit_vector[axis] - EPS);
-                    }
-                } else if movement_vector[axis] < 0. && collision.normal[axis] < 0. {
-                    if let Some(x) = acc[axis].as_mut() {
-                        *x = x.max(hit_vector[axis] + EPS).min(0.);
-                    } else {
-                        acc[axis] = Some(hit_vector[axis] + EPS);
-                    }
+            normal_distance
+        });
+
+    let mut collision_returns = [None; 3];
+    if let Some(normal_distance) = collisions {
+        // Adjust the movement vector
+        [0, 1, 2]
+            .into_iter()
+            // todo: normal_distance == 0 -> no collision?
+            .filter(|axis| normal_distance[*axis] != 0.)
+            .for_each(|axis| {
+                collision_returns[axis] = Some(normal_distance[axis]);
+                println!("Colliding axis: {axis} value {}", normal_distance[axis]);
+                if movement_vector[axis] > 0. && movement_vector[axis] >= normal_distance[axis] {
+                    movement_vector[axis] = (normal_distance[axis] - EPS).max(0.);
+                } else if movement_vector[axis] < 0.
+                    && movement_vector[axis] <= normal_distance[axis]
+                {
+                    movement_vector[axis] = (normal_distance[axis] + EPS).min(0.);
                 }
             });
 
-            acc
-        });
-
-    // Adjust the movement vector
-    collisions.iter().enumerate().for_each(|(axis, hit)| {
-        if let Some(hit) = hit {
-            if movement_vector[axis] > 0. {
-                movement_vector[axis] = movement_vector[axis].min(*hit);
-            } else if movement_vector[axis] < 0. {
-                movement_vector[axis] = movement_vector[axis].max(*hit);
+        // Re-do collision detection
+        let (mv, c) = predict_collisions(camera, world, movement_vector);
+        movement_vector = mv;
+        collision_returns.iter_mut().zip(c).for_each(|(c1, c2)| {
+            if c2.is_some() {
+                *c1 = c2
             }
-        }
-    });
+        });
+    }
 
-    (movement_vector, collisions)
+    (movement_vector, collision_returns)
 }
