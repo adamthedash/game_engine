@@ -140,7 +140,7 @@ impl AABB<f32> {
                     let inv_dir = 1.0 / ray.direction[i];
                     let t1 = (self.start[i] - ray.pos[i]) * inv_dir;
                     let t2 = (self.end[i] - ray.pos[i]) * inv_dir;
-                    let tmax_candidate = if t1 > t2 { t1 } else { t2 };
+                    let tmax_candidate = t1.max(t2);
 
                     if (tmax_candidate - tmax).abs() < f32::EPSILON {
                         normal[i] = if t2 > t1 { 1.0 } else { -1.0 };

@@ -30,3 +30,25 @@ pub struct RayCollision {
     pub intersection: Point3<f32>,
     pub normal: Vector3<f32>,
 }
+
+impl RayCollision {
+    /// Return the axis along which this normal lies, along with the sign
+    /// Assumes normal is cardinal
+    pub fn normal_axis(&self) -> (usize, f32) {
+        assert_eq!(
+            [0, 1, 2]
+                .into_iter()
+                .filter(|axis| self.normal[*axis] != 0.)
+                .count(),
+            1,
+            "Collision normal is not cardinal!"
+        );
+
+        let axis = [0, 1, 2]
+            .into_iter()
+            .find(|axis| self.normal[*axis] != 0.)
+            .expect("Ray Collision has no normal!");
+
+        (axis, self.normal[axis].signum())
+    }
+}

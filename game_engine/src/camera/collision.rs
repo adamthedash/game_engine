@@ -3,7 +3,7 @@ use cgmath::{InnerSpace, Point3, Vector3};
 use crate::{
     camera::Camera,
     data::block::BlockType,
-    math::{bbox::AABB, ray::Ray},
+    math::{NumFuncs, bbox::AABB, ray::Ray},
     state::world::World,
 };
 
@@ -49,7 +49,7 @@ pub fn predict_collisions(
     let candidate_blocks = movement_aabb.iter_blocks();
 
     // Test each block for collisions
-    let collisions = candidate_blocks
+    let collision = candidate_blocks
         // Don't collide with air blocks
         .filter(|pos| {
             world
@@ -65,25 +65,19 @@ pub fn predict_collisions(
         .filter(|col| col.distance.powi(2) <= movement_vector.magnitude2())
         .min_by(|col1, col2| col1.distance.total_cmp(&col2.distance));
 
+    // Store collision distances along each axis
     let mut collision_returns = [None; 3];
-    if let Some(col) = collisions {
-        // Find which axis we've colliding along
-        let axis = [0, 1, 2]
-            .into_iter()
-            .find(|axis| col.normal[*axis] != 0.)
-            .unwrap();
+
+    if let Some(col) = collision {
+        // Which axis are we colliding along
+        let (axis, _) = col.normal_axis();
 
         // How far along that axis is the collision
         let collision_distance = (-col.ray.direction * col.distance)[axis];
-
         collision_returns[axis] = Some(collision_distance);
 
         // Adjust the movement vector appropriately
-        if movement_vector[axis] > 0. && movement_vector[axis] >= collision_distance {
-            movement_vector[axis] = (collision_distance - EPSILON).max(0.);
-        } else if movement_vector[axis] < 0. && movement_vector[axis] <= collision_distance {
-            movement_vector[axis] = (collision_distance + EPSILON).min(0.);
-        }
+        movement_vector[axis] = movement_vector[axis].closer(collision_distance.shrink(EPSILON));
 
         // Re-do collision detection with new movement vector
         // TODO: There's probably a more efficient way than recursively doing this, but it should
@@ -92,7 +86,7 @@ pub fn predict_collisions(
         movement_vector = mv;
         collision_returns.iter_mut().zip(c).for_each(|(c1, c2)| {
             if c2.is_some() {
-                assert!(c1.is_none());
+                assert!(c1.is_none(), "We've already collided along this axis!");
                 *c1 = c2
             }
         });
