@@ -5,10 +5,7 @@ use cgmath::{Deg, Rad};
 use enum_map::EnumMap;
 use game_engine::{
     InteractionMode,
-    camera::{
-        Camera, traits::CameraController,
-        walking::WalkingCameraController,
-    },
+    camera::{Camera, traits::CameraController, walking::WalkingCameraController},
     data::item::ItemType,
     event::{MESSAGE_QUEUE, Message, Subscriber},
     render::state::RenderState,
@@ -108,17 +105,15 @@ impl App {
     /// Process all the messages in the queue, routing them to their subscribers
     pub fn process_message_queue(&mut self) {
         use Message::*;
-        MESSAGE_QUEUE
-            .lock()
-            .unwrap()
-            .drain(..)
-            .for_each(|m| match m {
+        while let Some(m) = MESSAGE_QUEUE.take() {
+            match m {
                 ItemFavourited(_) => {
                     self.game_state.player.hotbar.handle_message(&m);
                 }
                 BlockChanged(_) => self.game_state.world.handle_message(&m),
                 SetInteractionMode(interaction_mode) => self.interaction_mode = interaction_mode,
-            });
+            }
+        }
     }
 }
 

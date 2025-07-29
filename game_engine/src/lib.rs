@@ -2,6 +2,7 @@
 #![feature(iter_collect_into)]
 #![feature(array_windows)]
 #![feature(array_repeat)]
+#![feature(slice_split_once)]
 
 use crate::state::world::BlockPos;
 

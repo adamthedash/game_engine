@@ -44,11 +44,8 @@ pub struct ChestState {
 impl StatefulBlock for ChestState {
     fn on_right_click(&mut self, block_pos: &BlockPos) {
         // Go into "Interface mode"
-        MESSAGE_QUEUE
-            .lock()
-            .expect("Failed to lock message queue")
-            .push_back(Message::SetInteractionMode(InteractionMode::Block(
-                block_pos.clone(),
-            )));
+        MESSAGE_QUEUE.send(Message::SetInteractionMode(InteractionMode::Block(
+            block_pos.clone(),
+        )));
     }
 }

@@ -117,15 +117,9 @@ impl Drawable for Inventory {
                                         .for_each(
                                             |(slot, key)| {
                                                 if ui.egui_ui().input(|i| i.key_pressed(key)) {
-                                                    MESSAGE_QUEUE
-                                                        .lock()
-                                                        .expect("Failed to lock message queue")
-                                                        .push_back(Message::ItemFavourited(
-                                                            ItemFavouritedMessage {
-                                                                item: id,
-                                                                slot,
-                                                            },
-                                                        ));
+                                                    MESSAGE_QUEUE.send(Message::ItemFavourited(
+                                                        ItemFavouritedMessage { item: id, slot },
+                                                    ));
                                                 }
                                             },
                                         );

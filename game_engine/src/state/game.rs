@@ -2,7 +2,6 @@ use std::time::Duration;
 
 use cgmath::{InnerSpace, MetricSpace, Vector3, Zero};
 use itertools::Itertools;
-use rand::random_bool;
 use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
 
 use crate::{
@@ -64,14 +63,14 @@ impl GameState {
                 ..
             }
         ) {
-            self.handle_right_click(mode);
+            self.handle_right_click();
         }
     }
 
     /// Generate chunks around the player
     fn generate_chunks(&mut self) {
         let pre_generate_buffer = 2; // Generate chunks randomly in this range
-        let pre_generate_chance = 0.02;
+        let preemptive_chunks = 8; // Generate this many chunks pre-emptively per frame
 
         let (player_chunk, _) = self
             .player
@@ -82,24 +81,37 @@ impl GameState {
             .to_chunk_offset();
         let player_vision_chunks =
             (self.player.camera.zfar.get() as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
-        player_chunk
-            .chunks_within(player_vision_chunks + 1 + pre_generate_buffer)
-            // Only generate chunks within vision distance of the player
-            .for_each(|chunk_pos| {
-                let generate = if (chunk_pos.0 - player_chunk.0).magnitude2()
-                    > (player_vision_chunks as i32 + 1).pow(2)
-                {
-                    // Random gen area
-                    random_bool(pre_generate_chance)
-                } else {
-                    // Guarantee generation
-                    true
-                };
 
-                if generate {
-                    self.world.get_or_generate_chunk(&chunk_pos);
-                }
-            });
+        // Get nearby chunks ordered by distance from player
+        let mut nearby_chunks = player_chunk
+            .chunks_within(player_vision_chunks + 1 + pre_generate_buffer)
+            .map(|pos| {
+                let distance = (pos.0 - player_chunk.0).magnitude2();
+                (pos, distance)
+            })
+            .collect::<Vec<_>>();
+        nearby_chunks.sort_by_key(|(_, distance)| *distance);
+
+        // Split into chunks within vision distance and outside
+        let (nearby_chunks, far_chunks) = nearby_chunks
+            .split_once(|(_, distance)| *distance > (player_vision_chunks as i32 + 1).pow(2))
+            .unwrap_or_else(|| (&nearby_chunks, &[]));
+
+        // Guarantee the generation of chunks the player can see
+        let generating_chunks = nearby_chunks
+            .iter()
+            .chain(
+                // Pre-emptively generate some chunks outside of vision
+                far_chunks
+                    .iter()
+                    .filter(|(pos, _)| !self.world.chunks.contains_key(pos))
+                    .take(preemptive_chunks),
+            )
+            .collect::<Vec<_>>();
+
+        generating_chunks.into_iter().for_each(|(pos, _)| {
+            self.world.get_or_generate_chunk(pos);
+        });
     }
 
     /// Get the block that the player is looking at
@@ -205,18 +217,15 @@ impl GameState {
             self.player.inventory.borrow_mut().add_item(item, 1);
 
             // Tell the world a block has changed
-            MESSAGE_QUEUE
-                .lock()
-                .unwrap()
-                .push_back(Message::BlockChanged(BlockChangedMessage {
-                    pos: target_block.block_pos,
-                    prev_block: old_block,
-                    new_block: BlockType::Air,
-                }));
+            MESSAGE_QUEUE.send(Message::BlockChanged(BlockChangedMessage {
+                pos: target_block.block_pos,
+                prev_block: old_block,
+                new_block: BlockType::Air,
+            }));
         }
     }
 
-    fn handle_right_click(&mut self, mode: &mut InteractionMode) {
+    fn handle_right_click(&mut self) {
         let items = ITEMS.get().unwrap();
         let blocks = BLOCKS.get().unwrap();
 
@@ -262,14 +271,11 @@ impl GameState {
                         self.player.inventory.borrow_mut().remove_item(item, 1);
 
                         // Tell the world a block has changed
-                        MESSAGE_QUEUE
-                            .lock()
-                            .unwrap()
-                            .push_back(Message::BlockChanged(BlockChangedMessage {
-                                pos: adjacent_block_pos,
-                                prev_block: BlockType::Air,
-                                new_block: new_block_type,
-                            }));
+                        MESSAGE_QUEUE.send(Message::BlockChanged(BlockChangedMessage {
+                            pos: adjacent_block_pos,
+                            prev_block: BlockType::Air,
+                            new_block: new_block_type,
+                        }));
                     }
                 }
             }
