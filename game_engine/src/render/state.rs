@@ -1,7 +1,7 @@
 use std::{path::Path, sync::Arc};
 
 use anyhow::Context;
-use cgmath::{Matrix3, Matrix4, One, Vector3};
+use cgmath::{Deg, Matrix3, Matrix4, One, Vector3};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, Buffer, BufferDescriptor,
     BufferUsages, CommandEncoderDescriptor, Device, LoadOp, Operations, RenderPassColorAttachment,
@@ -16,6 +16,7 @@ use crate::{
     block::Block,
     camera::{Camera, CameraUniform},
     data::loader::{BLOCK_TEXTURES, BLOCKS, init_block_info, init_item_info},
+    event::{Message, Subscriber},
     render::{
         context::DrawContext,
         light::LightingUniform,
@@ -29,6 +30,7 @@ use crate::{
     },
     state::{
         game::GameState,
+        player::Position,
         world::{BlockPos, Chunk},
     },
     ui::UI,
@@ -66,6 +68,7 @@ pub struct RenderState {
     // Camera stuff
     camera_uniform: CameraUniform,
     camera_buffer: Buffer,
+    camera: Camera,
     // Lighting stuff
     _lighting_uniform: LightingUniform,
     _lighting_buffer: Buffer,
@@ -77,7 +80,7 @@ pub struct RenderState {
 }
 
 impl RenderState {
-    pub async fn new(window: Arc<Window>) -> Self {
+    pub async fn new(window: Arc<Window>, player_position: &Position) -> Self {
         let draw_context = DrawContext::new(window).await;
 
         // Shaders
@@ -227,6 +230,15 @@ impl RenderState {
             block_wireframe_instance_buffer,
             block_wireframe_mesh,
             block_texture_bind_group,
+            camera: Camera::new(
+                player_position.pos,
+                player_position.yaw,
+                player_position.pitch,
+                1.,
+                Deg(90.),
+                0.1,
+                100.,
+            ),
         }
     }
 
@@ -253,7 +265,7 @@ impl RenderState {
     }
 
     // Resize the window
-    pub fn resize(&mut self, size: PhysicalSize<u32>, camera: &mut Camera) {
+    pub fn resize(&mut self, size: PhysicalSize<u32>) {
         self.draw_context.resize(size);
         self.depth_texture = Texture::create_depth_texture(
             &self.draw_context.device,
@@ -261,13 +273,15 @@ impl RenderState {
             "depth_texture",
         );
 
-        camera.aspect.set(size.width as f32 / size.height as f32);
-        self.update_camera_buffer(camera);
+        self.camera
+            .aspect
+            .set(size.width as f32 / size.height as f32);
+        self.update_camera_buffer();
     }
 
     /// Syncs the camera state to the buffer being rendered in the GPU
-    pub fn update_camera_buffer(&mut self, camera: &Camera) {
-        self.camera_uniform.update_view_proj(camera);
+    pub fn update_camera_buffer(&mut self) {
+        self.camera_uniform.update_view_proj(&self.camera);
         self.draw_context.queue.write_buffer(
             &self.camera_buffer,
             0,
@@ -285,15 +299,9 @@ impl RenderState {
         let player_target_block = game.get_player_target_block();
 
         // Check what blocks are candidates for rendering
-        let (player_chunk, _) = game
-            .player
-            .camera
-            .pos
-            .get()
-            .to_block_pos()
-            .to_chunk_offset();
+        let (player_chunk, _) = game.player.position.pos.to_block_pos().to_chunk_offset();
         let player_vision_chunks =
-            (game.player.camera.zfar.get() as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
+            (game.player.vision_distance as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
 
         let blocks = BLOCKS.get().expect("Block data not initalised!");
         self.visible_blocks.clear();
@@ -304,7 +312,7 @@ impl RenderState {
                 counter.increment("Chunks in range");
             })
             // Only render chunks in the player's viewport
-            .filter(|chunk_pos| game.player.camera.in_view_aabb(&chunk_pos.aabb().to_f32()))
+            .filter(|chunk_pos| self.camera.in_view_aabb(&chunk_pos.aabb().to_f32()))
             .inspect(|_| {
                 counter.increment("Chunks in view");
             })
@@ -452,7 +460,7 @@ impl RenderState {
         stopwatch.stamp_and_reset("Render pass");
 
         let debug_block_pos = BlockPos::new(-4, 23, -5);
-        let _debug_frustum = game.player.camera.frustum.with(|f| {
+        let _debug_frustum = self.camera.frustum.with(|f| {
             [
                 f.near.signed_distance(&debug_block_pos.to_world_pos()),
                 f.far.signed_distance(&debug_block_pos.to_world_pos()),
@@ -462,10 +470,7 @@ impl RenderState {
                 f.bottom.signed_distance(&debug_block_pos.to_world_pos()),
             ]
         });
-        let in_view = game
-            .player
-            .camera
-            .in_view_aabb(&debug_block_pos.aabb().to_f32());
+        let in_view = self.camera.in_view_aabb(&debug_block_pos.aabb().to_f32());
 
         total_stopwatch.stamp_and_reset("Total render loop");
 
@@ -475,8 +480,8 @@ impl RenderState {
             .chain(total_stopwatch.get_debug_strings())
             .chain(counter.get_debug_strings())
             .chain([
-                format!("pos: {:?}", game.player.camera.pos),
-                format!("camera: {:#?}", game.player.camera.aabb()),
+                format!("pos: {:?}", self.camera.pos),
+                format!("player: {:#?}", game.player.aabb()),
                 format!("block: {debug_block_pos:?} in view: {in_view:?}"),
                 // format!("frustum dists: {:?}", debug_frustum),
                 format!("Blocks rendered: {}", self.instances_cpu.len()),
@@ -487,6 +492,7 @@ impl RenderState {
         self.ui.render(
             &self.draw_context,
             &mut encoder,
+            &self.camera,
             &texture_view,
             game,
             interaction_mode,
@@ -500,5 +506,17 @@ impl RenderState {
 
         // Show the new output to the screen
         output.present();
+    }
+}
+
+impl Subscriber for RenderState {
+    fn handle_message(&mut self, event: &Message) {
+        if let Message::PlayerMoved(Position { pos, yaw, pitch }) = event {
+            // Synchronise the camera with the player's movement
+            self.camera.pos.set(*pos);
+            self.camera.yaw.set(*yaw);
+            self.camera.pitch.set(*pitch);
+            self.update_camera_buffer();
+        }
     }
 }

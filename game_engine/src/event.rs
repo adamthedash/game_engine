@@ -5,7 +5,10 @@ use std::{
 
 use crate::{
     InteractionMode,
-    state::world::{BlockChangedMessage, BlockPos, PlaceBlockMessage},
+    state::{
+        player::Position,
+        world::{BlockChangedMessage, BlockPos, PlaceBlockMessage},
+    },
     ui::inventory::ItemFavouritedMessage,
 };
 
@@ -14,6 +17,7 @@ pub enum Message {
     // Reactive messages - This thing has happened
     ItemFavourited(ItemFavouritedMessage),
     BlockChanged(BlockChangedMessage),
+    PlayerMoved(Position),
 
     // Action messages - Do this thing
     // It's assumed that at the action has been validated at this point

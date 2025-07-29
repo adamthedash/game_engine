@@ -1,3 +1,4 @@
+use cgmath::{Vector3, Zero};
 use num_traits::Float;
 
 pub mod bbox;
@@ -56,3 +57,21 @@ pub trait NumFuncs: Float {
 }
 
 impl<T: Float> NumFuncs for T {}
+
+/// Convert a vector offset to it's closest unit offset along one cardinal direction
+#[inline]
+fn to_cardinal_offset(vec: &Vector3<f32>) -> Vector3<i32> {
+    // Get the axis with the largest magnitude
+    let largest_mag = [vec[0], vec[1], vec[2]]
+        .into_iter()
+        .enumerate()
+        .max_by(|(_, x1), (_, x2)| x1.abs().total_cmp(&x2.abs()))
+        .map(|(i, _)| i)
+        .unwrap();
+
+    // Get the unit vector along this axis
+    let mut offset = Vector3::zero();
+    offset[largest_mag] = if vec[largest_mag] > 0. { 1 } else { -1 };
+
+    offset
+}

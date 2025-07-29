@@ -1,10 +1,16 @@
-use std::f32::consts::FRAC_PI_2;
+use std::{f32::consts::FRAC_PI_2, time::Duration};
 
 use cgmath::{Angle, InnerSpace, Rad, Vector3, Zero};
 use winit::{event::KeyEvent, keyboard::PhysicalKey};
 
-use super::{Camera, angles_to_vec3, traits::CameraController};
-use crate::{camera::collision::predict_collisions, state::world::World};
+use super::{angles_to_vec3, traits::PlayerController};
+use crate::{
+    camera::collision::predict_collisions,
+    state::{
+        player::{Player, Position},
+        world::World,
+    },
+};
 
 pub struct SpaceFlightCameraController {
     acceleration: f32,
@@ -48,7 +54,7 @@ impl SpaceFlightCameraController {
     }
 }
 
-impl CameraController for SpaceFlightCameraController {
+impl PlayerController for SpaceFlightCameraController {
     fn toggle(&mut self) {
         if self.enabled {
             // Un-press any buttons
@@ -94,33 +100,29 @@ impl CameraController for SpaceFlightCameraController {
     }
 
     /// Turn the camera. delta is in normalised screen coordinates -1 to 1
-    fn handle_mouse_move(&mut self, delta: (f32, f32), camera: &mut Camera) {
+    fn handle_mouse_move(&mut self, delta: (f32, f32), player_position: &mut Position) {
         if !self.enabled {
             return;
         }
 
-        camera.yaw += Rad(self.turn_speed * delta.0);
-        camera.yaw.set(camera.yaw.get().normalize());
+        player_position.yaw += Rad(self.turn_speed * delta.0);
+        player_position.yaw = player_position.yaw.normalize();
 
-        camera.pitch -= Rad(self.turn_speed * delta.1);
+        player_position.pitch -= Rad(self.turn_speed * delta.1);
         // Clip just under fully vertical to avoid weirdness
-        camera
+        player_position.pitch.0 = player_position
             .pitch
-            .update(|p| p.0 = p.0.clamp(-FRAC_PI_2 * 0.99, FRAC_PI_2 * 0.99));
+            .0
+            .clamp(-FRAC_PI_2 * 0.99, FRAC_PI_2 * 0.99);
     }
 
-    fn update_camera(
-        &mut self,
-        camera: &mut super::Camera,
-        world: &World,
-        duration: &std::time::Duration,
-    ) {
+    fn move_player(&mut self, player: &mut Player, world: &World, duration: &Duration) {
         if !self.enabled {
             return;
         }
 
         // Step 1: figure out the direction vector the player wants to move in
-        let forward = angles_to_vec3(camera.yaw.get(), camera.pitch.get());
+        let forward = angles_to_vec3(player.position.yaw, player.position.pitch);
         let right = forward.cross(Vector3::unit_y()).normalize();
 
         let mut acceleration_vector = Vector3::new(0., 0., 0.);
@@ -182,7 +184,7 @@ impl CameraController for SpaceFlightCameraController {
 
         // Step 4: Figure out if we're colliding with any blocks
         let movement_vector = self.velocity * duration.as_secs_f32();
-        let (movement_vector, collisions) = predict_collisions(camera, world, movement_vector);
+        let (movement_vector, collisions) = predict_collisions(player, world, movement_vector);
 
         // Null velocity in the direction of a collision
         [0, 1, 2].into_iter().for_each(|axis| {
@@ -192,6 +194,6 @@ impl CameraController for SpaceFlightCameraController {
         });
 
         // Step 5: Apply the movement
-        camera.pos.update(|p| p.0 += movement_vector);
+        player.position.pos.0 += movement_vector;
     }
 }

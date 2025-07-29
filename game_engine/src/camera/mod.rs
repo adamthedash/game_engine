@@ -15,7 +15,6 @@ use crate::{
     math::{
         bbox::AABB,
         frustum::{Frustum, Plane},
-        ray::Ray,
     },
     state::world::WorldPos,
 };
@@ -138,31 +137,9 @@ impl Camera {
         self.frustum.with(|f| f.contains_point(pos))
     }
 
+    /// Checks whether an AABB has any overlap with the viewport
     pub fn in_view_aabb(&self, aabb: &AABB<f32>) -> bool {
         self.frustum.with(|f| f.intersects_aabb(aabb))
-    }
-
-    /// Return the bounding box of the camera
-    pub fn aabb(&self) -> AABB<f32> {
-        let height = 1.8;
-        let width = 0.8;
-        let head_height = 1.5;
-
-        let diff = Vector3::new(width / 2., height / 2., width / 2.);
-        let head_diff = Vector3::unit_y() * head_height / 2.;
-
-        AABB::new(
-            &(self.pos.get().0 - diff - head_diff),
-            &(self.pos.get().0 + diff - head_diff),
-        )
-    }
-
-    /// Get a ray in the direction the camera is looking
-    pub fn ray(&self) -> Ray {
-        Ray::new(
-            self.pos.get().0,
-            angles_to_vec3(self.yaw.get(), self.pitch.get()),
-        )
     }
 
     /// Convert a point on screen space (-1 .. 1, top-left origin) to a vector in that direction in world space.

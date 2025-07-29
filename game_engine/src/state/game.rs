@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use cgmath::{InnerSpace, MetricSpace, Vector3, Zero};
+use cgmath::{InnerSpace, MetricSpace};
 use itertools::Itertools;
 use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
 
@@ -72,15 +72,9 @@ impl GameState {
         let pre_generate_buffer = 2; // Generate chunks randomly in this range
         let preemptive_chunks = 8; // Generate this many chunks pre-emptively per frame
 
-        let (player_chunk, _) = self
-            .player
-            .camera
-            .pos
-            .get()
-            .to_block_pos()
-            .to_chunk_offset();
+        let (player_chunk, _) = self.player.position.pos.to_block_pos().to_chunk_offset();
         let player_vision_chunks =
-            (self.player.camera.zfar.get() as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
+            (self.player.vision_distance as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
 
         // Get nearby chunks ordered by distance from player
         let mut nearby_chunks = player_chunk
@@ -121,14 +115,8 @@ impl GameState {
     }
 
     pub fn get_player_target_block_verbose(&self) -> Option<(Block, RayCollision)> {
-        let ray = self.player.camera.ray();
-        let (player_chunk_pos, _) = self
-            .player
-            .camera
-            .pos
-            .get()
-            .to_block_pos()
-            .to_chunk_offset();
+        let ray = self.player.position.ray();
+        let (player_chunk_pos, _) = self.player.position.pos.to_block_pos().to_chunk_offset();
 
         // Always process the player's chunk
         let player_chunk = [self.world.chunks.get(&player_chunk_pos).unwrap()];
@@ -166,7 +154,7 @@ impl GameState {
                         b.block_pos
                             .to_world_pos()
                             .0
-                            .distance2(self.player.camera.pos.get().0)
+                            .distance2(self.player.position.pos.0)
                             <= self.player.arm_length.powi(2) + 3.
                     })
                     // Check which blocks are infront of player
@@ -254,22 +242,4 @@ impl GameState {
             }
         }
     }
-}
-
-/// Convert a vector offset to it's closest unit offset along one cardinal direction
-#[inline]
-fn to_cardinal_offset(vec: &Vector3<f32>) -> Vector3<i32> {
-    // Get the axis with the largest magnitude
-    let largest_mag = [vec[0], vec[1], vec[2]]
-        .into_iter()
-        .enumerate()
-        .max_by(|(_, x1), (_, x2)| x1.abs().total_cmp(&x2.abs()))
-        .map(|(i, _)| i)
-        .unwrap();
-
-    // Get the unit vector along this axis
-    let mut offset = Vector3::zero();
-    offset[largest_mag] = if vec[largest_mag] > 0. { 1 } else { -1 };
-
-    offset
 }

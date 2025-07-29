@@ -1,17 +1,17 @@
 #![feature(int_roundings)]
 use std::{cell::RefCell, f32, rc::Rc, sync::Arc, time::Instant};
 
-use cgmath::{Deg, Rad};
+use cgmath::Rad;
 use enum_map::EnumMap;
 use game_engine::{
     InteractionMode,
-    camera::{Camera, traits::CameraController, walking::WalkingCameraController},
+    camera::{traits::PlayerController, walking::WalkingCameraController},
     data::item::ItemType,
     event::{MESSAGE_QUEUE, Message, Subscriber},
     render::state::RenderState,
     state::{
         game::GameState,
-        player::Player,
+        player::{Player, Position},
         world::{World, WorldPos},
     },
     ui::{hotbar::Hotbar, inventory::Inventory},
@@ -29,7 +29,7 @@ use winit::{
 struct App {
     runtime: Runtime,
     render_state: Option<RenderState>,
-    camera_controller: Box<dyn CameraController>,
+    camera_controller: Box<dyn PlayerController>,
     game_state: GameState,
     last_update: Option<Instant>,
     interaction_mode: InteractionMode,
@@ -70,15 +70,12 @@ impl App {
         let mut game_state = GameState {
             world: World::default(),
             player: Player {
-                camera: Camera::new(
-                    WorldPos((-7., -20., -14.).into()),
-                    Rad(0.),
-                    Rad(0.),
-                    1.,
-                    Deg(90.),
-                    0.1,
-                    100.,
-                ),
+                position: Position {
+                    pos: WorldPos((-7., -20., -14.).into()),
+                    yaw: Rad(0.),
+                    pitch: Rad(0.),
+                },
+                vision_distance: 100.,
                 arm_length: 5.,
                 hotbar,
                 inventory,
@@ -114,6 +111,11 @@ impl App {
                 SetInteractionMode(interaction_mode) => self.interaction_mode = interaction_mode,
                 BreakBlock(_) => self.game_state.world.handle_message(&m),
                 PlaceBlock(_) => self.game_state.world.handle_message(&m),
+                PlayerMoved(_) => {
+                    if let Some(render_state) = &mut self.render_state {
+                        render_state.handle_message(&m);
+                    }
+                }
             }
         }
     }
@@ -130,7 +132,9 @@ impl ApplicationHandler for App {
                     )
                     .unwrap(),
             );
-            let render_state = self.runtime.block_on(RenderState::new(window));
+            let render_state = self
+                .runtime
+                .block_on(RenderState::new(window, &self.game_state.player.position));
 
             // Lock cursor
             render_state
@@ -170,7 +174,10 @@ impl ApplicationHandler for App {
             }
 
             self.camera_controller
-                .handle_mouse_move(normalised_delta, &mut self.game_state.player.camera);
+                .handle_mouse_move(normalised_delta, &mut self.game_state.player.position);
+            MESSAGE_QUEUE.send(Message::PlayerMoved(
+                self.game_state.player.position.clone(),
+            ));
         }
     }
 
@@ -207,11 +214,14 @@ impl ApplicationHandler for App {
                 // Game update pass
                 if let Some(last_updated) = self.last_update {
                     let duration = Instant::now().duration_since(last_updated);
-                    self.camera_controller.update_camera(
-                        &mut self.game_state.player.camera,
+                    self.camera_controller.move_player(
+                        &mut self.game_state.player,
                         &self.game_state.world,
                         &duration,
                     );
+                    MESSAGE_QUEUE.send(Message::PlayerMoved(
+                        self.game_state.player.position.clone(),
+                    ));
                     self.game_state.update(&duration);
                 }
                 self.last_update = Some(Instant::now());
@@ -220,14 +230,14 @@ impl ApplicationHandler for App {
                 if let Some(render_state) = &mut self.render_state {
                     render_state.draw_context.window.request_redraw();
 
-                    render_state.update_camera_buffer(&self.game_state.player.camera);
+                    render_state.update_camera_buffer();
 
                     render_state.render(&self.game_state, &self.interaction_mode);
                 }
             }
             WindowEvent::Resized(size) => {
                 if let Some(render_state) = &mut self.render_state {
-                    render_state.resize(*size, &mut self.game_state.player.camera);
+                    render_state.resize(*size);
                 }
             }
             WindowEvent::KeyboardInput {
@@ -266,7 +276,7 @@ impl ApplicationHandler for App {
                                 }
                                 render_state.draw_context.ungrab_cursor();
                             }
-                            InteractionMode::Block(block_pos) => {
+                            InteractionMode::Block(_) => {
                                 // Disable camera controller
                                 if self.camera_controller.enabled() {
                                     self.camera_controller.toggle();

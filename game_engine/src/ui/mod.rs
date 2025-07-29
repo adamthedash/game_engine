@@ -16,7 +16,7 @@ use wgpu::{
 };
 
 use crate::{
-    InteractionMode, render::context::DrawContext, state::game::GameState,
+    InteractionMode, camera::Camera, render::context::DrawContext, state::game::GameState,
     ui::crafting::CraftingWindow,
 };
 
@@ -63,6 +63,7 @@ impl UI {
         &mut self,
         draw_context: &DrawContext,
         encoder: &mut CommandEncoder,
+        camera: &Camera,
         view: &TextureView,
         game: &GameState,
         game_mode: &InteractionMode,
@@ -76,10 +77,7 @@ impl UI {
             }
             .show_window(ctx);
 
-            Axes {
-                camera: &game.player.camera,
-            }
-            .show_window(ctx);
+            Axes { camera }.show_window(ctx);
 
             match game_mode {
                 InteractionMode::Game => {}
