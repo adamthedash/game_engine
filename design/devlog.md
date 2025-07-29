@@ -544,17 +544,28 @@ It took me most of the day messing around with math edge cases, but I have it in
 I got the last piece of the collision detection sorted out. It took a while, but in the end I have a result that I'm very happy with. The new collision detection works at very high speeds and works proactively rather than retroactively, so should avoid a lot of weirdness like players being able to bug their way through blocks. [Here's a demo video](https://youtu.be/0y0xPB7ZTyM).  
 (Note to future me: do a proper in-depth writeup of how this works, because the resources out there clearly didn't make it easy for me.)  
 
+I dreamt up an idea for how I can better store chunk data. Right now I have two levels: 1) A HashMap storing loaded chunks, and 2) tightly packed arrays of blocks within chunks.  
+This works well when I want to perform a lot of actions within a chunk (Eg. iterating over the blocks for rendering). However for random access I still have to pay the price of a hash for every block access.  
+My idea is to have a fixed size 3d array which represents the chunks loaded locally around the player. As the player moves around, nearby chunks are loaded into the array, and far chunks are moved back to the HashMap. This'll act like like a cache for hot chunks, so random access for blocks will just be 2 array lookups.  
+Instead of having the array centre around the player's position, the player will move around the array and chunks will be indexed using some modulo arithmetic.  
 
+For example (in 1D world), if the player initially starts here, chunks 1-4 are loaded into the cache.  
+![](./images/day26_chunk_array1.png)  
 
+If they then move two chunks to the right, chunks 1-2 are moved out of the cache and replaced by chunks 5-6.  
+![](./images/day26_chunk_array2.png)  
 
+If I want to index into chunk 3, I can then do:  
+```
+p = 3 # Player's minimum viewable chunk
+o = 1 # Where we initialised the array
+v = 4 # Player's viewable diameter / array size
 
+i = (p - o) % v
+  = (3 - 1) % 4
+  = 2
+```
 
-
-
-
-
-
-
-
+I'm not sure if/when I'll implement this, once I add more mechanics that need random access it might make more sense, for example applying world ticks near the player or some sort or player auras that randomly affect nearby blocks.  
 
 
