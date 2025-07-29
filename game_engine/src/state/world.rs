@@ -7,7 +7,7 @@ use crate::{
     data::{block::BlockType, world_gen::DefaultGenerator},
     event::{Message, Subscriber},
     math::bbox::AABB,
-    state::block::BlockState,
+    state::blocks::BlockState,
     world_gen::{ChunkGenerator, Perlin},
 };
 

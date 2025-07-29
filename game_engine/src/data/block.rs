@@ -1,9 +1,10 @@
-use enum_map::Enum;
+use enum_map::{Enum, EnumMap};
 use num_derive::{FromPrimitive, ToPrimitive};
+use rand::{random_bool, random_range};
 
 use crate::{
     data::item::ItemType,
-    state::block::{BlockState, ChestState},
+    state::blocks::{BlockState, chest::ChestState},
 };
 
 #[derive(Debug, Enum, PartialEq, Eq, Clone, Copy, ToPrimitive, FromPrimitive)]
@@ -157,6 +158,23 @@ pub(super) const BLOCK_DATA: [BlockData; 13] = [
         texture_path: "smiley.png",
         renderable: true,
         interactable: true,
-        state: Some(|| BlockState::Chest(ChestState::default())),
+        state: Some(|| {
+            BlockState::Chest(ChestState {
+                items: {
+                    let mut hm = EnumMap::default();
+
+                    // Spawn with some random stuff
+                    (0..ItemType::LENGTH)
+                        .map(ItemType::from_usize)
+                        .for_each(|item| {
+                            if random_bool(0.1) {
+                                hm[item] = random_range(1..=10);
+                            }
+                        });
+
+                    hm
+                },
+            })
+        }),
     },
 ];

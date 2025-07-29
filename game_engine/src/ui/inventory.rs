@@ -99,9 +99,9 @@ impl Drawable for Inventory {
                                     // Create and draw the icon
                                     let icon = Icon {
                                         texture: &items[id].texture,
-                                        size: 32.,
+                                        size: icon_size,
                                         count: Some(*count),
-                                        font_size: 16.,
+                                        font_size: icon_size / 2.,
                                     };
                                     let resp = ui.ui_add(icon);
 
@@ -130,6 +130,4 @@ impl Drawable for Inventory {
                     });
             });
     }
-
-    fn show_widget(&self, _ui: &mut egui::Ui) {}
 }

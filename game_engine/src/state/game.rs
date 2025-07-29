@@ -14,7 +14,7 @@ use crate::{
     event::{MESSAGE_QUEUE, Message},
     math::ray::RayCollision,
     state::{
-        block::StatefulBlock,
+        blocks::StatefulBlock,
         player::Player,
         world::{BlockChangedMessage, BlockPos, Chunk, World},
     },

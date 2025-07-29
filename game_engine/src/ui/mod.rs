@@ -22,8 +22,10 @@ use crate::{
 
 /// Trait to enable easy drawing of UI elements
 pub trait Drawable {
-    fn show_window(&self, ctx: &Context);
-    fn show_widget(&self, ui: &mut Ui);
+    /// Draw a new window with the UI
+    fn show_window(&self, _ctx: &Context) {}
+    /// Draw the UI in an existing window
+    fn show_widget(&self, _ui: &mut Ui) {}
 }
 
 pub struct UI {
@@ -94,6 +96,8 @@ impl UI {
                         .world
                         .get_block_state(block_pos)
                         .unwrap_or_else(|| panic!("Block state doesn't exist for {block_pos:?}"));
+
+                    block_state.show_window(ctx);
                 }
             }
             game.player.hotbar.show_window(ctx);
