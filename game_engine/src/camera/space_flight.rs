@@ -3,16 +3,17 @@ use std::{f32::consts::FRAC_PI_2, time::Duration};
 use cgmath::{Angle, InnerSpace, Rad, Vector3, Zero};
 use winit::{event::KeyEvent, keyboard::PhysicalKey};
 
-use super::{angles_to_vec3, traits::PlayerController};
+use super::traits::PlayerController;
 use crate::{
     camera::collision::predict_collisions,
+    math::angles_to_vec3,
     state::{
         player::{Player, Position},
         world::World,
     },
 };
 
-pub struct SpaceFlightCameraController {
+pub struct SpaceFlightController {
     acceleration: f32,
     max_speed: Option<f32>,
     drag: f32,
@@ -30,7 +31,7 @@ pub struct SpaceFlightCameraController {
     velocity: Vector3<f32>,
 }
 
-impl SpaceFlightCameraController {
+impl SpaceFlightController {
     pub fn new(acceleration: f32, turn_speed: f32, max_speed: Option<f32>, drag: f32) -> Self {
         assert!(acceleration >= 0.);
         assert!(turn_speed >= 0.);
@@ -54,7 +55,7 @@ impl SpaceFlightCameraController {
     }
 }
 
-impl PlayerController for SpaceFlightCameraController {
+impl PlayerController for SpaceFlightController {
     fn toggle(&mut self) {
         if self.enabled {
             // Un-press any buttons

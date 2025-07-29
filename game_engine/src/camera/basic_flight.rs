@@ -3,9 +3,10 @@ use std::{f32::consts::FRAC_PI_2, time::Duration};
 use cgmath::{Angle, InnerSpace, Rad, Vector3};
 use winit::{event::KeyEvent, keyboard::PhysicalKey};
 
-use super::{angles_to_vec3, traits::PlayerController};
+use super::traits::PlayerController;
 use crate::{
     camera::collision::predict_collisions,
+    math::angles_to_vec3,
     state::{
         player::{Player, Position},
         world::World,
@@ -13,7 +14,7 @@ use crate::{
 };
 
 /// Handles user input to adjust camera
-pub struct BasicFlightCameraController {
+pub struct BasicFlightController {
     move_speed: f32,
     turn_speed: f32,
     // Stateful variables
@@ -26,7 +27,7 @@ pub struct BasicFlightCameraController {
     pub enabled: bool,
 }
 
-impl BasicFlightCameraController {
+impl BasicFlightController {
     pub fn new(move_speed: f32, turn_speed: f32) -> Self {
         assert!(move_speed > 0.);
         assert!(turn_speed > 0.);
@@ -44,7 +45,7 @@ impl BasicFlightCameraController {
     }
 }
 
-impl PlayerController for BasicFlightCameraController {
+impl PlayerController for BasicFlightController {
     fn toggle(&mut self) {
         if self.enabled {
             // Un-press any buttons

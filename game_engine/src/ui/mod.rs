@@ -16,7 +16,9 @@ use wgpu::{
 };
 
 use crate::{
-    InteractionMode, camera::Camera, render::context::DrawContext, state::game::GameState,
+    InteractionMode,
+    render::{camera::Camera, context::DrawContext},
+    state::game::GameState,
     ui::crafting::CraftingWindow,
 };
 

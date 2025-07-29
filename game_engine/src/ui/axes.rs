@@ -2,7 +2,7 @@ use cgmath::{InnerSpace, Matrix4, Transform, Vector3, perspective};
 use egui::{Color32, Sense, Stroke, Vec2, Window};
 
 use super::Drawable;
-use crate::camera::{Camera, OPENGL_TO_WGPU_MATRIX};
+use crate::render::camera::{Camera, OPENGL_TO_WGPU_MATRIX};
 
 /// Representation of the world axes
 pub struct Axes<'a> {

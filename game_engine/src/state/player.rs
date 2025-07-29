@@ -3,9 +3,8 @@ use std::{cell::RefCell, rc::Rc};
 use cgmath::{Rad, Vector3};
 
 use crate::{
-    camera::angles_to_vec3,
     data::loader::ITEMS,
-    math::{bbox::AABB, ray::Ray},
+    math::{angles_to_vec3, bbox::AABB, ray::Ray},
     state::world::WorldPos,
     ui::{hotbar::Hotbar, inventory::Inventory},
 };

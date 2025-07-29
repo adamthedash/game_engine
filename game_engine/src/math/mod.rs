@@ -1,4 +1,4 @@
-use cgmath::{Vector3, Zero};
+use cgmath::{Angle, InnerSpace, Rad, Vector3, Zero};
 use num_traits::Float;
 
 pub mod bbox;
@@ -74,4 +74,11 @@ fn to_cardinal_offset(vec: &Vector3<f32>) -> Vector3<i32> {
     offset[largest_mag] = if vec[largest_mag] > 0. { 1 } else { -1 };
 
     offset
+}
+
+#[inline]
+pub fn angles_to_vec3(yaw: Rad<f32>, pitch: Rad<f32>) -> Vector3<f32> {
+    let (y, verticality) = pitch.sin_cos();
+    let (z, x) = yaw.sin_cos();
+    Vector3::new(x * verticality, y, z * verticality).normalize()
 }

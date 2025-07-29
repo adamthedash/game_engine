@@ -5,7 +5,7 @@ use cgmath::Rad;
 use enum_map::EnumMap;
 use game_engine::{
     InteractionMode,
-    camera::{traits::PlayerController, walking::WalkingCameraController},
+    camera::{traits::PlayerController, walking::WalkingController},
     data::item::ItemType,
     event::{MESSAGE_QUEUE, Message, Subscriber},
     render::state::RenderState,
@@ -29,7 +29,7 @@ use winit::{
 struct App {
     runtime: Runtime,
     render_state: Option<RenderState>,
-    camera_controller: Box<dyn PlayerController>,
+    player_controller: Box<dyn PlayerController>,
     game_state: GameState,
     last_update: Option<Instant>,
     interaction_mode: InteractionMode,
@@ -86,9 +86,9 @@ impl App {
         Self {
             runtime: Runtime::new().unwrap(),
             render_state: None,
-            camera_controller: Box::new(
+            player_controller: Box::new(
                 // BasicFlightCameraController::new(5., 2. * f32::consts::PI * 1.),
-                WalkingCameraController::new(5., 2. * f32::consts::PI * 0.5, 10., 1.5),
+                WalkingController::new(5., 2. * f32::consts::PI * 0.5, 10., 1.5),
                 // SpaceFlightCameraController::new(25., 2. * f32::consts::PI * 1., Some(5.), 0.25),
             ),
             game_state,
@@ -162,7 +162,7 @@ impl ApplicationHandler for App {
         if let winit::event::DeviceEvent::MouseMotion { delta } = event
             && let Some(render_state) = &mut self.render_state
             && matches!(self.interaction_mode, InteractionMode::Game)
-            && self.camera_controller.enabled()
+            && self.player_controller.enabled()
         {
             let config = &render_state.draw_context.config;
             let normalised_delta = (
@@ -173,7 +173,7 @@ impl ApplicationHandler for App {
                 println!("WARNING: Failed to centre cursor!");
             }
 
-            self.camera_controller
+            self.player_controller
                 .handle_mouse_move(normalised_delta, &mut self.game_state.player.position);
             MESSAGE_QUEUE.send(Message::PlayerMoved(
                 self.game_state.player.position.clone(),
@@ -212,9 +212,10 @@ impl ApplicationHandler for App {
                 self.process_message_queue();
 
                 // Game update pass
+                // TODO: separate game loop and render loop
                 if let Some(last_updated) = self.last_update {
                     let duration = Instant::now().duration_since(last_updated);
-                    self.camera_controller.move_player(
+                    self.player_controller.move_player(
                         &mut self.game_state.player,
                         &self.game_state.world,
                         &duration,
@@ -262,8 +263,8 @@ impl ApplicationHandler for App {
                         match &self.interaction_mode {
                             InteractionMode::Game => {
                                 // Disable camera controller
-                                if !self.camera_controller.enabled() {
-                                    self.camera_controller.toggle();
+                                if !self.player_controller.enabled() {
+                                    self.player_controller.toggle();
                                 }
                                 if render_state.draw_context.grab_cursor().is_err() {
                                     println!("WARNING: Failed to grab cursor!");
@@ -271,15 +272,15 @@ impl ApplicationHandler for App {
                             }
                             InteractionMode::UI => {
                                 // Enable camera controller
-                                if self.camera_controller.enabled() {
-                                    self.camera_controller.toggle();
+                                if self.player_controller.enabled() {
+                                    self.player_controller.toggle();
                                 }
                                 render_state.draw_context.ungrab_cursor();
                             }
                             InteractionMode::Block(_) => {
                                 // Disable camera controller
-                                if self.camera_controller.enabled() {
-                                    self.camera_controller.toggle();
+                                if self.player_controller.enabled() {
+                                    self.player_controller.toggle();
                                 }
                                 render_state.draw_context.ungrab_cursor();
                             }
@@ -287,7 +288,7 @@ impl ApplicationHandler for App {
                     }
                 }
 
-                self.camera_controller.handle_keypress(event);
+                self.player_controller.handle_keypress(event);
                 self.game_state.handle_keypress(event);
             }
             event @ WindowEvent::MouseInput { .. } => {

@@ -3,9 +3,10 @@ use std::{f32::consts::FRAC_PI_2, time::Duration};
 use cgmath::{Angle, InnerSpace, Rad, Vector3};
 use winit::{event::KeyEvent, keyboard::PhysicalKey};
 
-use super::{angles_to_vec3, traits::PlayerController};
+use super::traits::PlayerController;
 use crate::{
     camera::collision::predict_collisions,
+    math::angles_to_vec3,
     state::{
         player::{Player, Position},
         world::World,
@@ -14,7 +15,7 @@ use crate::{
 
 /// Handles user input to adjust camera
 #[derive(Debug)]
-pub struct WalkingCameraController {
+pub struct WalkingController {
     move_speed: f32,
     turn_speed: f32,
     gravity: f32,
@@ -29,7 +30,7 @@ pub struct WalkingCameraController {
     vertical_velocity: f32,
 }
 
-impl WalkingCameraController {
+impl WalkingController {
     pub fn new(move_speed: f32, turn_speed: f32, gravity: f32, jump_height: f32) -> Self {
         assert!(move_speed >= 0.);
         assert!(turn_speed >= 0.);
@@ -53,7 +54,7 @@ impl WalkingCameraController {
     }
 }
 
-impl PlayerController for WalkingCameraController {
+impl PlayerController for WalkingController {
     fn toggle(&mut self) {
         if self.enabled {
             // Un-press any buttons

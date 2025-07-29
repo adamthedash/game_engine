@@ -1,3 +1,4 @@
+pub mod camera;
 pub mod context;
 pub mod light;
 pub mod model;

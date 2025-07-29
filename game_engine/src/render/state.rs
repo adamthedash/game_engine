@@ -14,10 +14,10 @@ use super::shaders::texture;
 use crate::{
     InteractionMode,
     block::Block,
-    camera::{Camera, CameraUniform},
     data::loader::{BLOCK_TEXTURES, BLOCKS, init_block_info, init_item_info},
     event::{Message, Subscriber},
     render::{
+        camera::{Camera, CameraUniform},
         context::DrawContext,
         light::LightingUniform,
         model::{Mesh, Model},
