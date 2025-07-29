@@ -5,7 +5,7 @@ use cgmath::Rad;
 use enum_map::EnumMap;
 use game_engine::{
     InteractionMode,
-    camera::{traits::PlayerController, walking::WalkingController},
+    camera::{Controller, traits::PlayerController},
     data::item::ItemType,
     event::{MESSAGE_QUEUE, Message, Subscriber},
     render::state::RenderState,
@@ -29,7 +29,7 @@ use winit::{
 struct App {
     runtime: Runtime,
     render_state: Option<RenderState>,
-    player_controller: Box<dyn PlayerController>,
+    player_controller: Controller,
     game_state: GameState,
     last_update: Option<Instant>,
     interaction_mode: InteractionMode,
@@ -86,11 +86,7 @@ impl App {
         Self {
             runtime: Runtime::new().unwrap(),
             render_state: None,
-            player_controller: Box::new(
-                // BasicFlightCameraController::new(5., 2. * f32::consts::PI * 1.),
-                WalkingController::new(5., 2. * f32::consts::PI * 0.5, 10., 1.5),
-                // SpaceFlightCameraController::new(25., 2. * f32::consts::PI * 1., Some(5.), 0.25),
-            ),
+            player_controller: Controller::default_walking(),
             game_state,
             last_update: None,
             interaction_mode: InteractionMode::Game,
@@ -175,9 +171,6 @@ impl ApplicationHandler for App {
 
             self.player_controller
                 .handle_mouse_move(normalised_delta, &mut self.game_state.player.position);
-            MESSAGE_QUEUE.send(Message::PlayerMoved(
-                self.game_state.player.position.clone(),
-            ));
         }
     }
 
@@ -208,9 +201,6 @@ impl ApplicationHandler for App {
         match &event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::RedrawRequested => {
-                // Process message queue
-                self.process_message_queue();
-
                 // Game update pass
                 // TODO: separate game loop and render loop
                 if let Some(last_updated) = self.last_update {
@@ -220,12 +210,12 @@ impl ApplicationHandler for App {
                         &self.game_state.world,
                         &duration,
                     );
-                    MESSAGE_QUEUE.send(Message::PlayerMoved(
-                        self.game_state.player.position.clone(),
-                    ));
-                    self.game_state.update(&duration);
+                    self.game_state.tick(&duration);
                 }
                 self.last_update = Some(Instant::now());
+
+                // Process message queue
+                self.process_message_queue();
 
                 // Render pass
                 if let Some(render_state) = &mut self.render_state {

@@ -33,7 +33,7 @@ impl GameState {
     }
 
     /// Update the world by a game tick
-    pub fn update(&mut self, _time_passed: &Duration) {
+    pub fn tick(&mut self, _time_passed: &Duration) {
         self.generate_chunks();
     }
 
