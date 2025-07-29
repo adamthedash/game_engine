@@ -98,11 +98,11 @@ pub fn init_block_info(draw_context: &DrawContext) {
     .unwrap();
 
     let block_data = BLOCK_DATA
-        .into_iter()
+        .iter()
         .enumerate()
         .map(|(i, b)| BlockData {
             texture_index: i as u32,
-            data: b,
+            data: b.clone(),
         })
         .collect::<Vec<_>>();
 

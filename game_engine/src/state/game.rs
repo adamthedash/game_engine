@@ -213,8 +213,9 @@ impl GameState {
             }
 
             // Give an item to the player
-            let item = blocks[old_block].data.item_on_break;
-            self.player.inventory.borrow_mut().add_item(item, 1);
+            if let Some(item) = blocks[old_block].data.item_on_break {
+                self.player.inventory.borrow_mut().add_item(item, 1);
+            }
 
             // Tell the world a block has changed
             MESSAGE_QUEUE.send(Message::BlockChanged(BlockChangedMessage {

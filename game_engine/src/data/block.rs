@@ -1,6 +1,9 @@
+use std::sync::LazyLock;
+
 use enum_map::{Enum, EnumMap};
 use num_derive::{FromPrimitive, ToPrimitive};
 use rand::{random_bool, random_range};
+use typed_builder::TypedBuilder;
 
 use crate::{
     data::item::ItemType,
@@ -26,155 +29,129 @@ pub enum BlockType {
     Chest,
 }
 
-#[derive(Debug, Clone)]
+#[derive(TypedBuilder, Debug, Clone)]
 pub struct BlockData {
     pub(super) texture_path: &'static str,
-
     pub block_type: BlockType,
+
     /// None == unbreakable, 0 == broken by anything, bigger == harder to break
+    #[builder(default, setter(strip_option))]
     pub hardness: Option<u32>,
-    pub item_on_break: ItemType,
+
+    #[builder(default, setter(strip_option))]
+    pub item_on_break: Option<ItemType>,
+
+    #[builder(default = true)]
     pub renderable: bool,
+
+    #[builder(default)]
     pub interactable: bool,
+
     // Default state for the block when placed
+    #[builder(default, setter(strip_option))]
     pub state: Option<fn() -> BlockState>,
 }
 
 pub(super) const TEXTURE_FOLDER: &str = "res/meshes";
-pub(super) const BLOCK_DATA: [BlockData; 13] = [
-    BlockData {
-        block_type: BlockType::Air,
-        hardness: None,
-        item_on_break: ItemType::Dirt,
-        texture_path: "dirt.png",
-        renderable: false,
-        interactable: false,
-        state: None,
-    },
-    BlockData {
-        block_type: BlockType::Dirt,
-        hardness: Some(0),
-        item_on_break: ItemType::Dirt,
-        texture_path: "dirt.png",
-        renderable: true,
-        interactable: false,
-        state: None,
-    },
-    BlockData {
-        block_type: BlockType::Stone,
-        hardness: Some(10),
-        item_on_break: ItemType::Stone,
-        texture_path: "stone.png",
-        renderable: true,
-        interactable: false,
-        state: None,
-    },
-    BlockData {
-        block_type: BlockType::DarkStone,
-        hardness: Some(100),
-        item_on_break: ItemType::DarkStone,
-        texture_path: "darkstone.png",
-        renderable: true,
-        interactable: false,
-        state: None,
-    },
-    BlockData {
-        block_type: BlockType::MossyStone,
-        hardness: Some(10),
-        item_on_break: ItemType::MossyStone,
-        texture_path: "mossystone.png",
-        renderable: true,
-        interactable: false,
-        state: None,
-    },
-    BlockData {
-        block_type: BlockType::VoidStone,
-        hardness: Some(200),
-        item_on_break: ItemType::VoidStone,
-        texture_path: "voidstone.png",
-        renderable: true,
-        interactable: false,
-        state: None,
-    },
-    BlockData {
-        block_type: BlockType::RadioactiveStone,
-        hardness: Some(200),
-        item_on_break: ItemType::RadioactiveStone,
-        texture_path: "radioactivestone.png",
-        renderable: true,
-        interactable: false,
-        state: None,
-    },
-    // Ores
-    BlockData {
-        block_type: BlockType::Copper,
-        hardness: Some(100),
-        item_on_break: ItemType::Copper,
-        texture_path: "copper.png",
-        renderable: true,
-        interactable: false,
-        state: None,
-    },
-    BlockData {
-        block_type: BlockType::Tin,
-        hardness: Some(200),
-        item_on_break: ItemType::Tin,
-        texture_path: "tin.png",
-        renderable: true,
-        interactable: false,
-        state: None,
-    },
-    BlockData {
-        block_type: BlockType::Iron,
-        hardness: Some(300),
-        item_on_break: ItemType::Iron,
-        texture_path: "iron.png",
-        renderable: true,
-        interactable: false,
-        state: None,
-    },
-    BlockData {
-        block_type: BlockType::Coal,
-        hardness: Some(300),
-        item_on_break: ItemType::Coal,
-        texture_path: "coal.png",
-        renderable: true,
-        interactable: false,
-        state: None,
-    },
-    BlockData {
-        block_type: BlockType::MagicMetal,
-        hardness: Some(400),
-        item_on_break: ItemType::MagicMetal,
-        texture_path: "magic_metal.png",
-        renderable: true,
-        interactable: false,
-        state: None,
-    },
-    BlockData {
-        block_type: BlockType::Chest,
-        hardness: Some(0),
-        item_on_break: ItemType::Chest,
-        texture_path: "smiley.png",
-        renderable: true,
-        interactable: true,
-        state: Some(|| {
-            BlockState::Chest(ChestState {
-                items: {
-                    let mut hm = EnumMap::default();
+pub(super) static BLOCK_DATA: LazyLock<Vec<BlockData>> = LazyLock::new(|| {
+    vec![
+        // Basic blocks
+        BlockData::builder()
+            .texture_path("dirt.png")
+            .block_type(BlockType::Air)
+            .renderable(false)
+            .build(),
+        BlockData::builder()
+            .texture_path("dirt.png")
+            .block_type(BlockType::Dirt)
+            .hardness(0)
+            .item_on_break(ItemType::Dirt)
+            .build(),
+        BlockData::builder()
+            .texture_path("stone.png")
+            .block_type(BlockType::Stone)
+            .hardness(10)
+            .item_on_break(ItemType::Stone)
+            .build(),
+        BlockData::builder()
+            .texture_path("darkstone.png")
+            .block_type(BlockType::DarkStone)
+            .hardness(100)
+            .item_on_break(ItemType::DarkStone)
+            .build(),
+        BlockData::builder()
+            .texture_path("mossystone.png")
+            .block_type(BlockType::MossyStone)
+            .hardness(10)
+            .item_on_break(ItemType::MossyStone)
+            .build(),
+        BlockData::builder()
+            .texture_path("voidstone.png")
+            .block_type(BlockType::VoidStone)
+            .hardness(200)
+            .item_on_break(ItemType::VoidStone)
+            .build(),
+        BlockData::builder()
+            .texture_path("radioactivestone.png")
+            .block_type(BlockType::RadioactiveStone)
+            .hardness(200)
+            .item_on_break(ItemType::RadioactiveStone)
+            .build(),
+        // Ores
+        BlockData::builder()
+            .texture_path("copper.png")
+            .block_type(BlockType::Copper)
+            .hardness(100)
+            .item_on_break(ItemType::Copper)
+            .build(),
+        BlockData::builder()
+            .texture_path("tin.png")
+            .block_type(BlockType::Tin)
+            .hardness(200)
+            .item_on_break(ItemType::Tin)
+            .build(),
+        BlockData::builder()
+            .texture_path("iron.png")
+            .block_type(BlockType::Iron)
+            .hardness(300)
+            .item_on_break(ItemType::Iron)
+            .build(),
+        BlockData::builder()
+            .texture_path("coal.png")
+            .block_type(BlockType::Coal)
+            .hardness(300)
+            .item_on_break(ItemType::Coal)
+            .build(),
+        BlockData::builder()
+            .texture_path("magic_metal.png")
+            .block_type(BlockType::MagicMetal)
+            .hardness(400)
+            .item_on_break(ItemType::MagicMetal)
+            .build(),
+        BlockData::builder()
+            .texture_path("smiley.png")
+            .block_type(BlockType::Chest)
+            .hardness(0)
+            .item_on_break(ItemType::Chest)
+            .interactable(true)
+            .state(|| {
+                BlockState::Chest(ChestState {
+                    items: {
+                        let mut hm = EnumMap::default();
 
-                    // Spawn with some random stuff
-                    (0..ItemType::LENGTH)
-                        .map(ItemType::from_usize)
-                        .for_each(|item| {
-                            if random_bool(0.1) {
-                                hm[item] = random_range(1..=10);
-                            }
-                        });
+                        // Spawn with some random stuff
+                        (0..ItemType::LENGTH)
+                            .map(ItemType::from_usize)
+                            .for_each(|item| {
+                                if random_bool(0.1) {
+                                    hm[item] = random_range(1..=10);
+                                }
+                            });
 
-                    hm
-                },
+                        hm
+                    },
+                })
             })
-        }),
-    },
-];
+            .build(),
+    ]
+});

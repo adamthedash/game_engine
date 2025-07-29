@@ -583,5 +583,18 @@ I opted instead to use the message queue to propogate state changes. My logic is
 The UI for the chest is just a rip off of the inventory grid. There's no interaction like moving items to/from the player yet, that'll be for the next day. For now I just fill the chest with random items on placement like a loot chest that you might find in a dungeion.  
 
 
+Misc stuff:  
+I found that adding new block / item types was getting pretty cumbersome. Most of the attributes could be set to sensible defaults, however I didn't want to implement the `Default` trait as there are still some fields that are required to be specified. Instead I'm opting for the builder pattern, and after trying a few options I found the [typed-builder](https://docs.rs/typed-builder/latest/typed_builder/derive.TypedBuilder.html) crate to give the most suitable solution. It provides a derive macro that's pretty non-intrusive, and lets me specify blocks like this:  
+```rust
+BlockData::builder()
+    .texture_path("magic_metal.png")
+    .block_type(BlockType::MagicMetal)
+    .hardness(400)
+    .item_on_break(ItemType::MagicMetal)
+    .build()
+```  
+
+
+
 
 

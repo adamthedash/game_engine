@@ -30,6 +30,7 @@ winit = { version = "0.30.11", features = ["rwh_06", "wayland", "x11"], default-
 
 enum_array = {path = "../enum_array"}
 egui_taffy = "0.7.0"
+typed-builder = "0.21.0"
 
 [build-dependencies]
 fs_extra = "1.3.0"
