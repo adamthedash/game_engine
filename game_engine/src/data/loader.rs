@@ -52,11 +52,11 @@ pub fn init_item_info(draw_context: &DrawContext, egui_renderer: &mut Renderer) 
         .collect::<Vec<_>>();
 
     let map = ITEM_DATA
-        .into_iter()
+        .iter()
         .zip(icons)
         .map(|(d, icon)| ItemData {
             texture: icon,
-            data: d,
+            data: d.clone(),
         })
         .collect::<Vec<_>>();
 
