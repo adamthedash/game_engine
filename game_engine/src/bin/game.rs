@@ -112,6 +112,8 @@ impl App {
                 }
                 BlockChanged(_) => self.game_state.world.handle_message(&m),
                 SetInteractionMode(interaction_mode) => self.interaction_mode = interaction_mode,
+                BreakBlock(_) => self.game_state.world.handle_message(&m),
+                PlaceBlock(_) => self.game_state.world.handle_message(&m),
             }
         }
     }

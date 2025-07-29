@@ -4,8 +4,8 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     block::Block,
-    data::{block::BlockType, world_gen::DefaultGenerator},
-    event::{Message, Subscriber},
+    data::{block::BlockType, loader::BLOCKS, world_gen::DefaultGenerator},
+    event::{MESSAGE_QUEUE, Message, Subscriber},
     math::bbox::AABB,
     state::blocks::BlockState,
     world_gen::{ChunkGenerator, Perlin},
@@ -335,13 +335,67 @@ pub struct BlockChangedMessage {
     pub new_block: BlockType,
 }
 
+#[derive(Debug)]
+pub struct PlaceBlockMessage {
+    pub pos: BlockPos,
+    pub block: BlockType,
+}
+
 impl Subscriber for World {
     fn handle_message(&mut self, event: &Message) {
         use Message::*;
-        if let BlockChanged(BlockChangedMessage { pos, .. }) = event {
-            // TODO: Change to block-level updates instead of chunk level
-            let (chunk_pos, _) = pos.to_chunk_offset();
-            self.update_exposed_blocks(&chunk_pos);
+        match event {
+            BlockChanged(BlockChangedMessage { pos, .. }) => {
+                let (chunk_pos, _) = pos.to_chunk_offset();
+                self.update_exposed_blocks(&chunk_pos);
+            }
+            BreakBlock(pos) => {
+                let blocks = BLOCKS.get().unwrap();
+
+                let block_type = self.get_block_mut(pos).unwrap();
+
+                // Break block
+                let old_block = std::mem::replace(block_type, BlockType::Air);
+
+                // Remove the block state if it was stateful
+                if blocks[old_block].data.state.is_some() {
+                    let old_state = self.block_states.remove(pos);
+                    assert!(
+                        old_state.is_some(),
+                        "Attempted to remove stateful block, but no state existed! {pos:?}"
+                    );
+                }
+
+                // Tell the world a block has changed
+                MESSAGE_QUEUE.send(Message::BlockChanged(BlockChangedMessage {
+                    pos: pos.clone(),
+                    prev_block: old_block,
+                    new_block: BlockType::Air,
+                }));
+            }
+            PlaceBlock(PlaceBlockMessage { pos, block }) => {
+                let blocks = BLOCKS.get().unwrap();
+
+                // Place the block
+                *self.get_block_mut(pos).unwrap() = *block;
+
+                // Create a state if the block is stateful
+                if let Some(state_fn) = blocks[*block].data.state {
+                    let old_state = self.block_states.insert(pos.clone(), state_fn());
+                    assert!(
+                        old_state.is_none(),
+                        "Overwrote existing state at {pos:?}! {old_state:?} -> {block:?}"
+                    );
+                }
+
+                // Tell the world a block has changed
+                MESSAGE_QUEUE.send(Message::BlockChanged(BlockChangedMessage {
+                    pos: pos.clone(),
+                    prev_block: BlockType::Air,
+                    new_block: *block,
+                }));
+            }
+            _ => (),
         }
     }
 }

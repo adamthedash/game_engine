@@ -594,6 +594,8 @@ BlockData::builder()
     .build()
 ```  
 
+I like how the message queue turned out for mutating state, so I want to lean into it a bit more and see how it goes. I'm going to move the block placing/breaking to it aswell.  
+
 
 
 

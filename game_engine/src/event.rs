@@ -4,7 +4,9 @@ use std::{
 };
 
 use crate::{
-    InteractionMode, state::world::BlockChangedMessage, ui::inventory::ItemFavouritedMessage,
+    InteractionMode,
+    state::world::{BlockChangedMessage, BlockPos, PlaceBlockMessage},
+    ui::inventory::ItemFavouritedMessage,
 };
 
 #[derive(Debug)]
@@ -14,7 +16,10 @@ pub enum Message {
     BlockChanged(BlockChangedMessage),
 
     // Action messages - Do this thing
+    // It's assumed that at the action has been validated at this point
     SetInteractionMode(InteractionMode),
+    BreakBlock(BlockPos),
+    PlaceBlock(PlaceBlockMessage),
 }
 
 pub struct MessageQueue {

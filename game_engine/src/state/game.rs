@@ -16,7 +16,7 @@ use crate::{
     state::{
         blocks::StatefulBlock,
         player::Player,
-        world::{BlockChangedMessage, BlockPos, Chunk, World},
+        world::{BlockPos, Chunk, PlaceBlockMessage, World},
     },
 };
 
@@ -189,8 +189,7 @@ impl GameState {
             let blocks = BLOCKS.get().unwrap();
 
             // Check if player can break the block
-            let block_type = self.world.get_block_mut(&target_block.block_pos).unwrap();
-            if blocks[*block_type]
+            if blocks[target_block.block_type]
                 .data
                 .hardness
                 .is_none_or(|h| h > self.player.get_breaking_strength())
@@ -200,34 +199,45 @@ impl GameState {
             }
 
             // Break block
-            let old_block = std::mem::replace(block_type, BlockType::Air);
-
-            // Remove the block state if it was stateful
-            if blocks[old_block].data.state.is_some() {
-                let old_state = self.world.block_states.remove(&target_block.block_pos);
-                assert!(
-                    old_state.is_some(),
-                    "Attempted to remove stateful block, but no state existed! {:?}",
-                    target_block.block_pos
-                );
-            }
+            MESSAGE_QUEUE.send(Message::BreakBlock(target_block.block_pos));
 
             // Give an item to the player
-            if let Some(item) = blocks[old_block].data.item_on_break {
+            if let Some(item) = blocks[target_block.block_type].data.item_on_break {
                 self.player.inventory.borrow_mut().add_item(item, 1);
             }
+        }
+    }
 
-            // Tell the world a block has changed
-            MESSAGE_QUEUE.send(Message::BlockChanged(BlockChangedMessage {
-                pos: target_block.block_pos,
-                prev_block: old_block,
-                new_block: BlockType::Air,
-            }));
+    fn place_block(&mut self, target_block: &Block, collision: &RayCollision) {
+        let items = ITEMS.get().unwrap();
+
+        // Attempt to place block
+        if let Some((item, count)) = self.player.hotbar.get_selected_item()
+            && count > 0
+            && let Some(new_block_type) = items[item].data.block
+        {
+            // Get the adjacent block
+            // TODO: This cast might cause issues at some point
+            let adjacent_block_pos =
+                BlockPos(target_block.block_pos.0 + collision.normal.cast().unwrap());
+
+            if let Some(block_type) = self.world.get_block_mut(&adjacent_block_pos)
+                    // Only place in air blocks
+                    && *block_type == BlockType::Air
+            {
+                // Remove the item from the player's inventory
+                self.player.inventory.borrow_mut().remove_item(item, 1);
+
+                // Place the block
+                MESSAGE_QUEUE.send(Message::PlaceBlock(PlaceBlockMessage {
+                    pos: adjacent_block_pos,
+                    block: new_block_type,
+                }));
+            }
         }
     }
 
     fn handle_right_click(&mut self) {
-        let items = ITEMS.get().unwrap();
         let blocks = BLOCKS.get().unwrap();
 
         if let Some((target_block, collision)) = self.get_player_target_block_verbose() {
@@ -240,45 +250,7 @@ impl GameState {
 
                 block_state.on_right_click(&target_block.block_pos);
             } else {
-                // Attempt to place block
-                if let Some((item, count)) = self.player.hotbar.get_selected_item()
-                    && count > 0
-                    && let Some(new_block_type) = items[item].data.block
-                {
-                    // Get the adjacent block
-                    // TODO: This cast might cause issues at some point
-                    let adjacent_block_pos =
-                        BlockPos(target_block.block_pos.0 + collision.normal.cast().unwrap());
-
-                    if let Some(block_type) = self.world.get_block_mut(&adjacent_block_pos)
-                    // Only place in air blocks
-                    && *block_type == BlockType::Air
-                    {
-                        // Place the block
-                        *block_type = new_block_type;
-                        // Create a state if the block is stateful
-                        if let Some(state_fn) = blocks[new_block_type].data.state {
-                            let old_state = self
-                                .world
-                                .block_states
-                                .insert(adjacent_block_pos.clone(), state_fn());
-                            assert!(
-                                old_state.is_none(),
-                                "Overwrote existing state at {adjacent_block_pos:?}! {old_state:?} -> {new_block_type:?}"
-                            );
-                        }
-
-                        // Remove the item from the player's inventory
-                        self.player.inventory.borrow_mut().remove_item(item, 1);
-
-                        // Tell the world a block has changed
-                        MESSAGE_QUEUE.send(Message::BlockChanged(BlockChangedMessage {
-                            pos: adjacent_block_pos,
-                            prev_block: BlockType::Air,
-                            new_block: new_block_type,
-                        }));
-                    }
-                }
+                self.place_block(&target_block, &collision);
             }
         }
     }
