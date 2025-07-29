@@ -521,11 +521,6 @@ I plan to change this by determining the test block based on the player's AABB r
 This is definitely better, but it still suffers from the problem that the player isn't going to be colliding on a point, but rather the AABB face. Instead of testing against blocks adjacent to the camera position, I need to be testing against anything infront of the AABB faces in the direction of movement.  
 
 
-## Day 25
-In these kinds of games, one of my favourite things to do is automating crafting. I want to have a similar system here, which means that I'm going to need to look at stateful block types.  
-Unless I build a megafactory, the amount of stateful blocks the world has at once will be pretty small, so I'm going to hold the block states in a HashMap rather than densely packed like the chunk block types.  
-
-
 
 ## Day 25
 After taking a bit of a break and playing some new game releases I'm back. I want to properly address the collision detection from last time so I don't have to worry about it. 1) by separating it from the controller logic and 2) by doing proper face to face collision detection.  
@@ -572,5 +567,21 @@ i = (p - o) % v
 ```
 
 I'm not sure if/when I'll implement this, once I add more mechanics that need random access it might make more sense, for example applying world ticks near the player or some sort or player auras that randomly affect nearby blocks.  
+
+## Day 27
+In these kinds of games, one of my favourite things to do is automating crafting. I want to have a similar system here, which means that I'm going to need to look at stateful block types.  
+
+The first one I'll be adding is a chest, a simple block to hold items when you're carrying too much. There's a few key pieces I'll need to address for stateful blocks:  
+1) How I'll manage state CRUD operations  
+2) How I'll handle player interactions like right clicking  
+3) How I'll handle block interactions with game state, like crafters depositing in adjacent chests, or miners destroying nearby blocks.  
+
+Unless I build a megafactory, the amount of stateful blocks the world has at once will be pretty small, so I'm going to hold the block states in a HashMap rather than densely packed like the chunk block types.  
+One issue I ran into was how block behaviour interacts with game state. I want to treat the blocks as black boxes so it'll be easier to add/extend new blocks down the line. For my chest, I want a right click to set the interaction mode to "Interface" so the contents can be displayed on the next frame. Since my game state holds the blocks, and the blocks need to mutate the state, there was a bunch of hassle with mutable references.  
+I opted instead to use the message queue to propogate state changes. My logic is basically anything stateful that can take an action can mutate itself directly, but if it wants to mutate something else it has to go via the queue.  
+
+The UI for the chest is just a rip off of the inventory grid. There's no interaction like moving items to/from the player yet, that'll be for the next day. For now I just fill the chest with random items on placement like a loot chest that you might find in a dungeion.  
+
+
 
 
