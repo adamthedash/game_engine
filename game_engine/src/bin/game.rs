@@ -243,6 +243,7 @@ impl ApplicationHandler for App {
                 // TODO: separate game loop and render loop
                 if let Some(last_updated) = self.last_update {
                     let duration = Instant::now().duration_since(last_updated);
+                    DEBUG_WINDOW.add_line(&format!("Last frame: {duration:?}"));
                     self.player_controller.move_player(
                         &mut self.game_state.player,
                         &self.game_state.world,

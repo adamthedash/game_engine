@@ -1,5 +1,5 @@
-use cgmath::{Angle, InnerSpace, Rad, Vector3, Zero};
-use num_traits::Float;
+use cgmath::{Angle, BaseFloat, InnerSpace, Rad, Vector3, Zero};
+use num_traits::{Float, float::TotalOrder};
 
 pub mod bbox;
 pub mod frustum;
@@ -58,22 +58,32 @@ pub trait NumFuncs: Float {
 
 impl<T: Float> NumFuncs for T {}
 
-/// Convert a vector offset to it's closest unit offset along one cardinal direction
-#[inline]
-fn to_cardinal_offset(vec: &Vector3<f32>) -> Vector3<i32> {
-    // Get the axis with the largest magnitude
-    let largest_mag = [vec[0], vec[1], vec[2]]
-        .into_iter()
-        .enumerate()
-        .max_by(|(_, x1), (_, x2)| x1.abs().total_cmp(&x2.abs()))
-        .map(|(i, _)| i)
-        .unwrap();
+pub trait Vectorfuncs {
+    /// Convert a vector offset to it's closest unit offset along one cardinal direction
+    fn to_cardinal_offset(&self) -> Vector3<i32>;
+}
 
-    // Get the unit vector along this axis
-    let mut offset = Vector3::zero();
-    offset[largest_mag] = if vec[largest_mag] > 0. { 1 } else { -1 };
+impl<S: BaseFloat + TotalOrder> Vectorfuncs for Vector3<S> {
+    #[inline]
+    fn to_cardinal_offset(&self) -> Vector3<i32> {
+        // Get the axis with the largest magnitude
+        let largest_mag = [self[0], self[1], self[2]]
+            .into_iter()
+            .enumerate()
+            .max_by(|(_, x1), (_, x2)| x1.abs().total_cmp(&x2.abs()))
+            .map(|(i, _)| i)
+            .unwrap();
 
-    offset
+        // Get the unit vector along this axis
+        let mut offset = Vector3::zero();
+        offset[largest_mag] = if self[largest_mag].is_sign_positive() {
+            1
+        } else {
+            -1
+        };
+
+        offset
+    }
 }
 
 #[inline]
