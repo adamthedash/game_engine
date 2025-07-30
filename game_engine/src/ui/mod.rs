@@ -97,6 +97,8 @@ impl UI {
                         .get_block_state(block_pos)
                         .unwrap_or_else(|| panic!("Block state doesn't exist for {block_pos:?}"));
 
+                    // TODO: Only show inventory when block has some interaction with it?
+                    game.player.inventory.borrow().show_window(ctx);
                     block_state.show_window(ctx);
                 }
             }

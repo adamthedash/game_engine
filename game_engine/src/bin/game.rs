@@ -99,19 +99,20 @@ impl App {
     pub fn process_message_queue(&mut self) {
         use Message::*;
         while let Some(m) = MESSAGE_QUEUE.take() {
-            match m {
-                ItemFavourited(_) => {
-                    self.game_state.player.hotbar.handle_message(&m);
-                }
-                BlockChanged(_) => self.game_state.world.handle_message(&m),
-                SetInteractionMode(interaction_mode) => self.interaction_mode = interaction_mode,
-                BreakBlock(_) => self.game_state.world.handle_message(&m),
-                PlaceBlock(_) => self.game_state.world.handle_message(&m),
-                PlayerMoved(_) => {
-                    if let Some(render_state) = &mut self.render_state {
-                        render_state.handle_message(&m);
-                    }
-                }
+            if let SetInteractionMode(ref mode) = m {
+                self.interaction_mode = mode.clone();
+            }
+
+            // Handle game state events first
+            self.game_state.world.handle_message(&m);
+
+            // Then player interaction events
+            self.game_state.player.hotbar.handle_message(&m);
+            self.player_controller.handle_message(&m);
+
+            // Then rendering events
+            if let Some(render_state) = &mut self.render_state {
+                render_state.handle_message(&m);
             }
         }
     }
@@ -246,36 +247,14 @@ impl ApplicationHandler for App {
                 }
 
                 if *key == KeyCode::Escape && !repeat && state.is_pressed() {
-                    self.interaction_mode.toggle();
-
-                    // Toggle window cursor locking
-                    if let Some(render_state) = &mut self.render_state {
-                        match &self.interaction_mode {
-                            InteractionMode::Game => {
-                                // Disable camera controller
-                                if !self.player_controller.enabled() {
-                                    self.player_controller.toggle();
-                                }
-                                if render_state.draw_context.grab_cursor().is_err() {
-                                    println!("WARNING: Failed to grab cursor!");
-                                }
-                            }
-                            InteractionMode::UI => {
-                                // Enable camera controller
-                                if self.player_controller.enabled() {
-                                    self.player_controller.toggle();
-                                }
-                                render_state.draw_context.ungrab_cursor();
-                            }
-                            InteractionMode::Block(_) => {
-                                // Disable camera controller
-                                if self.player_controller.enabled() {
-                                    self.player_controller.toggle();
-                                }
-                                render_state.draw_context.ungrab_cursor();
-                            }
+                    // Close interface or open inventory
+                    MESSAGE_QUEUE.send(Message::SetInteractionMode({
+                        use InteractionMode::*;
+                        match self.interaction_mode {
+                            Game => UI,
+                            UI | Block(_) => Game,
                         }
-                    }
+                    }));
                 }
 
                 self.player_controller.handle_keypress(event);

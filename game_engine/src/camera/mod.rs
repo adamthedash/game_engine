@@ -3,11 +3,12 @@ use std::{f32::consts::PI, time::Duration};
 use winit::event::KeyEvent;
 
 use crate::{
+    InteractionMode,
     camera::{
         basic_flight::BasicFlightController, space_flight::SpaceFlightController,
         traits::PlayerController, walking::WalkingController,
     },
-    event::{MESSAGE_QUEUE, Message},
+    event::{MESSAGE_QUEUE, Message, Subscriber},
     state::{
         player::{Player, Position},
         world::World,
@@ -86,5 +87,26 @@ impl PlayerController for Controller {
 
     fn enabled(&self) -> bool {
         self.as_controller().enabled()
+    }
+}
+
+impl Subscriber for Controller {
+    fn handle_message(&mut self, event: &Message) {
+        if let Message::SetInteractionMode(mode) = event {
+            match mode {
+                InteractionMode::Game => {
+                    // Enable
+                    if !self.enabled() {
+                        self.toggle();
+                    }
+                }
+                InteractionMode::UI | InteractionMode::Block(_) => {
+                    // Disable
+                    if self.enabled() {
+                        self.toggle();
+                    }
+                }
+            }
+        }
     }
 }

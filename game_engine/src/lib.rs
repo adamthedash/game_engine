@@ -18,7 +18,7 @@ pub mod ui;
 pub mod util;
 pub mod world_gen;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum InteractionMode {
     // Player can walk around and interact with the world
     Game,
@@ -26,15 +26,4 @@ pub enum InteractionMode {
     UI,
     // Player is in an interface in the world
     Block(BlockPos),
-}
-
-impl InteractionMode {
-    pub fn toggle(&mut self) {
-        use InteractionMode::*;
-        *self = match self {
-            Game => UI,
-            UI => Game,
-            Block(_) => Game,
-        }
-    }
 }

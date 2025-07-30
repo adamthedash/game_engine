@@ -1,4 +1,4 @@
-use egui::{Align2, Vec2, Vec2b, Window, scroll_area::ScrollBarVisibility};
+use egui::{Vec2, Vec2b, Window, scroll_area::ScrollBarVisibility};
 use egui_taffy::{
     TuiBuilderLogic,
     taffy::{self, AlignItems, prelude::percent},
@@ -37,17 +37,15 @@ impl Drawable for ChestState {
         let window_size = Vec2::new(icon_size, icon_size) * num_slots as f32;
         let items = ITEMS.get().expect("Items info not initialised!");
 
-        Window::new("Inventory")
-            .title_bar(false)
+        Window::new("Chest")
             .resizable(false)
-            .anchor(Align2::CENTER_CENTER, [0., 0.])
             // Scroll bar for when we have lots of items
             .scroll(Vec2b { x: false, y: true })
             .scroll_bar_visibility(ScrollBarVisibility::VisibleWhenNeeded)
             .default_width(window_size.x)
             .show(ctx, |ui| {
                 // Use egui_taffy to create a grid layout
-                tui(ui, ui.id().with("inventory"))
+                tui(ui, ui.id().with("chest"))
                     .reserve_available_width()
                     .style(taffy::Style {
                         flex_direction: taffy::FlexDirection::Row,

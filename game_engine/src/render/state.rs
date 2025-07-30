@@ -511,12 +511,25 @@ impl RenderState {
 
 impl Subscriber for RenderState {
     fn handle_message(&mut self, event: &Message) {
-        if let Message::PlayerMoved(Position { pos, yaw, pitch }) = event {
-            // Synchronise the camera with the player's movement
-            self.camera.pos.set(*pos);
-            self.camera.yaw.set(*yaw);
-            self.camera.pitch.set(*pitch);
-            self.update_camera_buffer();
+        use Message::*;
+        match event {
+            PlayerMoved(Position { pos, yaw, pitch }) => {
+                self.camera.pos.set(*pos);
+                self.camera.yaw.set(*yaw);
+                self.camera.pitch.set(*pitch);
+                self.update_camera_buffer();
+            }
+            SetInteractionMode(mode) => match mode {
+                InteractionMode::Game => {
+                    if self.draw_context.grab_cursor().is_err() {
+                        println!("WARNING: Failed to grab cursor!");
+                    }
+                }
+                InteractionMode::UI | InteractionMode::Block(_) => {
+                    self.draw_context.ungrab_cursor();
+                }
+            },
+            _ => (),
         }
     }
 }

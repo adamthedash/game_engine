@@ -1,4 +1,4 @@
-use egui::{Align2, Vec2, Vec2b, Window, scroll_area::ScrollBarVisibility};
+use egui::{Vec2, Vec2b, Window, scroll_area::ScrollBarVisibility};
 use egui_taffy::{
     TuiBuilderLogic,
     taffy::{self, AlignItems, prelude::percent},
