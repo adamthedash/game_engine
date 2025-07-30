@@ -1,13 +1,15 @@
 use std::sync::LazyLock;
 
-use enum_map::{Enum, EnumMap};
+use enum_map::Enum;
 use num_derive::{FromPrimitive, ToPrimitive};
-use rand::{random_bool, random_range};
 use typed_builder::TypedBuilder;
 
 use crate::{
     data::item::ItemType,
-    state::blocks::{BlockState, chest::ChestState},
+    state::{
+        blocks::{BlockState, chest::ChestState},
+        world::BlockPos,
+    },
 };
 
 #[derive(Debug, Enum, PartialEq, Eq, Clone, Copy, ToPrimitive, FromPrimitive)]
@@ -49,7 +51,7 @@ pub struct BlockData {
 
     // Default state for the block when placed
     #[builder(default, setter(strip_option))]
-    pub state: Option<fn() -> BlockState>,
+    pub state: Option<fn(&BlockPos) -> BlockState>,
 }
 
 pub(super) const TEXTURE_FOLDER: &str = "res/meshes";
@@ -129,29 +131,12 @@ pub(super) static BLOCK_DATA: LazyLock<Vec<BlockData>> = LazyLock::new(|| {
             .item_on_break(ItemType::MagicMetal)
             .build(),
         BlockData::builder()
-            .texture_path("smiley.png")
+            .texture_path("chest.png")
             .block_type(BlockType::Chest)
             .hardness(0)
             .item_on_break(ItemType::Chest)
             .interactable(true)
-            .state(|| {
-                BlockState::Chest(ChestState {
-                    items: {
-                        let mut hm = EnumMap::default();
-
-                        // Spawn with some random stuff
-                        (0..ItemType::LENGTH)
-                            .map(ItemType::from_usize)
-                            .for_each(|item| {
-                                if random_bool(0.1) {
-                                    hm[item] = random_range(1..=10);
-                                }
-                            });
-
-                        hm
-                    },
-                })
-            })
+            .state(|pos| BlockState::Chest(ChestState::new(pos)))
             .build(),
     ]
 });

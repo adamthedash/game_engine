@@ -1,23 +1,16 @@
 pub mod chest;
 pub mod crafter;
 
-use crate::{
-    state::{
-        blocks::{chest::ChestState, crafter::CrafterState},
-        world::BlockPos,
-    },
-    ui::Drawable,
-};
+use crate::{data::item::ItemType, state::blocks::chest::ChestState, ui::Drawable};
 
 #[derive(Debug, Clone)]
 pub enum BlockState {
     Chest(ChestState),
-    Crafter(CrafterState),
 }
 
 pub trait StatefulBlock: Drawable {
     /// What happens when a player right clicks on the block in the world
-    fn on_right_click(&mut self, _block_pos: &BlockPos) {}
+    fn on_right_click(&mut self) {}
 }
 
 impl BlockState {
@@ -25,7 +18,6 @@ impl BlockState {
         use BlockState::*;
         match self {
             Chest(state) => state,
-            Crafter(state) => state,
         }
     }
 
@@ -33,7 +25,14 @@ impl BlockState {
         use BlockState::*;
         match self {
             Chest(state) => state,
-            Crafter(state) => state,
+        }
+    }
+
+    /// Returns the interface to this block as a Container if it has that capability
+    pub fn as_container_mut(&mut self) -> Option<&mut dyn Container> {
+        use BlockState::*;
+        match self {
+            Chest(state) => Some(state),
         }
     }
 }
@@ -51,7 +50,14 @@ impl Drawable for BlockState {
 
 /// Pass-through trait calls to inner values
 impl StatefulBlock for BlockState {
-    fn on_right_click(&mut self, block_pos: &BlockPos) {
-        self.as_stateful_mut().on_right_click(block_pos);
+    fn on_right_click(&mut self) {
+        self.as_stateful_mut().on_right_click();
     }
+}
+
+/// Functionality for a thing that can store items
+pub trait Container {
+    fn can_accept(&self, item: ItemType, count: usize) -> bool;
+    fn add_item(&mut self, item: ItemType, count: usize);
+    fn remove_item(&mut self, item: ItemType, count: usize);
 }

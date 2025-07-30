@@ -9,15 +9,17 @@ use crate::{
     block::Block,
     data::{
         block::BlockType,
+        item::ItemType,
         loader::{BLOCKS, ITEMS},
     },
-    event::{MESSAGE_QUEUE, Message},
+    event::{MESSAGE_QUEUE, Message, Subscriber},
     math::ray::RayCollision,
     state::{
         blocks::StatefulBlock,
         player::Player,
         world::{BlockPos, Chunk, PlaceBlockMessage, World},
     },
+    ui::inventory::TransferItemSource,
 };
 
 /// Holds state information about the game independent of the rendering
@@ -236,9 +238,68 @@ impl GameState {
                     .get_block_state_mut(&target_block.block_pos)
                     .expect("Block state doesnt exist!");
 
-                block_state.on_right_click(&target_block.block_pos);
+                block_state.on_right_click();
             } else {
                 self.place_block(&target_block, &collision);
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct TransferItemMessage {
+    pub source: TransferItemSource,
+    pub dest: TransferItemSource,
+    pub item: ItemType,
+    pub count: usize,
+}
+
+impl Subscriber for GameState {
+    fn handle_message(&mut self, event: &Message) {
+        if let Message::TransferItem(TransferItemMessage {
+            source,
+            dest,
+            item,
+            count,
+        }) = event
+        {
+            // Remove item from one
+            match source {
+                TransferItemSource::Inventory => self
+                    .player
+                    .inventory
+                    .borrow_mut()
+                    .remove_item(*item, *count),
+                TransferItemSource::Block(block_pos) => {
+                    self.world
+                        .get_block_state_mut(block_pos)
+                        .expect("Block state doesn't exist!")
+                        .as_container_mut()
+                        .expect("Attempt to transfer item to non-container block!")
+                        .remove_item(*item, *count);
+                }
+            }
+
+            // Add it to the other
+            match dest {
+                TransferItemSource::Inventory => {
+                    self.player.inventory.borrow_mut().add_item(*item, *count)
+                }
+                TransferItemSource::Block(block_pos) => {
+                    let container = self
+                        .world
+                        .get_block_state_mut(block_pos)
+                        .expect("Block state doesn't exist!")
+                        .as_container_mut()
+                        .expect("Attempt to transfer item to non-container block!");
+
+                    assert!(
+                        container.can_accept(*item, *count),
+                        "Container cannot accept item!"
+                    );
+
+                    container.add_item(*item, *count);
+                }
             }
         }
     }

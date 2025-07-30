@@ -10,11 +10,15 @@ use game_engine::{
     event::{MESSAGE_QUEUE, Message, Subscriber},
     render::state::RenderState,
     state::{
-        game::GameState,
+        game::{GameState, TransferItemMessage},
         player::{Player, Position},
         world::{World, WorldPos},
     },
-    ui::{debug::DEBUG_WINDOW, hotbar::Hotbar, inventory::Inventory},
+    ui::{
+        debug::DEBUG_WINDOW,
+        hotbar::Hotbar,
+        inventory::{Inventory, TransferItemRequestMessage, TransferItemSource},
+    },
     util::stopwatch::StopWatch,
 };
 use tokio::runtime::Runtime;
@@ -100,11 +104,43 @@ impl App {
     pub fn process_message_queue(&mut self) {
         use Message::*;
         while let Some(m) = MESSAGE_QUEUE.take() {
-            if let SetInteractionMode(ref mode) = m {
-                self.interaction_mode = mode.clone();
+            match &m {
+                SetInteractionMode(mode) => {
+                    self.interaction_mode = mode.clone();
+                }
+                // TODO: This way of doing transfers is ugly af, see if we can find a cleaner way.
+                TransferItemRequest(TransferItemRequestMessage {
+                    item,
+                    count,
+                    source,
+                }) => {
+                    // Inventory -> Block
+                    if let TransferItemSource::Inventory = source
+                        && let InteractionMode::Block(pos) = &self.interaction_mode
+                    {
+                        MESSAGE_QUEUE.send(TransferItem(TransferItemMessage {
+                            source: source.clone(),
+                            dest: TransferItemSource::Block(pos.clone()),
+                            item: *item,
+                            count: *count,
+                        }));
+
+                    // Block -> Inventory
+                    } else if matches!(source, TransferItemSource::Block(..)) {
+                        MESSAGE_QUEUE.send(TransferItem(TransferItemMessage {
+                            source: source.clone(),
+                            dest: TransferItemSource::Inventory,
+                            item: *item,
+                            count: *count,
+                        }));
+                    }
+                    // TODO: Block -> Block?
+                }
+                _ => (),
             }
 
             // Handle game state events first
+            self.game_state.handle_message(&m);
             self.game_state.world.handle_message(&m);
 
             // Then player interaction events

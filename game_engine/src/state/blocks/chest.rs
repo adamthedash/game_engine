@@ -11,20 +11,49 @@ use crate::{
     InteractionMode,
     data::{item::ItemType, loader::ITEMS},
     event::{MESSAGE_QUEUE, Message},
-    state::world::BlockPos,
-    ui::{Drawable, Icon},
+    state::{blocks::Container, world::BlockPos},
+    ui::{
+        Drawable, Icon,
+        inventory::{TransferItemRequestMessage, TransferItemSource},
+    },
 };
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct ChestState {
+    pub pos: BlockPos,
     pub items: EnumMap<ItemType, usize>,
 }
 
+impl ChestState {
+    pub fn new(pos: &BlockPos) -> Self {
+        Self {
+            pos: pos.clone(),
+            items: EnumMap::default(),
+        }
+    }
+}
+
+impl Container for ChestState {
+    fn can_accept(&self, _item: ItemType, _count: usize) -> bool {
+        true
+    }
+
+    fn add_item(&mut self, item: ItemType, count: usize) {
+        self.items[item] += count;
+    }
+
+    fn remove_item(&mut self, item: ItemType, count: usize) {
+        assert!(self.items[item] >= count, "Not enough items!");
+
+        self.items[item] -= count;
+    }
+}
+
 impl StatefulBlock for ChestState {
-    fn on_right_click(&mut self, block_pos: &BlockPos) {
+    fn on_right_click(&mut self) {
         // Go into "Interface mode"
         MESSAGE_QUEUE.send(Message::SetInteractionMode(InteractionMode::Block(
-            block_pos.clone(),
+            self.pos.clone(),
         )));
     }
 }
@@ -70,6 +99,23 @@ impl Drawable for ChestState {
                                         font_size: icon_size / 2.,
                                     };
                                     let resp = ui.ui_add(icon);
+                                    //
+                                    // Detect keypresses
+                                    if resp.hovered() {
+                                        use egui::Key::*;
+                                        // Item transfer
+                                        if ui.egui_ui().input(|i| i.key_pressed(T)) {
+                                            MESSAGE_QUEUE.send(Message::TransferItemRequest(
+                                                TransferItemRequestMessage {
+                                                    item: id,
+                                                    count: 1,
+                                                    source: TransferItemSource::Block(
+                                                        self.pos.clone(),
+                                                    ),
+                                                },
+                                            ));
+                                        }
+                                    }
                                 },
                             );
                         });

@@ -6,10 +6,11 @@ use std::{
 use crate::{
     InteractionMode,
     state::{
+        game::TransferItemMessage,
         player::Position,
         world::{BlockChangedMessage, BlockPos, PlaceBlockMessage},
     },
-    ui::inventory::ItemFavouritedMessage,
+    ui::inventory::{ItemFavouritedMessage, TransferItemRequestMessage},
 };
 
 #[derive(Debug)]
@@ -24,6 +25,9 @@ pub enum Message {
     SetInteractionMode(InteractionMode),
     BreakBlock(BlockPos),
     PlaceBlock(PlaceBlockMessage),
+    // Transfer an item from the player's inventory to whatever interface is open
+    TransferItemRequest(TransferItemRequestMessage),
+    TransferItem(TransferItemMessage),
 }
 
 pub struct MessageQueue {

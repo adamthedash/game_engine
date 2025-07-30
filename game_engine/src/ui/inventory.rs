@@ -14,6 +14,7 @@ use crate::{
         recipe::{RECIPES, Recipe},
     },
     event::{MESSAGE_QUEUE, Message},
+    state::world::BlockPos,
     ui::Icon,
 };
 
@@ -61,6 +62,19 @@ pub struct ItemFavouritedMessage {
     pub slot: usize,
 }
 
+#[derive(Debug, Clone)]
+pub enum TransferItemSource {
+    Inventory,
+    Block(BlockPos),
+}
+
+#[derive(Debug)]
+pub struct TransferItemRequestMessage {
+    pub item: ItemType,
+    pub count: usize,
+    pub source: TransferItemSource,
+}
+
 impl Drawable for Inventory {
     fn show_window(&self, ctx: &egui::Context) {
         let icon_size = 32.;
@@ -103,9 +117,10 @@ impl Drawable for Inventory {
                                     };
                                     let resp = ui.ui_add(icon);
 
-                                    // Detect keypresses for hotbar assignment
+                                    // Detect keypresses
                                     if resp.hovered() {
                                         use egui::Key::*;
+                                        // Hotbar assignment
                                         [
                                             Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9,
                                             Num0,
@@ -121,6 +136,17 @@ impl Drawable for Inventory {
                                                 }
                                             },
                                         );
+
+                                        // Item transfer
+                                        if ui.egui_ui().input(|i| i.key_pressed(T)) {
+                                            MESSAGE_QUEUE.send(Message::TransferItemRequest(
+                                                TransferItemRequestMessage {
+                                                    item: id,
+                                                    count: 1,
+                                                    source: TransferItemSource::Inventory,
+                                                },
+                                            ));
+                                        }
                                     }
                                 },
                             );

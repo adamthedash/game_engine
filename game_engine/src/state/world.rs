@@ -381,7 +381,7 @@ impl Subscriber for World {
 
                 // Create a state if the block is stateful
                 if let Some(state_fn) = blocks[*block].data.state {
-                    let old_state = self.block_states.insert(pos.clone(), state_fn());
+                    let old_state = self.block_states.insert(pos.clone(), state_fn(pos));
                     assert!(
                         old_state.is_none(),
                         "Overwrote existing state at {pos:?}! {old_state:?} -> {block:?}"

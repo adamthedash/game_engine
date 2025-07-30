@@ -180,7 +180,7 @@ pub(super) static ITEM_DATA: LazyLock<Vec<ItemData>> = LazyLock::new(|| {
         ItemData::builder()
             .item_type(ItemType::Chest)
             .name("Chest")
-            .icon_path("smiley.png")
+            .icon_path("chest.png")
             .weight(1.)
             .block(BlockType::Chest)
             .build(),

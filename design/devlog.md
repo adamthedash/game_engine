@@ -607,6 +607,16 @@ Time to finish off the chest block. I need to:
 3) Add some better UI for it aswell.  
 
 First up I want to change the inventory UI to be a floating window rather than fixed in the middle. I like the idea of giving players the ability to organise their UI how they like, and I'll have to worry less about organising the layout in various situations like when a chest is opened.  
+For the item transfer, I'm just detecting the "T" key being pressed when hovering over an item in the inventory or chest interface. This sends a `TransferItem` message which is later processed by the `GameState` to do the actual transfer. One difficulty I ran into here was that due to the separation of the display and keypress detection in its own trait, I don't have a great way to access the wider state at that point. I'm working around it with a two-step process:  
+1) The keypress is detected in the UI, sending a `TransferItemRequest` message with the source and information on the item to be transferred. Eg. `TransferItemRequest {source: Inventory, item: Coal}`  
+2) This is intercepted at the top level where the it is linked with the destination based on whatever interaction state the player is in. Eg. `+ InteractionMode::Interface -> TransferItem {source: Inventory, dest: Chest, item: Coal}`  
+3) This concrete message is then actioned on by the `GameState` to move items from one place to another.  
+
+I really don't like how this is working at the moment. In an ideal state I would have enough information at the point of detecting the keypress to both create and validate a complete `TransferItem` message.  
+I also want to extend this to work for Block-Block item transfers aswell for automation systems, as well as abstract out a generic `Container` trait that can be applied to many blocks.  
+
+
+
 
 
 
