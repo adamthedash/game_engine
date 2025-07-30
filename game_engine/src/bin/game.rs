@@ -14,7 +14,8 @@ use game_engine::{
         player::{Player, Position},
         world::{World, WorldPos},
     },
-    ui::{hotbar::Hotbar, inventory::Inventory},
+    ui::{debug::DEBUG_WINDOW, hotbar::Hotbar, inventory::Inventory},
+    util::stopwatch::StopWatch,
 };
 use tokio::runtime::Runtime;
 use winit::{
@@ -216,7 +217,13 @@ impl ApplicationHandler for App {
                 self.last_update = Some(Instant::now());
 
                 // Process message queue
+                let mut stopwatch = StopWatch::new();
                 self.process_message_queue();
+                stopwatch.stamp_and_reset("Message proccesing");
+                stopwatch
+                    .get_debug_strings()
+                    .iter()
+                    .for_each(|l| DEBUG_WINDOW.add_line(l));
 
                 // Render pass
                 if let Some(render_state) = &mut self.render_state {

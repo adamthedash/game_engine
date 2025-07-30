@@ -5,7 +5,6 @@ pub mod hotbar;
 pub mod inventory;
 
 use axes::Axes;
-use debug::DebugWindow;
 use egui::{Color32, Context, FontId, ImageSource, Response, Ui, Vec2};
 use egui_taffy::{TuiBuilderLogic, TuiWidget};
 use egui_wgpu::{Renderer, ScreenDescriptor};
@@ -19,7 +18,7 @@ use crate::{
     InteractionMode,
     render::{camera::Camera, context::DrawContext},
     state::game::GameState,
-    ui::crafting::CraftingWindow,
+    ui::{crafting::CraftingWindow, debug::DEBUG_WINDOW},
 };
 
 /// Trait to enable easy drawing of UI elements
@@ -69,15 +68,11 @@ impl UI {
         view: &TextureView,
         game: &GameState,
         game_mode: &InteractionMode,
-        debug_lines: &[String],
     ) {
         let inputs = self.egui_state.take_egui_input(&draw_context.window);
         let output = self.egui_context.run(inputs, |ctx| {
             // UI code here
-            DebugWindow {
-                lines: debug_lines.to_vec(),
-            }
-            .show_window(ctx);
+            DEBUG_WINDOW.show_window(ctx);
 
             Axes { camera }.show_window(ctx);
 

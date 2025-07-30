@@ -31,9 +31,9 @@ use crate::{
     state::{
         game::GameState,
         player::Position,
-        world::{BlockPos, Chunk},
+        world::Chunk,
     },
-    ui::UI,
+    ui::{UI, debug::DEBUG_WINDOW},
     util::{counter::Counter, stopwatch::StopWatch},
 };
 
@@ -459,22 +459,9 @@ impl RenderState {
 
         stopwatch.stamp_and_reset("Render pass");
 
-        let debug_block_pos = BlockPos::new(-4, 23, -5);
-        let _debug_frustum = self.camera.frustum.with(|f| {
-            [
-                f.near.signed_distance(&debug_block_pos.to_world_pos()),
-                f.far.signed_distance(&debug_block_pos.to_world_pos()),
-                f.left.signed_distance(&debug_block_pos.to_world_pos()),
-                f.right.signed_distance(&debug_block_pos.to_world_pos()),
-                f.top.signed_distance(&debug_block_pos.to_world_pos()),
-                f.bottom.signed_distance(&debug_block_pos.to_world_pos()),
-            ]
-        });
-        let in_view = self.camera.in_view_aabb(&debug_block_pos.aabb().to_f32());
-
         total_stopwatch.stamp_and_reset("Total render loop");
 
-        let debug_text = stopwatch
+        stopwatch
             .get_debug_strings()
             .into_iter()
             .chain(total_stopwatch.get_debug_strings())
@@ -482,12 +469,10 @@ impl RenderState {
             .chain([
                 format!("pos: {:?}", self.camera.pos),
                 format!("player: {:#?}", game.player.aabb()),
-                format!("block: {debug_block_pos:?} in view: {in_view:?}"),
-                // format!("frustum dists: {:?}", debug_frustum),
                 format!("Blocks rendered: {}", self.instances_cpu.len()),
                 format!("Target block: {player_target_block:?}"),
             ])
-            .collect::<Vec<_>>();
+            .for_each(|l| DEBUG_WINDOW.add_line(&l));
 
         self.ui.render(
             &self.draw_context,
@@ -496,8 +481,9 @@ impl RenderState {
             &texture_view,
             game,
             interaction_mode,
-            &debug_text,
         );
+
+        DEBUG_WINDOW.clear();
 
         // Actually run the operations on the GPU
         self.draw_context
