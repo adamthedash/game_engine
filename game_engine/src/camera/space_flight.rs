@@ -101,9 +101,12 @@ impl PlayerController for SpaceFlightController {
     }
 
     /// Turn the camera. delta is in normalised screen coordinates -1 to 1
-    fn handle_mouse_move(&mut self, delta: (f32, f32), player_position: &mut Position) {
+    fn handle_mouse_move(&mut self, delta: (f32, f32), player_position: &mut Position) -> bool {
         if !self.enabled {
-            return;
+            return false;
+        }
+        if delta.0.is_zero() && delta.1.is_zero() {
+            return false;
         }
 
         player_position.yaw += Rad(self.turn_speed * delta.0);
@@ -115,11 +118,14 @@ impl PlayerController for SpaceFlightController {
             .pitch
             .0
             .clamp(-FRAC_PI_2 * 0.99, FRAC_PI_2 * 0.99);
+
+        true
     }
 
-    fn move_player(&mut self, player: &mut Player, world: &World, duration: &Duration) {
+    fn move_player(&mut self, player: &mut Player, world: &World, duration: &Duration) -> bool {
+        // TODO: momentum while we have inventory open?
         if !self.enabled {
-            return;
+            return false;
         }
 
         // Step 1: figure out the direction vector the player wants to move in
@@ -165,10 +171,10 @@ impl PlayerController for SpaceFlightController {
         {
             // If we're drifting slowly (0.1 m/s), just stop instead of moving infinitely slowly
             self.velocity.set_zero();
-            return;
+            return false;
         }
         if self.velocity.magnitude2() == 0. {
-            return;
+            return false;
         }
 
         // Step 3: Apply drag
@@ -194,7 +200,13 @@ impl PlayerController for SpaceFlightController {
             }
         });
 
-        // Step 5: Apply the movement
-        player.position.pos.0 += movement_vector;
+        if movement_vector.magnitude2() > 0. {
+            // Apply the movement vector
+            player.position.pos.0 += movement_vector;
+
+            true
+        } else {
+            false
+        }
     }
 }

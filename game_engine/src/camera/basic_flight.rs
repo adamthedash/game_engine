@@ -1,6 +1,6 @@
 use std::{f32::consts::FRAC_PI_2, time::Duration};
 
-use cgmath::{Angle, InnerSpace, Rad, Vector3};
+use cgmath::{Angle, InnerSpace, Rad, Vector3, Zero};
 use winit::{event::KeyEvent, keyboard::PhysicalKey};
 
 use super::traits::PlayerController;
@@ -92,9 +92,12 @@ impl PlayerController for BasicFlightController {
     }
 
     /// Turn the camera. delta is in normalised screen coordinates -1 to 1
-    fn handle_mouse_move(&mut self, delta: (f32, f32), player_position: &mut Position) {
+    fn handle_mouse_move(&mut self, delta: (f32, f32), player_position: &mut Position) -> bool {
         if !self.enabled {
-            return;
+            return false;
+        }
+        if delta.0.is_zero() && delta.1.is_zero() {
+            return false;
         }
 
         player_position.yaw += Rad(self.turn_speed * delta.0);
@@ -106,12 +109,14 @@ impl PlayerController for BasicFlightController {
             .pitch
             .0
             .clamp(-FRAC_PI_2 * 0.99, FRAC_PI_2 * 0.99);
+
+        true
     }
 
     /// Update the camera position
-    fn move_player(&mut self, player: &mut Player, world: &World, duration: &Duration) {
+    fn move_player(&mut self, player: &mut Player, world: &World, duration: &Duration) -> bool {
         if !self.enabled {
-            return;
+            return false;
         }
 
         // Step 1: figure out the direction vector the player wants to move in
@@ -147,7 +152,7 @@ impl PlayerController for BasicFlightController {
             _ => {}
         }
         if movement_vector.magnitude2() == 0. {
-            return;
+            return false;
         }
         movement_vector = movement_vector.normalize();
 
@@ -157,5 +162,7 @@ impl PlayerController for BasicFlightController {
 
         // Apply the movement vector
         player.position.pos.0 += movement_vector;
+
+        true
     }
 }

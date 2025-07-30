@@ -69,16 +69,28 @@ impl PlayerController for Controller {
         self.as_controller_mut().handle_keypress(event);
     }
 
-    fn handle_mouse_move(&mut self, delta: (f32, f32), player_position: &mut Position) {
-        self.as_controller_mut()
+    fn handle_mouse_move(&mut self, delta: (f32, f32), player_position: &mut Position) -> bool {
+        let moved = self
+            .as_controller_mut()
             .handle_mouse_move(delta, player_position);
-        MESSAGE_QUEUE.send(Message::PlayerMoved(player_position.clone()));
+
+        if moved {
+            MESSAGE_QUEUE.send(Message::PlayerMoved(player_position.clone()));
+        }
+
+        moved
     }
 
-    fn move_player(&mut self, player: &mut Player, world: &World, duration: &Duration) {
-        self.as_controller_mut()
+    fn move_player(&mut self, player: &mut Player, world: &World, duration: &Duration) -> bool {
+        let moved = self
+            .as_controller_mut()
             .move_player(player, world, duration);
-        MESSAGE_QUEUE.send(Message::PlayerMoved(player.position.clone()));
+
+        if moved {
+            MESSAGE_QUEUE.send(Message::PlayerMoved(player.position.clone()));
+        }
+
+        moved
     }
 
     fn toggle(&mut self) {
