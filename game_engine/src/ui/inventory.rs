@@ -14,7 +14,7 @@ use crate::{
         recipe::{RECIPES, Recipe},
     },
     event::{MESSAGE_QUEUE, Message},
-    state::world::BlockPos,
+    state::{blocks::Container, world::BlockPos},
     ui::Icon,
 };
 
@@ -25,16 +25,6 @@ pub struct Inventory {
 }
 
 impl Inventory {
-    pub fn add_item(&mut self, item: ItemType, count: usize) {
-        self.items[item] += count;
-    }
-
-    pub fn remove_item(&mut self, item: ItemType, count: usize) {
-        assert!(self.items[item] >= count, "Not enough items!");
-
-        self.items[item] -= count;
-    }
-
     /// Get the recipes the player can currently craft based on what they have on them
     pub fn get_craftable_recipes(&self) -> impl Iterator<Item = &'static Recipe> {
         RECIPES.iter().filter(|r| {
@@ -53,6 +43,22 @@ impl Inventory {
 
         // Add output items
         self.add_item(recipe.output.0, recipe.output.1);
+    }
+}
+
+impl Container for Inventory {
+    fn add_item(&mut self, item: ItemType, count: usize) {
+        self.items[item] += count;
+    }
+
+    fn remove_item(&mut self, item: ItemType, count: usize) {
+        assert!(self.items[item] >= count, "Not enough items!");
+
+        self.items[item] -= count;
+    }
+
+    fn can_accept(&self, _item: ItemType, _count: usize) -> bool {
+        true
     }
 }
 

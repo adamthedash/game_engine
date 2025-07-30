@@ -15,7 +15,7 @@ use crate::{
     event::{MESSAGE_QUEUE, Message, Subscriber},
     math::ray::RayCollision,
     state::{
-        blocks::StatefulBlock,
+        blocks::{Container, StatefulBlock},
         player::Player,
         world::{BlockPos, Chunk, PlaceBlockMessage, World},
     },
@@ -263,44 +263,36 @@ impl Subscriber for GameState {
             count,
         }) = event
         {
-            // Remove item from one
-            match source {
-                TransferItemSource::Inventory => self
-                    .player
-                    .inventory
-                    .borrow_mut()
-                    .remove_item(*item, *count),
-                TransferItemSource::Block(block_pos) => {
-                    self.world
-                        .get_block_state_mut(block_pos)
-                        .expect("Block state doesn't exist!")
-                        .as_container_mut()
-                        .expect("Attempt to transfer item to non-container block!")
-                        .remove_item(*item, *count);
-                }
-            }
+            use TransferItemSource::*;
 
-            // Add it to the other
-            match dest {
-                TransferItemSource::Inventory => {
-                    self.player.inventory.borrow_mut().add_item(*item, *count)
-                }
-                TransferItemSource::Block(block_pos) => {
-                    let container = self
-                        .world
-                        .get_block_state_mut(block_pos)
-                        .expect("Block state doesn't exist!")
-                        .as_container_mut()
-                        .expect("Attempt to transfer item to non-container block!");
+            // Remove item from source
+            let source: &mut dyn Container = match source {
+                Inventory => &mut *self.player.inventory.borrow_mut(),
+                Block(block_pos) => self
+                    .world
+                    .get_block_state_mut(block_pos)
+                    .expect("Block state doesn't exist!")
+                    .as_container_mut()
+                    .expect("Attempt to transfer item to non-container block!"),
+            };
+            source.remove_item(*item, *count);
 
-                    assert!(
-                        container.can_accept(*item, *count),
-                        "Container cannot accept item!"
-                    );
+            // Add item to destination
+            let dest: &mut dyn Container = match dest {
+                Inventory => &mut *self.player.inventory.borrow_mut(),
+                Block(block_pos) => self
+                    .world
+                    .get_block_state_mut(block_pos)
+                    .expect("Block state doesn't exist!")
+                    .as_container_mut()
+                    .expect("Attempt to transfer item to non-container block!"),
+            };
+            assert!(
+                dest.can_accept(*item, *count),
+                "Container cannot accept item!"
+            );
 
-                    container.add_item(*item, *count);
-                }
-            }
+            dest.add_item(*item, *count);
         }
     }
 }
