@@ -70,9 +70,7 @@ impl Drawable for Inventory {
         let items = ITEMS.get().expect("Items info not initialised!");
 
         Window::new("Inventory")
-            .title_bar(false)
             .resizable(false)
-            .anchor(Align2::CENTER_CENTER, [0., 0.])
             // Scroll bar for when we have lots of items
             .scroll(Vec2b { x: false, y: true })
             .scroll_bar_visibility(ScrollBarVisibility::VisibleWhenNeeded)

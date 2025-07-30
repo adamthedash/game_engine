@@ -595,6 +595,22 @@ BlockData::builder()
 ```  
 
 I like how the message queue turned out for mutating state, so I want to lean into it a bit more and see how it goes. I'm going to move the block placing/breaking to it aswell.  
+So far it seems like it's going well, the implementation was straightforward and it now let's me not have to worry about consequences at the point of action. For example if the `Player` emits a `BreakBlock` event, the actual breaking happens by the `World`, and the re-calculation of visible faces happens by the `RenderState`. It also makes it easier to create other things that break blocks simply by emitting events.  
+
+
+On a side note, now that the codebase is getting larger refactoring is becoming more tedious. Moving a struct from one file to another leads to a mess of broken imports which takes a while to fix. Unfortunately there doesn't seem to be a tool to help with this, there's an [open feature request](https://github.com/rust-lang/rust-analyzer/issues/2178) in the rust-analyzer repo to add this functionality, but there's not much movement on it. Once I have some time it's maybe something I can take a crack at, but it's completely outside of my area of expertise.  
+
+## Day 28
+Time to finish off the chest block. I need to:  
+1) Give it a shiny new texture.  
+2) Add the ability to transfer items to/from it.  
+3) Add some better UI for it aswell.  
+
+First up I want to change the inventory UI to be a floating window rather than fixed in the middle. I like the idea of giving players the ability to organise their UI how they like, and I'll have to worry less about organising the layout in various situations like when a chest is opened.  
+
+
+
+
 
 
 
