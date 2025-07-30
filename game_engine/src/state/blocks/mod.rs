@@ -20,32 +20,38 @@ pub trait StatefulBlock: Drawable {
     fn on_right_click(&mut self, _block_pos: &BlockPos) {}
 }
 
-/// Pass-through trait calls to inner values
-impl Drawable for BlockState {
-    fn show_window(&self, ctx: &egui::Context) {
+impl BlockState {
+    fn as_drawable(&self) -> &dyn Drawable {
         use BlockState::*;
         match self {
-            Chest(chest_state) => chest_state.show_window(ctx),
-            Crafter(crafter_state) => crafter_state.show_window(ctx),
+            Chest(state) => state,
+            Crafter(state) => state,
         }
     }
 
-    fn show_widget(&self, ui: &mut egui::Ui) {
+    fn as_stateful_mut(&mut self) -> &mut dyn StatefulBlock {
         use BlockState::*;
         match self {
-            Chest(chest_state) => chest_state.show_widget(ui),
-            Crafter(crafter_state) => crafter_state.show_widget(ui),
+            Chest(state) => state,
+            Crafter(state) => state,
         }
+    }
+}
+
+/// Pass-through trait calls to inner values
+impl Drawable for BlockState {
+    fn show_window(&self, ctx: &egui::Context) {
+        self.as_drawable().show_window(ctx);
+    }
+
+    fn show_widget(&self, ui: &mut egui::Ui) {
+        self.as_drawable().show_widget(ui);
     }
 }
 
 /// Pass-through trait calls to inner values
 impl StatefulBlock for BlockState {
     fn on_right_click(&mut self, block_pos: &BlockPos) {
-        use BlockState::*;
-        match self {
-            Chest(chest_state) => chest_state.on_right_click(block_pos),
-            Crafter(crafter_state) => crafter_state.on_right_click(block_pos),
-        }
+        self.as_stateful_mut().on_right_click(block_pos);
     }
 }

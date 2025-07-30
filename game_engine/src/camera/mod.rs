@@ -28,17 +28,19 @@ pub enum Controller {
 
 impl Controller {
     fn as_controller_mut(&mut self) -> &mut dyn PlayerController {
+        use Controller::*;
         match self {
-            Controller::BasicFlight(controller) => controller,
-            Controller::SpaceFlight(controller) => controller,
-            Controller::Walking(controller) => controller,
+            BasicFlight(controller) => controller,
+            SpaceFlight(controller) => controller,
+            Walking(controller) => controller,
         }
     }
     fn as_controller(&self) -> &dyn PlayerController {
+        use Controller::*;
         match self {
-            Controller::BasicFlight(controller) => controller,
-            Controller::SpaceFlight(controller) => controller,
-            Controller::Walking(controller) => controller,
+            BasicFlight(controller) => controller,
+            SpaceFlight(controller) => controller,
+            Walking(controller) => controller,
         }
     }
 
