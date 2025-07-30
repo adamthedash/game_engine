@@ -1,3 +1,5 @@
+use std::ops;
+
 use cgmath::{InnerSpace, Point3, Vector3};
 use num_traits::Euclid;
 use rustc_hash::FxHashMap;
@@ -39,7 +41,7 @@ impl ChunkPos {
                 })
             })
             .filter(move |offset| offset.magnitude2() <= dist2);
-        offsets.map(move |offset| ChunkPos(self.0 + offset))
+        offsets.map(move |offset| self + offset)
     }
 
     /// Returns the AABB in block coordinates
@@ -47,10 +49,13 @@ impl ChunkPos {
     pub fn aabb(&self) -> AABB<i32> {
         AABB::new(
             &self.to_block_pos().0,
-            &Self(self.0 + Vector3::new(1, 1, 1)).to_block_pos().0,
+            &(self + Vector3::new(1, 1, 1)).to_block_pos().0,
         )
     }
 }
+
+impl_op_ex!(+|a: &ChunkPos, b: &Vector3<i32>| -> ChunkPos { ChunkPos(a.0 + b) });
+impl_op_ex!(-|a: &ChunkPos, b: &Vector3<i32>| -> ChunkPos { ChunkPos(a.0 - b) });
 
 /// Represents the position of a block in block-space (1 unit moves 1 block length)
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -87,7 +92,7 @@ impl BlockPos {
     /// Centre point of the block in world space
     #[inline]
     pub fn centre(&self) -> WorldPos {
-        WorldPos(self.to_world_pos().0 + Vector3::new(0.5, 0.5, 0.5))
+        self.to_world_pos() + Vector3::new(0.5, 0.5, 0.5)
     }
 
     #[inline]
@@ -95,6 +100,9 @@ impl BlockPos {
         AABB::new(&self.0, &(self.0 + Vector3::new(1, 1, 1)))
     }
 }
+
+impl_op_ex!(+|a: &BlockPos, b: &Vector3<i32>| -> BlockPos { BlockPos(a.0 + b) });
+impl_op_ex!(-|a: &BlockPos, b: &Vector3<i32>| -> BlockPos { BlockPos(a.0 - b) });
 
 /// Represents any position in the world in block-space (1 unit moves 1 block length)
 #[derive(Debug, Copy, Clone)]
@@ -111,6 +119,9 @@ impl WorldPos {
         )
     }
 }
+
+impl_op_ex!(+|a: &WorldPos, b: &Vector3<f32>| -> WorldPos { WorldPos(a.0 + b) });
+impl_op_ex!(-|a: &WorldPos, b: &Vector3<f32>| -> WorldPos { WorldPos(a.0 - b) });
 
 #[derive(Debug)]
 pub struct Chunk {
@@ -200,8 +211,7 @@ impl<'a> Iterator for ChunkIter<'a> {
         // Convert the iterator index into the corresponding block position
         let (rem, x) = self.index.div_rem_euclid(&Chunk::CHUNK_SIZE);
         let (z, y) = rem.div_rem_euclid(&Chunk::CHUNK_SIZE);
-        let block_pos =
-            BlockPos(self.chunk.world_pos.0 + Vector3::new(x as i32, y as i32, z as i32));
+        let block_pos = &self.chunk.world_pos + Vector3::new(x as i32, y as i32, z as i32);
 
         self.index += 1;
 
@@ -242,7 +252,7 @@ impl World {
 
         blocks_to_update.iter().for_each(|b| {
             Chunk::ADJACENT_OFFSETS.iter().for_each(|o| {
-                let (chunk_pos, (x, y, z)) = BlockPos(b.block_pos.0 + o).to_chunk_offset();
+                let (chunk_pos, (x, y, z)) = (&b.block_pos + o).to_chunk_offset();
 
                 if let Some(chunk) = self.chunks.get_mut(&chunk_pos) {
                     chunk.exposed_blocks[x][y][z] = true;
@@ -274,7 +284,7 @@ impl World {
             // Also need to re-run adjacent exposure tests
             let chunks_to_update = Chunk::ADJACENT_OFFSETS
                 .iter()
-                .map(|o| ChunkPos(pos.0 + o))
+                .map(|o| pos + o)
                 .filter(|pos| self.chunks.contains_key(pos))
                 .collect::<Vec<_>>();
             chunks_to_update.iter().for_each(|pos| {

@@ -4,6 +4,9 @@
 #![feature(array_repeat)]
 #![feature(slice_split_once)]
 
+#[macro_use]
+extern crate impl_ops;
+
 use crate::state::world::BlockPos;
 
 pub mod block;

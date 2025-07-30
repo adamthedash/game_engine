@@ -149,12 +149,11 @@ impl ChunkGenerator for DefaultGenerator {
                     // Select an existing block
                     let (x, y, z) = points_generated
                         [selection_generator.next().unwrap() as usize % points_generated.len()];
-                    let block_pos =
-                        BlockPos(world_pos.0 + Vector3::new(x as i32, y as i32, z as i32));
+                    let block_pos = &world_pos + Vector3::new(x as i32, y as i32, z as i32);
 
                     // Select a block next to it
                     let offset = offset_generator.next().unwrap();
-                    let adjacent_pos = BlockPos(block_pos.0 + offset);
+                    let adjacent_pos = block_pos + offset;
 
                     // If we've gone over chunk boundaries, discard
                     // TODO: Once cross-boundary generation is implemented, get rid of this check

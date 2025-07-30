@@ -17,7 +17,7 @@ use crate::{
     state::{
         blocks::{Container, StatefulBlock},
         player::Player,
-        world::{BlockPos, Chunk, PlaceBlockMessage, World},
+        world::{Chunk, PlaceBlockMessage, World},
     },
     ui::inventory::TransferItemSource,
 };
@@ -208,8 +208,7 @@ impl GameState {
         {
             // Get the adjacent block
             // TODO: This cast might cause issues at some point
-            let adjacent_block_pos =
-                BlockPos(target_block.block_pos.0 + collision.normal.cast().unwrap());
+            let adjacent_block_pos = &target_block.block_pos + collision.normal.cast().unwrap();
 
             if let Some(block_type) = self.world.get_block_mut(&adjacent_block_pos)
                     // Only place in air blocks
