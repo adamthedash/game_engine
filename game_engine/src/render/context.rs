@@ -64,7 +64,6 @@ impl DrawContext {
                     required_features: Features::empty(),
                     ..Default::default()
                 },
-                None,
             )
             .await
             .unwrap();

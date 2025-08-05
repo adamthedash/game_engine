@@ -1,6 +1,6 @@
 use egui::{
     Align, Color32, FontId, Frame, Label, Layout, Rect, Response, Sense, Stroke, TextFormat, Ui,
-    Vec2, menu::BarState, text,
+    Vec2, text,
 };
 use egui_taffy::{
     TuiBuilderLogic,
@@ -137,17 +137,4 @@ pub fn draw_progress_bar(ui: &mut Ui, width: f32, height: f32, progress: f32) {
             Color32::BLACK,
         );
     });
-}
-
-/// Turn an existing UI response into a button that creates a dropdown menu
-pub fn make_menu_button<R>(
-    ui: &mut Ui,
-    resp: &Response,
-    f: impl FnOnce(&mut Ui) -> R,
-) -> Option<egui::InnerResponse<R>> {
-    let mut bar_state = BarState::load(ui.ctx(), ui.id());
-    let response = bar_state.bar_menu(resp, f);
-    bar_state.store(ui.ctx(), ui.id());
-
-    response
 }

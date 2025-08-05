@@ -7,11 +7,11 @@ edition = "2024"
 anyhow = "1.0.98"
 bytemuck = { version = "1.23.0", features = ["derive"] }
 cgmath = "0.18.0"
-eframe = "0.31.1"
-egui = "0.31.1"
-egui-wgpu = { version = "0.31.1", features = ["winit"] }
-egui-winit = "0.31.1"
-egui_extras = { version = "0.31.1", features = ["all_loaders", "image"] }
+eframe = "0.32"
+egui = "0.32"
+egui-wgpu = { version = "0.32", features = ["winit"] }
+egui-winit = "0.32"
+egui_extras = { version = "0.32", features = ["all_loaders", "image"] }
 enum-map = "2.7.3"
 env_logger = "0.11.8"
 glob = "0.3.2"
@@ -25,11 +25,11 @@ rustc-hash = "2.1.1"
 sycamore-reactive = "0.9.1"
 tobj = "4.0.3"
 tokio = { version = "1.45.1", features = ["full"] }
-wgpu = "24.0.5"
+wgpu = "25"
 winit = { version = "0.30.11", features = ["rwh_06", "wayland", "x11"], default-features = false }
 
 enum_array = {path = "../enum_array"}
-egui_taffy = "0.7.0"
+egui_taffy = "0.8.0"
 typed-builder = "0.21.0"
 impl_ops = "0.1.1"
 log = "0.4.27"

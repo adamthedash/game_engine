@@ -34,7 +34,8 @@ impl Texture {
             label: Some(&format!("Texture: {label}")),
             size: texture_size,
             dimension: TextureDimension::D2,
-            format: TextureFormat::Rgba8UnormSrgb,
+            // https://github.com/emilk/egui/pull/7311
+            format: TextureFormat::Rgba8Unorm,
             usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
             mip_level_count: 1,
             sample_count: 1,

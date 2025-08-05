@@ -1,6 +1,6 @@
 use std::{cell::RefCell, time::Duration};
 
-use egui::{Vec2, Vec2b, Window, scroll_area::ScrollBarVisibility};
+use egui::{Popup, Vec2, Vec2b, Window, scroll_area::ScrollBarVisibility};
 use enum_map::EnumMap;
 
 use super::StatefulBlock;
@@ -17,7 +17,7 @@ use crate::{
     },
     ui::{
         Drawable,
-        helpers::{draw_item_grid, draw_progress_bar, draw_recipe, make_menu_button},
+        helpers::{draw_item_grid, draw_progress_bar, draw_recipe},
         inventory::{TransferItemRequestMessage, TransferItemSource},
     },
 };
@@ -136,7 +136,6 @@ impl Drawable for CrafterState {
                                     recipe: recipe.clone(),
                                 },
                             ));
-                            ui.close_menu();
                         }
                     });
                 };
@@ -144,7 +143,7 @@ impl Drawable for CrafterState {
                 if let Some(recipe) = &self.recipe {
                     // Click existing recipe to change
                     let resp = draw_recipe(ui, recipe, icon_size, font_size);
-                    make_menu_button(ui, &resp, recipe_menu);
+                    Popup::menu(&resp).show(recipe_menu);
                 } else {
                     // Click button to select
                     ui.allocate_ui(Vec2::new(window_size.x, icon_size), |ui| {
