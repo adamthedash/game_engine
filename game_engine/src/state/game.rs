@@ -177,72 +177,85 @@ impl GameState {
 
     /// Attempt to break the block the player is targeting
     fn break_block(&mut self) {
-        if let Some(target_block) = self.get_player_target_block() {
-            let blocks = BLOCKS.get().unwrap();
+        // Break action needs a target
+        let Some(target_block) = self.get_player_target_block() else {
+            return;
+        };
 
-            // Check if player can break the block
-            if blocks[target_block.block_type]
-                .data
-                .hardness
-                .is_none_or(|h| h > self.player.get_breaking_strength())
-            {
-                // Block is too hard
-                return;
-            }
+        let blocks = BLOCKS.get().unwrap();
 
-            // Break block
-            MESSAGE_QUEUE.send(Message::BreakBlock(target_block.block_pos));
+        // Check if player can break the block
+        if blocks[target_block.block_type]
+            .data
+            .hardness
+            .is_none_or(|h| h > self.player.get_breaking_strength())
+        {
+            // Block is too hard
+            return;
+        }
 
-            // Give an item to the player
-            if let Some(item) = blocks[target_block.block_type].data.item_on_break {
-                self.player.inventory.borrow_mut().add_item(item, 1);
-            }
+        // Break block
+        MESSAGE_QUEUE.send(Message::BreakBlock(target_block.block_pos));
+
+        // Give an item to the player
+        if let Some(item) = blocks[target_block.block_type].data.item_on_break {
+            self.player.inventory.borrow_mut().add_item(item, 1);
         }
     }
 
     fn place_block(&mut self, target_block: &Block, collision: &RayCollision) {
-        let items = ITEMS.get().unwrap();
-
-        // Attempt to place block
-        if let Some((item, count)) = self.player.hotbar.get_selected_item()
-            && count > 0
-            && let Some(new_block_type) = items[item].data.block
-        {
-            // Get the adjacent block
-            // TODO: This cast might cause issues at some point
-            let adjacent_block_pos = &target_block.block_pos + collision.normal.cast().unwrap();
-
-            if let Some(block_type) = self.world.get_block_mut(&adjacent_block_pos)
-                    // Only place in air blocks
-                    && *block_type == BlockType::Air
-            {
-                // Remove the item from the player's inventory
-                self.player.inventory.borrow_mut().remove_item(item, 1);
-
-                // Place the block
-                MESSAGE_QUEUE.send(Message::PlaceBlock(PlaceBlockMessage {
-                    pos: adjacent_block_pos,
-                    block: new_block_type,
-                }));
-            }
+        // If the player doesn't have anything in their hand, don't do anything
+        let Some((item, count)) = self.player.hotbar.get_selected_item() else {
+            return;
+        };
+        if count == 0 {
+            return;
         }
+
+        // If the held item can't be placed don't do anything
+        let items = ITEMS.get().unwrap();
+        let Some(new_block_type) = items[item].data.block else {
+            return;
+        };
+
+        // Make sure the block we're trying to replace is air
+        // TODO: This cast might cause issues at some point
+        let adjacent_block_pos = &target_block.block_pos + collision.normal.cast().unwrap();
+        let block_type = self
+            .world
+            .get_block_mut(&adjacent_block_pos)
+            .unwrap_or_else(|| panic!("Attempt to place block in uninitalised area!"));
+        if *block_type != BlockType::Air {
+            return;
+        }
+
+        // Remove the item from the player's inventory
+        self.player.inventory.borrow_mut().remove_item(item, 1);
+
+        // Place the block
+        MESSAGE_QUEUE.send(Message::PlaceBlock(PlaceBlockMessage {
+            pos: adjacent_block_pos,
+            block: new_block_type,
+        }));
     }
 
     fn handle_right_click(&mut self) {
+        // Click action needs a target block
+        let Some((target_block, collision)) = self.get_player_target_block_verbose() else {
+            return;
+        };
+
         let blocks = BLOCKS.get().unwrap();
+        if blocks[target_block.block_type].data.interactable {
+            // Interact with the block
+            let block_state = self
+                .world
+                .get_block_state_mut(&target_block.block_pos)
+                .expect("Block state doesnt exist!");
 
-        if let Some((target_block, collision)) = self.get_player_target_block_verbose() {
-            if blocks[target_block.block_type].data.interactable {
-                // Interact with the block
-                let block_state = self
-                    .world
-                    .get_block_state_mut(&target_block.block_pos)
-                    .expect("Block state doesnt exist!");
-
-                block_state.on_right_click();
-            } else {
-                self.place_block(&target_block, &collision);
-            }
+            block_state.on_right_click();
+        } else {
+            self.place_block(&target_block, &collision);
         }
     }
 }
