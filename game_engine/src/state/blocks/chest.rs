@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use egui::{Vec2, Vec2b, Window, scroll_area::ScrollBarVisibility};
 use egui_taffy::{
     TuiBuilderLogic,
@@ -21,31 +23,27 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct ChestState {
     pub pos: BlockPos,
-    pub items: EnumMap<ItemType, usize>,
+    pub items: RefCell<EnumMap<ItemType, usize>>,
 }
 
 impl ChestState {
     pub fn new(pos: &BlockPos) -> Self {
         Self {
             pos: pos.clone(),
-            items: EnumMap::default(),
+            items: RefCell::default(),
         }
     }
 }
 
 impl Container for ChestState {
-    fn can_accept(&self, _item: ItemType, _count: usize) -> bool {
-        true
+    fn add_item(&self, item: ItemType, count: usize) {
+        self.items.borrow_mut()[item] += count;
     }
 
-    fn add_item(&mut self, item: ItemType, count: usize) {
-        self.items[item] += count;
-    }
+    fn remove_item(&self, item: ItemType, count: usize) {
+        assert!(self.items.borrow()[item] >= count, "Not enough items!");
 
-    fn remove_item(&mut self, item: ItemType, count: usize) {
-        assert!(self.items[item] >= count, "Not enough items!");
-
-        self.items[item] -= count;
+        self.items.borrow_mut()[item] -= count;
     }
 }
 
@@ -89,8 +87,11 @@ impl Drawable for ChestState {
                     .show(|ui| {
                         ui.reuse_style().add(|ui| {
                             // Draw each item icon if we have some
-                            self.items.iter().filter(|(_, count)| **count > 0).for_each(
-                                |(id, count)| {
+                            self.items
+                                .borrow()
+                                .iter()
+                                .filter(|(_, count)| **count > 0)
+                                .for_each(|(id, count)| {
                                     // Create and draw the icon
                                     let icon = Icon {
                                         texture: &items[id].texture,
@@ -116,8 +117,7 @@ impl Drawable for ChestState {
                                             ));
                                         }
                                     }
-                                },
-                            );
+                                });
                         });
                     });
             });

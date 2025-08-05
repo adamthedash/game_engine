@@ -620,6 +620,12 @@ I also want to extend this to work for Block-Block item transfers aswell for aut
 Today I want to move away from print logging. Printing to the console is unbuffered and can actually result in a huge performance hit if printing a lot. I'm swapping over to the [env_logger](https://docs.rs/env_logger/latest/env_logger/) crate for now. There might be a more appropriate one to choose for my use case, but for now it'll allow me to change logging without changing code.  
 I've also moved back onto the `dev` profile so I can keep `release` as a "real" release profile.  
 
+The main thing on the agenda is the 2nd block type - a crafting station. This'll allow the player to automate the crafting process. A few design thoughts:  
+- The crafting will happen on a regular tick cycle.  
+- The player will be able to select a crafting recipe to set for the block, perhaps locked behind certain requirements for example they must craft X amount manually before being able to automate it.  
+- The block will have a `Container` which allows the player to put ingredients in and take the results out. I'm not sure if I want to have separate containers for each or have it dump results back into the main container.  
+- 
+
 
 
 

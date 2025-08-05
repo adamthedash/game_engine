@@ -41,7 +41,7 @@ impl Hotbar {
     /// Get the player's selected item & count
     pub fn get_selected_item(&self) -> Option<(ItemType, usize)> {
         let item_id = self.slots[self.selected]?;
-        let count = self.inventory.borrow().items[item_id];
+        let count = self.inventory.borrow().items.borrow()[item_id];
 
         Some((item_id, count))
     }
@@ -86,7 +86,7 @@ impl Drawable for Hotbar {
                 let (icon, count) = if let Some(id) = self.slots[i] {
                     let icon = Some(&items[id].texture);
 
-                    let count = self.inventory.borrow().items[id];
+                    let count = self.inventory.borrow().items.borrow()[id];
                     (icon, count)
                 } else {
                     (None, 0)

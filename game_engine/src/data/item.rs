@@ -29,6 +29,7 @@ pub enum ItemType {
     MagicMetalPickaxe,
     // Interactable blocks
     Chest,
+    Crafter,
 }
 
 // User-defined
@@ -183,6 +184,13 @@ pub(super) static ITEM_DATA: LazyLock<Vec<ItemData>> = LazyLock::new(|| {
             .icon_path("chest.png")
             .weight(1.)
             .block(BlockType::Chest)
+            .build(),
+        ItemData::builder()
+            .item_type(ItemType::Crafter)
+            .name("Crafter")
+            .icon_path("smiley.png")
+            .weight(1.)
+            .block(BlockType::Crafter)
             .build(),
     ]
 });

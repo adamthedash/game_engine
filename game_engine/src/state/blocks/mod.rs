@@ -1,11 +1,16 @@
 pub mod chest;
 pub mod crafter;
 
-use crate::{data::item::ItemType, state::blocks::chest::ChestState, ui::Drawable};
+use crate::{
+    data::item::ItemType,
+    state::blocks::{chest::ChestState, crafter::CrafterState},
+    ui::Drawable,
+};
 
 #[derive(Debug, Clone)]
 pub enum BlockState {
     Chest(ChestState),
+    Crafter(CrafterState),
 }
 
 pub trait StatefulBlock: Drawable {
@@ -18,6 +23,7 @@ impl BlockState {
         use BlockState::*;
         match self {
             Chest(state) => state,
+            Crafter(state) => state,
         }
     }
 
@@ -25,6 +31,7 @@ impl BlockState {
         use BlockState::*;
         match self {
             Chest(state) => state,
+            Crafter(state) => state,
         }
     }
 
@@ -33,6 +40,7 @@ impl BlockState {
         use BlockState::*;
         match self {
             Chest(state) => Some(state),
+            Crafter(state) => Some(state),
         }
     }
 }
@@ -56,8 +64,12 @@ impl StatefulBlock for BlockState {
 }
 
 /// Functionality for a thing that can store items
+/// Use interior mutability for implementations
 pub trait Container {
-    fn can_accept(&self, item: ItemType, count: usize) -> bool;
-    fn add_item(&mut self, item: ItemType, count: usize);
-    fn remove_item(&mut self, item: ItemType, count: usize);
+    fn can_accept(&self, _item: ItemType, _count: usize) -> bool {
+        true
+    }
+
+    fn add_item(&self, item: ItemType, count: usize);
+    fn remove_item(&self, item: ItemType, count: usize);
 }

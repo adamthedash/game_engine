@@ -2,7 +2,6 @@
 use std::{cell::RefCell, f32, rc::Rc, sync::Arc, time::Instant};
 
 use cgmath::Rad;
-use enum_map::EnumMap;
 use game_engine::{
     InteractionMode,
     camera::{Controller, traits::PlayerController},
@@ -10,6 +9,7 @@ use game_engine::{
     event::{MESSAGE_QUEUE, Message, Subscriber},
     render::state::RenderState,
     state::{
+        blocks::Container,
         game::{GameState, TransferItemMessage},
         player::{Player, Position},
         world::{World, WorldPos},
@@ -42,23 +42,19 @@ struct App {
 
 impl App {
     fn new() -> Self {
-        let inventory = Inventory {
-            items: {
-                let mut items = EnumMap::default();
-                items[ItemType::Dirt] = 5;
-                items[ItemType::Stone] = 12;
-                items[ItemType::Coal] = 12;
-                items[ItemType::Iron] = 12;
-                items[ItemType::Copper] = 12;
-                items[ItemType::Tin] = 12;
-                items[ItemType::Bronze] = 12;
-                items[ItemType::Steel] = 12;
-                items[ItemType::MagicMetal] = 12;
-                items[ItemType::Chest] = 12;
+        let inventory = Inventory::default();
+        inventory.add_item(ItemType::Dirt, 5);
+        inventory.add_item(ItemType::Stone, 12);
+        inventory.add_item(ItemType::Coal, 12);
+        inventory.add_item(ItemType::Iron, 12);
+        inventory.add_item(ItemType::Copper, 12);
+        inventory.add_item(ItemType::Tin, 12);
+        inventory.add_item(ItemType::Bronze, 12);
+        inventory.add_item(ItemType::Steel, 12);
+        inventory.add_item(ItemType::MagicMetal, 12);
+        inventory.add_item(ItemType::Chest, 12);
+        inventory.add_item(ItemType::Crafter, 12);
 
-                items
-            },
-        };
         let inventory = Rc::new(RefCell::new(inventory));
         let hotbar = Hotbar {
             slots: {

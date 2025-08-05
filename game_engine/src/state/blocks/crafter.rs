@@ -1,11 +1,98 @@
+use std::{cell::RefCell, time::Duration};
+
+use egui::{Vec2, Window};
+use enum_map::EnumMap;
+
 use super::StatefulBlock;
-use crate::{data::recipe::Recipe, ui::Drawable};
+use crate::{
+    InteractionMode,
+    data::{item::ItemType, loader::ITEMS, recipe::Recipe},
+    event::{MESSAGE_QUEUE, Message},
+    state::{blocks::Container, world::BlockPos},
+    ui::Drawable,
+};
 
 #[derive(Debug, Clone)]
 pub struct CrafterState {
-    recipe: Recipe,
+    pos: BlockPos,
+    recipe: Option<Recipe>,
+    inventory: RefCell<EnumMap<ItemType, usize>>,
+    crafting_juice: RefCell<f32>,
+    // TODO: Separate static properties from stateful
+    juice_per_second: f32,
+    // TODO: Assign a recipe cost to recipes
+    recipe_juice_cost: f32,
 }
 
-impl StatefulBlock for CrafterState {}
+impl CrafterState {
+    pub fn new(pos: &BlockPos) -> Self {
+        Self {
+            pos: pos.clone(),
+            recipe: None,
+            inventory: RefCell::default(),
+            crafting_juice: RefCell::new(0.),
+            juice_per_second: 1.,
+            recipe_juice_cost: 10.,
+        }
+    }
 
-impl Drawable for CrafterState {}
+    pub fn tick(&self, duration: &Duration) {
+        let mut inventory = self.inventory.borrow_mut();
+        // If a recipe is set & we've got the ingredients
+        if let Some(recipe) = &self.recipe
+            && recipe
+                .inputs
+                .iter()
+                .all(|(item, amount)| inventory[*item] >= *amount)
+        {
+            let mut crafting_juice = self.crafting_juice.borrow_mut();
+            *crafting_juice += self.juice_per_second * duration.as_secs_f32();
+
+            if *crafting_juice >= self.recipe_juice_cost {
+                // Craft the item
+                // TODO: RefCell interface for Container
+                recipe.inputs.iter().for_each(|(&item, &amount)| {
+                    // self.remove_item(*item, *amount);
+                    assert!(inventory[item] >= amount, "Not enough items!");
+                    inventory[item] -= amount;
+                });
+
+                // self.add_item(item, count);
+                inventory[recipe.output.0] += recipe.output.1;
+
+                *crafting_juice -= self.recipe_juice_cost;
+            }
+        }
+    }
+}
+
+impl StatefulBlock for CrafterState {
+    fn on_right_click(&mut self) {
+        // Go into "Interface mode"
+        MESSAGE_QUEUE.send(Message::SetInteractionMode(InteractionMode::Block(
+            self.pos.clone(),
+        )));
+    }
+}
+
+impl Container for CrafterState {
+    fn add_item(&self, item: ItemType, count: usize) {
+        self.inventory.borrow_mut()[item] += count;
+    }
+
+    fn remove_item(&self, item: ItemType, count: usize) {
+        assert!(self.inventory.borrow()[item] >= count, "Not enough items!");
+
+        self.inventory.borrow_mut()[item] -= count;
+    }
+}
+
+impl Drawable for CrafterState {
+    fn show_window(&self, _ctx: &egui::Context) {
+        let icon_size = 32.;
+        let num_slots = 8;
+
+        let window_size = Vec2::new(icon_size, icon_size) * num_slots as f32;
+        let items = ITEMS.get().expect("Items info not initialised!");
+    }
+}

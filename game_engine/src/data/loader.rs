@@ -60,8 +60,12 @@ pub fn init_item_info(draw_context: &DrawContext, egui_renderer: &mut Renderer) 
         })
         .collect::<Vec<_>>();
 
-    let map =
-        EnumMap::from_fn(|k: ItemType| map.iter().find(|x| x.data.item_type == k).unwrap().clone());
+    let map = EnumMap::from_fn(|k: ItemType| {
+        map.iter()
+            .find(|x| x.data.item_type == k)
+            .unwrap_or_else(|| panic!("User-defiend ItemData not found for: {k:?}"))
+            .clone()
+    });
 
     ITEMS.set(map).unwrap();
 }

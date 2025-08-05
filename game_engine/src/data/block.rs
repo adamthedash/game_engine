@@ -7,7 +7,7 @@ use typed_builder::TypedBuilder;
 use crate::{
     data::item::ItemType,
     state::{
-        blocks::{BlockState, chest::ChestState},
+        blocks::{BlockState, chest::ChestState, crafter::CrafterState},
         world::BlockPos,
     },
 };
@@ -29,6 +29,7 @@ pub enum BlockType {
     MagicMetal,
     // Interactables
     Chest,
+    Crafter,
 }
 
 #[derive(TypedBuilder, Debug, Clone)]
@@ -137,6 +138,14 @@ pub(super) static BLOCK_DATA: LazyLock<Vec<BlockData>> = LazyLock::new(|| {
             .item_on_break(ItemType::Chest)
             .interactable(true)
             .state(|pos| BlockState::Chest(ChestState::new(pos)))
+            .build(),
+        BlockData::builder()
+            .texture_path("smiley.png")
+            .block_type(BlockType::Crafter)
+            .hardness(0)
+            .item_on_break(ItemType::Crafter)
+            .interactable(true)
+            .state(|pos| BlockState::Crafter(CrafterState::new(pos)))
             .build(),
     ]
 });
