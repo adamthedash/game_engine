@@ -1,21 +1,17 @@
 use std::cell::RefCell;
 
 use egui::{Vec2, Vec2b, Window, scroll_area::ScrollBarVisibility};
-use egui_taffy::{
-    TuiBuilderLogic,
-    taffy::{self, AlignItems, prelude::percent},
-    tui,
-};
 use enum_map::EnumMap;
 
 use super::StatefulBlock;
 use crate::{
     InteractionMode,
-    data::{item::ItemType, loader::ITEMS},
+    data::item::ItemType,
     event::{MESSAGE_QUEUE, Message},
     state::{blocks::Container, world::BlockPos},
     ui::{
-        Drawable, Icon,
+        Drawable,
+        helpers::draw_item_grid,
         inventory::{TransferItemRequestMessage, TransferItemSource},
     },
 };
@@ -62,7 +58,6 @@ impl Drawable for ChestState {
         let num_slots = 8;
 
         let window_size = Vec2::new(icon_size, icon_size) * num_slots as f32;
-        let items = ITEMS.get().expect("Items info not initialised!");
 
         Window::new("Chest")
             .resizable(false)
@@ -71,54 +66,25 @@ impl Drawable for ChestState {
             .scroll_bar_visibility(ScrollBarVisibility::VisibleWhenNeeded)
             .default_width(window_size.x)
             .show(ctx, |ui| {
-                // Use egui_taffy to create a grid layout
-                tui(ui, ui.id().with("chest"))
-                    .reserve_available_width()
-                    .style(taffy::Style {
-                        flex_direction: taffy::FlexDirection::Row,
-                        flex_wrap: taffy::FlexWrap::Wrap,
-                        align_items: Some(AlignItems::Start),
-                        size: taffy::Size {
-                            width: percent(1.),
-                            height: percent(1.),
-                        },
-                        ..Default::default()
-                    })
-                    .show(|ui| {
-                        ui.reuse_style().add(|ui| {
-                            // Draw each item icon if we have some
-                            self.items
-                                .borrow()
-                                .iter()
-                                .filter(|(_, count)| **count > 0)
-                                .for_each(|(id, count)| {
-                                    // Create and draw the icon
-                                    let icon = Icon {
-                                        texture: &items[id].texture,
-                                        size: icon_size,
-                                        count: Some(*count),
-                                        font_size: icon_size / 2.,
-                                    };
-                                    let resp = ui.ui_add(icon);
-                                    //
-                                    // Detect keypresses
-                                    if resp.hovered() {
-                                        use egui::Key::*;
-                                        // Item transfer
-                                        if ui.egui_ui().input(|i| i.key_pressed(T)) {
-                                            MESSAGE_QUEUE.send(Message::TransferItemRequest(
-                                                TransferItemRequestMessage {
-                                                    item: id,
-                                                    count: 1,
-                                                    source: TransferItemSource::Block(
-                                                        self.pos.clone(),
-                                                    ),
-                                                },
-                                            ));
-                                        }
-                                    }
-                                });
-                        });
+                draw_item_grid(ui, "crafter", &self.items.borrow(), icon_size)
+                    .into_iter()
+                    // Filter out responses that weren't drawn
+                    .filter_map(|(id, resp)| resp.map(|resp| (id, resp)))
+                    .for_each(|(id, resp)| {
+                        // Detect keypresses
+                        if resp.hovered() {
+                            use egui::Key::*;
+                            // Item transfer
+                            if ui.input(|i| i.key_pressed(T)) {
+                                MESSAGE_QUEUE.send(Message::TransferItemRequest(
+                                    TransferItemRequestMessage {
+                                        item: id,
+                                        count: 1,
+                                        source: TransferItemSource::Block(self.pos.clone()),
+                                    },
+                                ));
+                            }
+                        }
                     });
             });
     }

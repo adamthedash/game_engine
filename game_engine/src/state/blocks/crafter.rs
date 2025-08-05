@@ -1,15 +1,19 @@
 use std::{cell::RefCell, time::Duration};
 
-use egui::Vec2;
+use egui::{Vec2, Vec2b, Window, scroll_area::ScrollBarVisibility};
 use enum_map::EnumMap;
 
 use super::StatefulBlock;
 use crate::{
     InteractionMode,
-    data::{item::ItemType, loader::ITEMS, recipe::Recipe},
+    data::{item::ItemType, recipe::Recipe},
     event::{MESSAGE_QUEUE, Message},
     state::{blocks::Container, world::BlockPos},
-    ui::Drawable,
+    ui::{
+        Drawable,
+        helpers::{draw_item_grid, draw_recipe},
+        inventory::{TransferItemRequestMessage, TransferItemSource},
+    },
 };
 
 #[derive(Debug, Clone)]
@@ -47,7 +51,6 @@ impl CrafterState {
 
             if *crafting_juice >= recipe.crafting_juice_cost {
                 // Craft the item
-                // TODO: RefCell interface for Container
                 recipe.inputs.iter().for_each(|(&item, &amount)| {
                     self.remove_item(item, amount);
                 });
@@ -82,11 +85,57 @@ impl Container for CrafterState {
 }
 
 impl Drawable for CrafterState {
-    fn show_window(&self, _ctx: &egui::Context) {
+    fn show_window(&self, ctx: &egui::Context) {
         let icon_size = 32.;
         let num_slots = 8;
+        let font_size = 15.;
 
         let window_size = Vec2::new(icon_size, icon_size) * num_slots as f32;
-        let items = ITEMS.get().expect("Items info not initialised!");
+
+        Window::new("Crafter")
+            .resizable(false)
+            // Scroll bar for when we have lots of items
+            .scroll(Vec2b { x: false, y: true })
+            .scroll_bar_visibility(ScrollBarVisibility::VisibleWhenNeeded)
+            .default_width(window_size.x)
+            .show(ctx, |ui| {
+                // Recipe
+                if let Some(recipe) = &self.recipe {
+                    draw_recipe(ui, recipe, icon_size, font_size);
+                } else {
+                    // Button to select a recipe
+                    ui.allocate_ui(Vec2::new(window_size.x, icon_size), |ui| {
+                        if ui.button("Select Recipe").clicked() {
+                            // Show recipe selector
+                        }
+                    });
+                }
+
+                ui.separator();
+
+                // Progress Bar
+
+                // Storage
+                draw_item_grid(ui, "crafter", &self.inventory.borrow(), icon_size)
+                    .into_iter()
+                    // Filter out responses that weren't drawn
+                    .filter_map(|(id, resp)| resp.map(|resp| (id, resp)))
+                    .for_each(|(id, resp)| {
+                        // Detect keypresses
+                        if resp.hovered() {
+                            use egui::Key::*;
+                            // Item transfer
+                            if ui.input(|i| i.key_pressed(T)) {
+                                MESSAGE_QUEUE.send(Message::TransferItemRequest(
+                                    TransferItemRequestMessage {
+                                        item: id,
+                                        count: 1,
+                                        source: TransferItemSource::Block(self.pos.clone()),
+                                    },
+                                ));
+                            }
+                        }
+                    });
+            });
     }
 }

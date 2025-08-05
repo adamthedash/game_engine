@@ -1,6 +1,7 @@
 pub mod axes;
 pub mod crafting;
 pub mod debug;
+pub mod helpers;
 pub mod hotbar;
 pub mod inventory;
 
