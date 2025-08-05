@@ -1,6 +1,6 @@
 use std::{cell::RefCell, time::Duration};
 
-use egui::{Vec2, Window};
+use egui::Vec2;
 use enum_map::EnumMap;
 
 use super::StatefulBlock;
@@ -20,8 +20,6 @@ pub struct CrafterState {
     crafting_juice: RefCell<f32>,
     // TODO: Separate static properties from stateful
     juice_per_second: f32,
-    // TODO: Assign a recipe cost to recipes
-    recipe_juice_cost: f32,
 }
 
 impl CrafterState {
@@ -32,12 +30,11 @@ impl CrafterState {
             inventory: RefCell::default(),
             crafting_juice: RefCell::new(0.),
             juice_per_second: 1.,
-            recipe_juice_cost: 10.,
         }
     }
 
     pub fn tick(&self, duration: &Duration) {
-        let mut inventory = self.inventory.borrow_mut();
+        let inventory = self.inventory.borrow();
         // If a recipe is set & we've got the ingredients
         if let Some(recipe) = &self.recipe
             && recipe
@@ -48,19 +45,16 @@ impl CrafterState {
             let mut crafting_juice = self.crafting_juice.borrow_mut();
             *crafting_juice += self.juice_per_second * duration.as_secs_f32();
 
-            if *crafting_juice >= self.recipe_juice_cost {
+            if *crafting_juice >= recipe.crafting_juice_cost {
                 // Craft the item
                 // TODO: RefCell interface for Container
                 recipe.inputs.iter().for_each(|(&item, &amount)| {
-                    // self.remove_item(*item, *amount);
-                    assert!(inventory[item] >= amount, "Not enough items!");
-                    inventory[item] -= amount;
+                    self.remove_item(item, amount);
                 });
 
-                // self.add_item(item, count);
-                inventory[recipe.output.0] += recipe.output.1;
+                self.add_item(recipe.output.0, recipe.output.1);
 
-                *crafting_juice -= self.recipe_juice_cost;
+                *crafting_juice -= recipe.crafting_juice_cost;
             }
         }
     }
