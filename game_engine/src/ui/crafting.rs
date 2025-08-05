@@ -70,17 +70,13 @@ impl Drawable for CraftingWindow {
 
                         // Outputs on the right
                         let (item, count) = r.output;
-                        let resp = Icon {
+                        Icon {
                             texture: &items[item].texture,
                             size: icon_size,
                             count: Some(count),
                             font_size,
                         }
                         .draw(ui);
-
-                        if resp.clicked() {
-                            println!("icon clicked");
-                        }
                     });
 
                 // Make frame clickable

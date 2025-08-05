@@ -1562,6 +1562,7 @@ dependencies = [
  "impl_ops",
  "itertools 0.14.0",
  "libnoise",
+ "log",
  "num-derive",
  "num-traits",
  "rand 0.9.1",

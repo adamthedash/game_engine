@@ -6,3 +6,10 @@ members = [
     "game_engine"
 ]
 resolver = "3"
+
+[profile.dev]
+opt-level = 3
+debug = false
+lto = false
+incremental = true
+codegen-units = 256

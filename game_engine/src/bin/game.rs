@@ -104,6 +104,7 @@ impl App {
     pub fn process_message_queue(&mut self) {
         use Message::*;
         while let Some(m) = MESSAGE_QUEUE.take() {
+            log::debug!("Messag: {m:?}");
             match &m {
                 SetInteractionMode(mode) => {
                     self.interaction_mode = mode.clone();
@@ -183,7 +184,7 @@ impl ApplicationHandler for App {
     }
 
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
-        println!("Saving world...");
+        log::info!("Saving world...");
         //self.game_state.world.save(Path::new("./saves"));
     }
 
@@ -204,7 +205,7 @@ impl ApplicationHandler for App {
                 delta.1 as f32 / config.height as f32,
             );
             if render_state.draw_context.centre_cursor().is_err() {
-                println!("WARNING: Failed to centre cursor!");
+                log::warn!("WARNING: Failed to centre cursor!");
             }
 
             self.player_controller
@@ -218,15 +219,7 @@ impl ApplicationHandler for App {
         _window_id: WindowId,
         event: WindowEvent,
     ) {
-        if !matches!(
-            event,
-            WindowEvent::RedrawRequested
-                | WindowEvent::Moved { .. }
-                | WindowEvent::AxisMotion { .. }
-                | WindowEvent::CursorMoved { .. }
-        ) {
-            println!("Event: {event:?}");
-        }
+        log::trace!("Event: {event:?}");
 
         // Handle UI events
         if let Some(render_state) = &mut self.render_state {

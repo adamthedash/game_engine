@@ -508,7 +508,7 @@ impl Subscriber for RenderState {
             SetInteractionMode(mode) => match mode {
                 InteractionMode::Game => {
                     if self.draw_context.grab_cursor().is_err() {
-                        println!("WARNING: Failed to grab cursor!");
+                        log::warn!("WARNING: Failed to grab cursor!");
                     }
                 }
                 InteractionMode::UI | InteractionMode::Block(_) => {

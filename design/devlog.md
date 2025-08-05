@@ -616,6 +616,10 @@ I really don't like how this is working at the moment. In an ideal state I would
 I also want to extend this to work for Block-Block item transfers aswell for automation systems, as well as abstract out a generic `Container` trait that can be applied to many blocks.  
 
 
+## Day 29
+Today I want to move away from print logging. Printing to the console is unbuffered and can actually result in a huge performance hit if printing a lot. I'm swapping over to the [env_logger](https://docs.rs/env_logger/latest/env_logger/) crate for now. There might be a more appropriate one to choose for my use case, but for now it'll allow me to change logging without changing code.  
+I've also moved back onto the `dev` profile so I can keep `release` as a "real" release profile.  
+
 
 
 

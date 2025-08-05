@@ -1,4 +1,3 @@
-
 use cgmath::Point3;
 use itertools::Itertools;
 
@@ -77,7 +76,7 @@ impl Iterator for LCG {
     type Item = u32;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.state = (self.state * self.a + self.c) % self.m;
+        self.state = self.state.wrapping_mul(self.a).wrapping_add(self.c) % self.m;
         Some(self.state)
     }
 }
