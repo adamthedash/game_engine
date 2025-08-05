@@ -1,6 +1,8 @@
 pub mod chest;
 pub mod crafter;
 
+use std::time::Duration;
+
 use crate::{
     data::item::ItemType,
     state::blocks::{chest::ChestState, crafter::CrafterState},
@@ -43,6 +45,14 @@ impl BlockState {
             Crafter(state) => Some(state),
         }
     }
+
+    pub fn as_tickable(&self) -> Option<&dyn Tickable> {
+        use BlockState::*;
+        match self {
+            Chest(_) => None,
+            Crafter(state) => Some(state),
+        }
+    }
 }
 
 /// Pass-through trait calls to inner values
@@ -72,4 +82,10 @@ pub trait Container {
 
     fn add_item(&self, item: ItemType, count: usize);
     fn remove_item(&self, item: ItemType, count: usize);
+}
+
+/// Functionality for a thing that automatically does something over time
+pub trait Tickable {
+    /// Advance the state by the given duration
+    fn tick(&self, duration: &Duration);
 }

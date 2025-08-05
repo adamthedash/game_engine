@@ -1,4 +1,4 @@
-use std::ops;
+use std::{ops, time::Duration};
 
 use cgmath::{InnerSpace, Point3, Vector3};
 use num_traits::Euclid;
@@ -319,6 +319,14 @@ impl World {
     #[inline]
     pub fn get_block_state_mut(&mut self, pos: &BlockPos) -> Option<&mut BlockState> {
         self.block_states.get_mut(pos)
+    }
+
+    /// Advance the world by the given time
+    pub fn tick(&mut self, duration: &Duration) {
+        self.block_states
+            .iter()
+            .flat_map(|(_, state)| state.as_tickable())
+            .for_each(|block| block.tick(duration));
     }
 }
 

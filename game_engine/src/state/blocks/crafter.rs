@@ -1,9 +1,6 @@
 use std::{cell::RefCell, time::Duration};
 
-use egui::{
-    Vec2, Vec2b, Window,
-    scroll_area::ScrollBarVisibility,
-};
+use egui::{Vec2, Vec2b, Window, scroll_area::ScrollBarVisibility};
 use enum_map::EnumMap;
 
 use super::StatefulBlock;
@@ -14,7 +11,10 @@ use crate::{
         recipe::{RECIPES, Recipe},
     },
     event::{MESSAGE_QUEUE, Message},
-    state::{blocks::Container, world::BlockPos},
+    state::{
+        blocks::{Container, Tickable},
+        world::BlockPos,
+    },
     ui::{
         Drawable,
         helpers::{draw_item_grid, draw_progress_bar, draw_recipe, make_menu_button},
@@ -43,33 +43,44 @@ impl CrafterState {
         }
     }
 
-    pub fn tick(&self, duration: &Duration) {
-        let inventory = self.inventory.borrow();
-        // If a recipe is set & we've got the ingredients
-        if let Some(recipe) = &self.recipe
-            && recipe
+    pub fn set_recipe(&mut self, recipe: &Recipe) {
+        self.recipe = Some(recipe.clone())
+    }
+}
+
+impl Tickable for CrafterState {
+    fn tick(&self, duration: &Duration) {
+        // Only process when we've got a recipe
+        let Some(recipe) = &self.recipe else {
+            return;
+        };
+
+        // Only process when we've got enough materials
+        let have_materials = {
+            let inventory = self.inventory.borrow();
+            recipe
                 .inputs
                 .iter()
                 .all(|(item, amount)| inventory[*item] >= *amount)
-        {
-            let mut crafting_juice = self.crafting_juice.borrow_mut();
-            *crafting_juice += self.juice_per_second * duration.as_secs_f32();
-
-            if *crafting_juice >= recipe.crafting_juice_cost {
-                // Craft the item
-                recipe.inputs.iter().for_each(|(&item, &amount)| {
-                    self.remove_item(item, amount);
-                });
-
-                self.add_item(recipe.output.0, recipe.output.1);
-
-                *crafting_juice -= recipe.crafting_juice_cost;
-            }
+        };
+        if !have_materials {
+            return;
         }
-    }
 
-    pub fn set_recipe(&mut self, recipe: &Recipe) {
-        self.recipe = Some(recipe.clone())
+        // Make some progress on the recipe
+        let mut crafting_juice = self.crafting_juice.borrow_mut();
+        *crafting_juice += self.juice_per_second * duration.as_secs_f32();
+
+        // Craft the item if we've got enough
+        if *crafting_juice >= recipe.crafting_juice_cost {
+            *crafting_juice -= recipe.crafting_juice_cost;
+
+            recipe.inputs.iter().for_each(|(&item, &amount)| {
+                self.remove_item(item, amount);
+            });
+
+            self.add_item(recipe.output.0, recipe.output.1);
+        }
     }
 }
 
@@ -115,7 +126,7 @@ impl Drawable for CrafterState {
             .scroll_bar_visibility(ScrollBarVisibility::VisibleWhenNeeded)
             .default_width(window_size.x)
             .show(ctx, |ui| {
-                // Recipe
+                // Recipe selector
                 let recipe_menu = |ui: &mut egui::Ui| {
                     RECIPES.iter().for_each(|recipe| {
                         if draw_recipe(ui, recipe, icon_size, font_size).clicked() {

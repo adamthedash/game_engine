@@ -115,12 +115,14 @@ pub fn draw_progress_bar(ui: &mut Ui, width: f32, height: f32, progress: f32) {
     );
 
     ui.allocate_ui(Vec2::new(width, height), |ui| {
+        // Make sure the full bar size is taken up
+        let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::empty());
+
         let painter = ui.painter();
-        let origin = ui.min_rect().min;
 
         // Foreground
         painter.rect_filled(
-            Rect::from_min_size(origin, Vec2::new(width * progress, height)),
+            Rect::from_min_size(rect.min, Vec2::new(width * progress, height)),
             0.,
             Color32::WHITE,
         );
@@ -128,7 +130,7 @@ pub fn draw_progress_bar(ui: &mut Ui, width: f32, height: f32, progress: f32) {
         // Background
         painter.rect_filled(
             Rect::from_min_size(
-                origin + Vec2::new(width * progress, 0.),
+                rect.min + Vec2::new(width * progress, 0.),
                 Vec2::new(width * (1. - progress), height),
             ),
             0.,

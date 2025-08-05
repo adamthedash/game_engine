@@ -626,7 +626,10 @@ The main thing on the agenda is the 2nd block type - a crafting station. This'll
 - The block will have a `Container` which allows the player to put ingredients in and take the results out. I'm not sure if I want to have separate containers for each or have it dump results back into the main container.  
 
 For the UI, I want a button for the player to click on to change the recipe, a view onto the `Container` with interactivity for the player to transfer items, and a progress bar.  
+Since the crafter runs in the background as the game time progresses, I added a new `Tickable` interface which generalises this.  
+Here's the crafter in action:  
 
+![](./images/day29_crafter.png)
 
 
 
