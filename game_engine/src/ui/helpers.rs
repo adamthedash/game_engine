@@ -1,6 +1,6 @@
 use egui::{
-    Align, Color32, FontId, Frame, Label, Layout, Response, Sense, Stroke, TextFormat, Ui, Vec2,
-    text,
+    Align, Color32, FontId, Frame, Label, Layout, Rect, Response, Sense, Stroke, TextFormat, Ui,
+    Vec2, menu::BarState, text,
 };
 use egui_taffy::{
     TuiBuilderLogic,
@@ -106,4 +106,46 @@ pub fn draw_item_grid(
         });
 
     responses
+}
+
+pub fn draw_progress_bar(ui: &mut Ui, width: f32, height: f32, progress: f32) {
+    assert!(
+        (0_f32..=1.).contains(&progress),
+        "Progress must be between 0 and 1"
+    );
+
+    ui.allocate_ui(Vec2::new(width, height), |ui| {
+        let painter = ui.painter();
+        let origin = ui.min_rect().min;
+
+        // Foreground
+        painter.rect_filled(
+            Rect::from_min_size(origin, Vec2::new(width * progress, height)),
+            0.,
+            Color32::WHITE,
+        );
+
+        // Background
+        painter.rect_filled(
+            Rect::from_min_size(
+                origin + Vec2::new(width * progress, 0.),
+                Vec2::new(width * (1. - progress), height),
+            ),
+            0.,
+            Color32::BLACK,
+        );
+    });
+}
+
+/// Turn an existing UI response into a button that creates a dropdown menu
+pub fn make_menu_button<R>(
+    ui: &mut Ui,
+    resp: &Response,
+    f: impl FnOnce(&mut Ui) -> R,
+) -> Option<egui::InnerResponse<R>> {
+    let mut bar_state = BarState::load(ui.ctx(), ui.id());
+    let response = bar_state.bar_menu(resp, f);
+    bar_state.store(ui.ctx(), ui.id());
+
+    response
 }

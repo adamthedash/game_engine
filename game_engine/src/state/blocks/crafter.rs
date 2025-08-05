@@ -1,17 +1,23 @@
 use std::{cell::RefCell, time::Duration};
 
-use egui::{Vec2, Vec2b, Window, scroll_area::ScrollBarVisibility};
+use egui::{
+    Vec2, Vec2b, Window,
+    scroll_area::ScrollBarVisibility,
+};
 use enum_map::EnumMap;
 
 use super::StatefulBlock;
 use crate::{
     InteractionMode,
-    data::{item::ItemType, recipe::Recipe},
+    data::{
+        item::ItemType,
+        recipe::{RECIPES, Recipe},
+    },
     event::{MESSAGE_QUEUE, Message},
     state::{blocks::Container, world::BlockPos},
     ui::{
         Drawable,
-        helpers::{draw_item_grid, draw_recipe},
+        helpers::{draw_item_grid, draw_progress_bar, draw_recipe, make_menu_button},
         inventory::{TransferItemRequestMessage, TransferItemSource},
     },
 };
@@ -61,6 +67,10 @@ impl CrafterState {
             }
         }
     }
+
+    pub fn set_recipe(&mut self, recipe: &Recipe) {
+        self.recipe = Some(recipe.clone())
+    }
 }
 
 impl StatefulBlock for CrafterState {
@@ -84,6 +94,12 @@ impl Container for CrafterState {
     }
 }
 
+#[derive(Debug)]
+pub struct SetCraftingRecipeMessage {
+    pub block: BlockPos,
+    pub recipe: Recipe,
+}
+
 impl Drawable for CrafterState {
     fn show_window(&self, ctx: &egui::Context) {
         let icon_size = 32.;
@@ -100,20 +116,40 @@ impl Drawable for CrafterState {
             .default_width(window_size.x)
             .show(ctx, |ui| {
                 // Recipe
-                if let Some(recipe) = &self.recipe {
-                    draw_recipe(ui, recipe, icon_size, font_size);
-                } else {
-                    // Button to select a recipe
-                    ui.allocate_ui(Vec2::new(window_size.x, icon_size), |ui| {
-                        if ui.button("Select Recipe").clicked() {
-                            // Show recipe selector
+                let recipe_menu = |ui: &mut egui::Ui| {
+                    RECIPES.iter().for_each(|recipe| {
+                        if draw_recipe(ui, recipe, icon_size, font_size).clicked() {
+                            MESSAGE_QUEUE.send(Message::SetCraftingRecipe(
+                                SetCraftingRecipeMessage {
+                                    block: self.pos.clone(),
+                                    recipe: recipe.clone(),
+                                },
+                            ));
+                            ui.close_menu();
                         }
+                    });
+                };
+
+                if let Some(recipe) = &self.recipe {
+                    // Click existing recipe to change
+                    let resp = draw_recipe(ui, recipe, icon_size, font_size);
+                    make_menu_button(ui, &resp, recipe_menu);
+                } else {
+                    // Click button to select
+                    ui.allocate_ui(Vec2::new(window_size.x, icon_size), |ui| {
+                        ui.menu_button("Select Recipe", recipe_menu);
                     });
                 }
 
                 ui.separator();
 
                 // Progress Bar
+                let progress = if let Some(recipe) = &self.recipe {
+                    (*self.crafting_juice.borrow() / recipe.crafting_juice_cost).clamp(0., 1.)
+                } else {
+                    0.
+                };
+                draw_progress_bar(ui, window_size.x, font_size, progress);
 
                 // Storage
                 draw_item_grid(ui, "crafter", &self.inventory.borrow(), icon_size)

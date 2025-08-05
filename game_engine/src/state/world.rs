@@ -9,7 +9,7 @@ use crate::{
     data::{block::BlockType, loader::BLOCKS, world_gen::DefaultGenerator},
     event::{MESSAGE_QUEUE, Message, Subscriber},
     math::bbox::AABB,
-    state::blocks::BlockState,
+    state::blocks::{BlockState, crafter::SetCraftingRecipeMessage},
     world_gen::{ChunkGenerator, Perlin},
 };
 
@@ -404,6 +404,16 @@ impl Subscriber for World {
                     prev_block: BlockType::Air,
                     new_block: *block,
                 }));
+            }
+            SetCraftingRecipe(SetCraftingRecipeMessage { block, recipe }) => {
+                let state = self
+                    .get_block_state_mut(block)
+                    .expect("Block state doesn't exist!");
+                let BlockState::Crafter(state) = state else {
+                    panic!("SetCraftingRecipeMessage is only valid for the Crafter block!");
+                };
+
+                state.set_recipe(recipe);
             }
             _ => (),
         }

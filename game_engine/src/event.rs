@@ -6,6 +6,7 @@ use std::{
 use crate::{
     InteractionMode,
     state::{
+        blocks::crafter::SetCraftingRecipeMessage,
         game::TransferItemMessage,
         player::Position,
         world::{BlockChangedMessage, BlockPos, PlaceBlockMessage},
@@ -25,6 +26,7 @@ pub enum Message {
     SetInteractionMode(InteractionMode),
     BreakBlock(BlockPos),
     PlaceBlock(PlaceBlockMessage),
+    SetCraftingRecipe(SetCraftingRecipeMessage),
     // Transfer an item from the player's inventory to whatever interface is open
     TransferItemRequest(TransferItemRequestMessage),
     TransferItem(TransferItemMessage),
