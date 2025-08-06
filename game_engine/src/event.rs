@@ -5,6 +5,7 @@ use std::{
 
 use crate::{
     InteractionMode,
+    entity::SpawnEntityMessage,
     state::{
         blocks::crafter::SetCraftingRecipeMessage,
         game::TransferItemMessage,
@@ -27,9 +28,12 @@ pub enum Message {
     BreakBlock(BlockPos),
     PlaceBlock(PlaceBlockMessage),
     SetCraftingRecipe(SetCraftingRecipeMessage),
+
     // Transfer an item from the player's inventory to whatever interface is open
     TransferItemRequest(TransferItemRequestMessage),
     TransferItem(TransferItemMessage),
+
+    SpawnEntity(SpawnEntityMessage),
 }
 
 pub struct MessageQueue {

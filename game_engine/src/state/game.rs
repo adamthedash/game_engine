@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use cgmath::{InnerSpace, MetricSpace};
+use cgmath::{Deg, InnerSpace, MetricSpace, Quaternion, Rotation3, Vector3};
 use itertools::Itertools;
 use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
 
@@ -12,6 +12,7 @@ use crate::{
         item::ItemType,
         loader::{BLOCKS, ITEMS},
     },
+    entity::{ECS, EntityId, SpawnEntityMessage, components::EntityType},
     event::{MESSAGE_QUEUE, Message, Subscriber},
     math::ray::RayCollision,
     state::{
@@ -26,12 +27,20 @@ use crate::{
 pub struct GameState {
     pub player: Player,
     pub world: World,
+    pub entities: Vec<EntityId>,
+    pub ecs: ECS,
 }
 
 impl GameState {
     /// Once-off stuff to do when a new game state is created
     pub fn init(&mut self) {
         self.generate_chunks();
+
+        // TODO: remove this - some debug entities
+        MESSAGE_QUEUE.send(Message::SpawnEntity(SpawnEntityMessage {
+            pos: self.player.position.pos + Vector3::unit_z() * 3.,
+            entity_type: EntityType::Sibeal,
+        }));
     }
 
     /// Update the world by a game tick
@@ -39,6 +48,8 @@ impl GameState {
         self.generate_chunks();
 
         self.world.tick(duration);
+
+        self.ecs.tick(duration);
     }
 
     pub fn handle_keypress(&mut self, _event: &KeyEvent) {}
@@ -270,43 +281,52 @@ pub struct TransferItemMessage {
 
 impl Subscriber for GameState {
     fn handle_message(&mut self, event: &Message) {
-        if let Message::TransferItem(TransferItemMessage {
-            source,
-            dest,
-            item,
-            count,
-        }) = event
-        {
-            use TransferItemSource::*;
+        match event {
+            Message::TransferItem(TransferItemMessage {
+                source,
+                dest,
+                item,
+                count,
+            }) => {
+                use TransferItemSource::*;
+                let source: &mut dyn Container = match source {
+                    Inventory => &mut *self.player.inventory.borrow_mut(),
+                    Block(block_pos) => self
+                        .world
+                        .get_block_state_mut(block_pos)
+                        .expect("Block state doesn't exist!")
+                        .as_container_mut()
+                        .expect("Attempt to transfer item to non-container block!"),
+                };
+                source.remove_item(*item, *count);
+                let dest: &mut dyn Container = match dest {
+                    Inventory => &mut *self.player.inventory.borrow_mut(),
+                    Block(block_pos) => self
+                        .world
+                        .get_block_state_mut(block_pos)
+                        .expect("Block state doesn't exist!")
+                        .as_container_mut()
+                        .expect("Attempt to transfer item to non-container block!"),
+                };
+                assert!(
+                    dest.can_accept(*item, *count),
+                    "Container cannot accept item!"
+                );
+                dest.add_item(*item, *count);
+            }
+            Message::SpawnEntity(SpawnEntityMessage { pos, entity_type }) => {
+                // Create the entity
+                let entity_id = self.ecs.entity_manager.create_entity();
+                self.ecs.component_manager.create_entity(entity_id);
+                self.entities.push(entity_id);
 
-            // Remove item from source
-            let source: &mut dyn Container = match source {
-                Inventory => &mut *self.player.inventory.borrow_mut(),
-                Block(block_pos) => self
-                    .world
-                    .get_block_state_mut(block_pos)
-                    .expect("Block state doesn't exist!")
-                    .as_container_mut()
-                    .expect("Attempt to transfer item to non-container block!"),
-            };
-            source.remove_item(*item, *count);
-
-            // Add item to destination
-            let dest: &mut dyn Container = match dest {
-                Inventory => &mut *self.player.inventory.borrow_mut(),
-                Block(block_pos) => self
-                    .world
-                    .get_block_state_mut(block_pos)
-                    .expect("Block state doesn't exist!")
-                    .as_container_mut()
-                    .expect("Attempt to transfer item to non-container block!"),
-            };
-            assert!(
-                dest.can_accept(*item, *count),
-                "Container cannot accept item!"
-            );
-
-            dest.add_item(*item, *count);
+                // Initialise the component values
+                let index = self.ecs.component_manager.get_entity_index(entity_id);
+                self.ecs.component_manager.positions[index].0 = *pos;
+                self.ecs.component_manager.orientations[index].0 =
+                    Quaternion::from_angle_y(Deg(180.));
+            }
+            _ => (),
         }
     }
 }

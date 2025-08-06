@@ -6,6 +6,7 @@ use game_engine::{
     InteractionMode,
     camera::{Controller, traits::PlayerController},
     data::item::ItemType,
+    entity::ECS,
     event::{MESSAGE_QUEUE, Message, Subscriber},
     render::state::RenderState,
     state::{
@@ -81,6 +82,8 @@ impl App {
                 hotbar,
                 inventory,
             },
+            entities: vec![],
+            ecs: ECS::new(30),
         };
         game_state.init();
 
@@ -100,7 +103,7 @@ impl App {
     pub fn process_message_queue(&mut self) {
         use Message::*;
         while let Some(m) = MESSAGE_QUEUE.take() {
-            log::debug!("Messag: {m:?}");
+            log::debug!("Message: {m:?}");
             match &m {
                 SetInteractionMode(mode) => {
                     self.interaction_mode = mode.clone();

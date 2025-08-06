@@ -20,6 +20,7 @@ pub mod state;
 pub mod ui;
 pub mod util;
 pub mod world_gen;
+pub mod entity;
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum InteractionMode {

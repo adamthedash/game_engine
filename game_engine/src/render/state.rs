@@ -1,7 +1,7 @@
 use std::{path::Path, sync::Arc};
 
 use anyhow::Context;
-use cgmath::{Deg, Matrix3, Matrix4, One, Vector3};
+use cgmath::{Deg, EuclideanSpace, Matrix3, Matrix4, One};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, Buffer, BufferDescriptor,
     BufferUsages, CommandEncoderDescriptor, Device, LoadOp, Operations, RenderPassColorAttachment,
@@ -28,11 +28,7 @@ use crate::{
         },
         texture::Texture,
     },
-    state::{
-        game::GameState,
-        player::Position,
-        world::Chunk,
-    },
+    state::{game::GameState, player::Position, world::Chunk},
     ui::{UI, debug::DEBUG_WINDOW},
     util::{counter::Counter, stopwatch::StopWatch},
 };
@@ -359,8 +355,11 @@ impl RenderState {
         );
 
         // Entities
+        let sibeal_pos = game.ecs.component_manager.positions[0].0.0;
+        let sibeal_rot = game.ecs.component_manager.orientations[0].0;
         let sibeal_instances = [texture::Instance {
-            model: Matrix4::from_translation(Vector3::new(1., 12., -16.)).into(),
+            model: (Matrix4::from_translation(sibeal_pos.to_vec()) * Matrix4::from(sibeal_rot))
+                .into(),
             normal: Matrix3::one().into(),
             texture_index: 0,
         }];

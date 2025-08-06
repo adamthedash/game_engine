@@ -633,6 +633,19 @@ Here's the crafter in action:
 ![](./images/day29_crafter.png)
 
 
+## Day 30
+Right now the world is pretty static, nothing happens except for the player interacting with it. It's time to start looking at entities!  
+I've found myself leaning towards an [Entitity Component System](https://en.wikipedia.org/wiki/Entity_component_system) as I build out the engine, though I'm not sure if that's naturally how things are organising or if I'm just biased having heard of it before.  
+
+For my entities, I'll want a few different things:  
+- A pathfinding algorithm  
+- Collision detection  
+- A behaviour system, likely as a state machine  
+- Some 3d models  
+- Hitboxes so the player can punch them  
+- Health & damage mechanics  
+- Item drops  
+
 
 
 
