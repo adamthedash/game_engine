@@ -15,6 +15,7 @@ use crate::{
     InteractionMode,
     block::Block,
     data::loader::{BLOCK_TEXTURES, BLOCKS, init_block_info, init_item_info},
+    entity::components,
     event::{Message, Subscriber},
     render::{
         camera::{Camera, CameraUniform},
@@ -355,11 +356,18 @@ impl RenderState {
         );
 
         // Entities
-        let sibeal_pos = game.ecs.component_manager.positions[0].0.0;
-        let sibeal_rot = game.ecs.component_manager.orientations[0].0;
+        let sibeal_pos = &game
+            .ecs
+            .component_manager
+            .get_component::<components::Position>()[0];
+        let sibeal_rot = &game
+            .ecs
+            .component_manager
+            .get_component::<components::Orientation>()[0];
         let sibeal_instances = [texture::Instance {
-            model: (Matrix4::from_translation(sibeal_pos.to_vec()) * Matrix4::from(sibeal_rot))
-                .into(),
+            model: (Matrix4::from_translation(sibeal_pos.0.0.to_vec())
+                * Matrix4::from(sibeal_rot.0))
+            .into(),
             normal: Matrix3::one().into(),
             texture_index: 0,
         }];

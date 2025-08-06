@@ -193,7 +193,7 @@ impl AABB<i32> {
 mod tests {
     use cgmath::{Point3, Vector3};
 
-    use crate::{bbox::AABB, render::ray::Ray};
+    use crate::math::{bbox::AABB, ray::Ray};
 
     #[test]
     fn test_ray_aabb_intersection() {

@@ -12,7 +12,10 @@ use crate::{
         item::ItemType,
         loader::{BLOCKS, ITEMS},
     },
-    entity::{ECS, EntityId, SpawnEntityMessage, components::EntityType},
+    entity::{
+        ECS, EntityId, SpawnEntityMessage,
+        components::{self, EntityType},
+    },
     event::{MESSAGE_QUEUE, Message, Subscriber},
     math::ray::RayCollision,
     state::{
@@ -317,14 +320,17 @@ impl Subscriber for GameState {
             Message::SpawnEntity(SpawnEntityMessage { pos, entity_type }) => {
                 // Create the entity
                 let entity_id = self.ecs.entity_manager.create_entity();
-                self.ecs.component_manager.create_entity(entity_id);
+                self.ecs.component_manager.add_entity(entity_id);
                 self.entities.push(entity_id);
 
                 // Initialise the component values
-                let index = self.ecs.component_manager.get_entity_index(entity_id);
-                self.ecs.component_manager.positions[index].0 = *pos;
-                self.ecs.component_manager.orientations[index].0 =
-                    Quaternion::from_angle_y(Deg(180.));
+                self.ecs
+                    .component_manager
+                    .set_entity_component_value(entity_id, components::Position(*pos));
+                self.ecs.component_manager.set_entity_component_value(
+                    entity_id,
+                    components::Orientation(Quaternion::from_angle_y(Deg(180.))),
+                );
             }
             _ => (),
         }

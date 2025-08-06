@@ -11,6 +11,7 @@ pub struct Health {
     health: f32,
 }
 
+#[derive(Debug, Clone)]
 pub struct Position(pub WorldPos);
 
 impl Default for Position {
@@ -19,6 +20,7 @@ impl Default for Position {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Orientation(pub Quaternion<f32>);
 
 impl Default for Orientation {
