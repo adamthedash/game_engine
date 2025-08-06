@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use cgmath::{Deg, InnerSpace, MetricSpace, Quaternion, Rotation3, Vector3};
+use hecs::Entity;
 use itertools::Itertools;
 use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
 
@@ -13,8 +14,9 @@ use crate::{
         loader::{BLOCKS, ITEMS},
     },
     entity::{
-        ECS, EntityId, SpawnEntityMessage,
+        SpawnEntityMessage,
         components::{self, EntityType},
+        systems::{MoveSystem, System},
     },
     event::{MESSAGE_QUEUE, Message, Subscriber},
     math::ray::RayCollision,
@@ -30,8 +32,8 @@ use crate::{
 pub struct GameState {
     pub player: Player,
     pub world: World,
-    pub entities: Vec<EntityId>,
-    pub ecs: ECS,
+    pub entities: Vec<Entity>,
+    pub ecs: hecs::World,
 }
 
 impl GameState {
@@ -52,7 +54,11 @@ impl GameState {
 
         self.world.tick(duration);
 
-        self.ecs.tick(duration);
+        self.run_ecs_systems(duration);
+    }
+
+    pub fn run_ecs_systems(&mut self, duration: &Duration) {
+        MoveSystem::tick(&mut self.ecs, duration);
     }
 
     pub fn handle_keypress(&mut self, _event: &KeyEvent) {}
@@ -319,18 +325,11 @@ impl Subscriber for GameState {
             }
             Message::SpawnEntity(SpawnEntityMessage { pos, entity_type }) => {
                 // Create the entity
-                let entity_id = self.ecs.entity_manager.create_entity();
-                self.ecs.component_manager.add_entity(entity_id);
-                self.entities.push(entity_id);
-
-                // Initialise the component values
-                self.ecs
-                    .component_manager
-                    .set_entity_component_value(entity_id, components::Position(*pos));
-                self.ecs.component_manager.set_entity_component_value(
-                    entity_id,
+                let entity_id = self.ecs.spawn((
+                    components::Position(*pos),
                     components::Orientation(Quaternion::from_angle_y(Deg(180.))),
-                );
+                ));
+                self.entities.push(entity_id);
             }
             _ => (),
         }

@@ -356,14 +356,12 @@ impl RenderState {
         );
 
         // Entities
-        let sibeal_pos = &game
+
+        let mut sibeal_query = game
             .ecs
-            .component_manager
-            .get_component::<components::Position>()[0];
-        let sibeal_rot = &game
-            .ecs
-            .component_manager
-            .get_component::<components::Orientation>()[0];
+            .query::<(&components::Position, &components::Orientation)>();
+        let (_, (sibeal_pos, sibeal_rot)) = sibeal_query.iter().next().unwrap();
+
         let sibeal_instances = [texture::Instance {
             model: (Matrix4::from_translation(sibeal_pos.0.0.to_vec())
                 * Matrix4::from(sibeal_rot.0))

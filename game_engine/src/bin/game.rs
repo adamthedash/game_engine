@@ -6,7 +6,6 @@ use game_engine::{
     InteractionMode,
     camera::{Controller, traits::PlayerController},
     data::item::ItemType,
-    entity::ECS,
     event::{MESSAGE_QUEUE, Message, Subscriber},
     render::state::RenderState,
     state::{
@@ -83,7 +82,7 @@ impl App {
                 inventory,
             },
             entities: vec![],
-            ecs: ECS::new(30),
+            ecs: hecs::World::new(),
         };
         game_state.init();
 

@@ -646,6 +646,14 @@ For my entities, I'll want a few different things:
 - Health & damage mechanics  
 - Item drops  
 
+I spent most of today figuring out the component system. The basic idea is that an entity is composed of several data components (health, position, etc.), and the components are stored globally by their type. This gives much better cache locality when systems are operating over the data, and the systems can be agnostic to the entities they're operating over. For example, a gravity system can operate over all entities which have both `Position` and `Mass` components.  
+A lot of the difficulty came with how I can store `Vec<T>` in a generic way, and how they can be accesed as concrete types during querying. This is an area of Rust that I've not explored in depth before, so I spent a lot of time researching and failing to build working solutions. I ended up implementing a `Component` trait which enables type erasure for storage in a single `HashMap`, which is keyed by a unique identified for the data type. Type-erased components are looked up during runtime and downcasted to the corresponding concrete `Vec<T>` again. The nice thing about this is that it's all controlled by the type system, so I can guarantee that the data won't get interpreted weirdly.  
+The next issue came when querying the components for the systems. Most systems will need to iterate over several components at once and mutate them, so the borrow checker reared its ugly head. I managed to get *a* solution, but the implementation is quite cumbersome and requires seperate implementations for different types of tuples.  
+Once I flesh out a working ECS and understand all the bits, I might switch over to something like [hecs](https://docs.rs/hecs/latest/hecs/index.html) or [bevy_ecs](https://docs.rs/bevy_ecs/latest/bevy_ecs/) to work with something more production ready.  
+
+## Day 31
+I've come to the realisation that a full ECS system is extremely complex and I'm just going to use `hecs` instead.  
+
 
 
 
