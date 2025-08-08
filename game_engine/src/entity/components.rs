@@ -1,14 +1,15 @@
-use cgmath::{Point3, Quaternion, Zero};
+use cgmath::{Point3, Quaternion, Rad, Zero};
+use enum_map::EnumMap;
 
-use crate::{entity::EntityId, state::world::WorldPos};
+use crate::{
+    data::{item::ItemType, recipe::Recipe},
+    entity::EntityId,
+    state::world::WorldPos,
+};
 
 #[derive(Debug)]
 pub enum EntityType {
     Sibeal,
-}
-
-pub struct Health {
-    health: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -41,4 +42,31 @@ pub enum Behaviour {
     Idle,
     Wandering(WorldPos),
     Persuing(EntityId),
+}
+
+pub struct Container {
+    pub items: EnumMap<ItemType, usize>,
+}
+
+impl Container {
+    pub fn add_item(&mut self, item: ItemType, count: usize) {
+        self.items[item] += count;
+    }
+
+    pub fn remove_item(&mut self, item: ItemType, count: usize) {
+        assert!(self.items[item] >= count, "Not enough items!");
+
+        self.items[item] -= count;
+    }
+}
+
+pub struct Crafter {
+    pub recipe: Option<Recipe>,
+    pub crafting_juice: f32,
+    pub juice_per_second: f32,
+}
+
+pub struct UprightOrientation {
+    pub yaw: Rad<f32>,
+    pub pitch: Rad<f32>,
 }

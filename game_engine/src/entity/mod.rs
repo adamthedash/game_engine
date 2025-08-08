@@ -4,6 +4,7 @@ use crate::{entity::components::EntityType, state::world::WorldPos};
 
 pub mod components;
 pub mod systems;
+pub mod bundles;
 
 pub type EntityId = usize;
 

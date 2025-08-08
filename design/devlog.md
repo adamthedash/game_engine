@@ -652,7 +652,14 @@ The next issue came when querying the components for the systems. Most systems w
 Once I flesh out a working ECS and understand all the bits, I might switch over to something like [hecs](https://docs.rs/hecs/latest/hecs/index.html) or [bevy_ecs](https://docs.rs/bevy_ecs/latest/bevy_ecs/) to work with something more production ready.  
 
 ## Day 31
-I've come to the realisation that a full ECS system is extremely complex and I'm just going to use `hecs` instead.  
+I've come to the realisation that a full ECS system is extremely complex and I'm just going to use `hecs` instead. This provides a very minimal ECS, the main thing I'm interested in is the data structure and querying capabilities. I'll be implementing the system side myself. I'm also going to see what of my existing stuff I can move over to it, for example block states and the player.  
+I've also decided to enlist the help of some AI. While I've been using Claude to do research and generate boilerplate, it's difficult to feed it enough context to ask nuianced questions. I had a look at some open source agent clients, and [Aider](https://aider.chat/) seems to be the most suitable. I'm not looking for anything fancy, just for it to be able to get context from my codebase. I threw a few euro at [OpenRouter](https://openrouter.ai/) so I can try out some different providers easily.  
+I won't be leaning much on this tool other than question asking and maybe some refactoring help since the goal of this project is to learn and struggle with those rough edge cases.  
+I also came across [this YouTube channel](https://www.youtube.com/@TheCherno) which seems to have some really nice game engine content including on ECS's.  
+
+
+
+
 
 
 
