@@ -7,7 +7,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     block::Block,
     data::{block::BlockType, world_gen::DefaultGenerator},
-    event::{Message, Subscriber},
+    event::{Message, Subscriber, messages::BlockChangedMessage},
     math::bbox::AABB,
     world_gen::{ChunkGenerator, Perlin},
 };
@@ -325,19 +325,6 @@ impl Default for World {
             block_states: Default::default(),
         }
     }
-}
-
-#[derive(Debug)]
-pub struct BlockChangedMessage {
-    pub pos: BlockPos,
-    pub prev_block: BlockType,
-    pub new_block: BlockType,
-}
-
-#[derive(Debug)]
-pub struct PlaceBlockMessage {
-    pub pos: BlockPos,
-    pub block: BlockType,
 }
 
 impl Subscriber for World {

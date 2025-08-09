@@ -10,20 +10,23 @@ use crate::{
     block::Block,
     data::{
         block::BlockType,
-        item::ItemType,
         loader::{BLOCKS, ITEMS},
     },
     entity::{
-        SpawnEntityMessage,
         components::{self, Container, Crafter, EntityType, Reach, UprightOrientation, Vision},
         systems::{
             MoveSystem, System, crafting_tick, create_block_state, get_breaking_strength,
             get_held_item, transfer_item,
         },
     },
-    event::{MESSAGE_QUEUE, Message, Subscriber, messages::SetCraftingRecipeMessage},
+    event::{
+        MESSAGE_QUEUE, Message, Subscriber,
+        messages::{
+            BlockChangedMessage, PlaceBlockMessage, SetCraftingRecipeMessage, SpawnEntityMessage,
+        },
+    },
     math::ray::{Ray, RayCollision},
-    state::world::{BlockChangedMessage, Chunk, PlaceBlockMessage, World, WorldPos},
+    state::world::{Chunk, World, WorldPos},
 };
 
 /// Holds state information about the game independent of the rendering
@@ -288,14 +291,6 @@ impl GameState {
             self.place_block(&target_block, &collision);
         }
     }
-}
-
-#[derive(Debug)]
-pub struct TransferItemMessage {
-    pub source: Entity,
-    pub dest: Entity,
-    pub item: ItemType,
-    pub count: usize,
 }
 
 impl Subscriber for GameState {

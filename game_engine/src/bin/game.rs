@@ -9,12 +9,15 @@ use game_engine::{
     entity::components::{Container, Hotbar, Reach, UprightOrientation, Vision},
     event::{
         MESSAGE_QUEUE, Message, Subscriber,
-        messages::{ItemFavouritedMessage, TransferItemRequestMessage, TransferItemSource},
+        messages::{
+            ItemFavouritedMessage, TransferItemMessage, TransferItemRequestMessage,
+            TransferItemSource,
+        },
     },
     math::bbox::AABB,
     render::state::RenderState,
     state::{
-        game::{GameState, TransferItemMessage},
+        game::GameState,
         world::{World, WorldPos},
     },
     ui::debug::DEBUG_WINDOW,

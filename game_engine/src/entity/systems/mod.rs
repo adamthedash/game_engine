@@ -12,7 +12,8 @@ use crate::{
         loader::{BLOCKS, ITEMS},
     },
     entity::components::{Container, Crafter, Hotbar, Orientation, Position},
-    state::{game::TransferItemMessage, world::BlockPos},
+    event::messages::TransferItemMessage,
+    state::world::BlockPos,
 };
 
 pub trait System {

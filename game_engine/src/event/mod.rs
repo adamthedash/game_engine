@@ -7,14 +7,12 @@ use std::{
 
 use crate::{
     InteractionMode,
-    entity::{SpawnEntityMessage, components::UprightOrientation},
+    entity::components::UprightOrientation,
     event::messages::{
-        ItemFavouritedMessage, SetCraftingRecipeMessage, TransferItemRequestMessage,
+        BlockChangedMessage, ItemFavouritedMessage, PlaceBlockMessage, SetCraftingRecipeMessage,
+        SpawnEntityMessage, TransferItemMessage, TransferItemRequestMessage,
     },
-    state::{
-        game::TransferItemMessage,
-        world::{BlockChangedMessage, BlockPos, PlaceBlockMessage, WorldPos},
-    },
+    state::world::{BlockPos, WorldPos},
 };
 
 #[derive(Debug)]
