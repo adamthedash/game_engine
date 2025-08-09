@@ -157,6 +157,20 @@ impl Camera {
     }
 }
 
+impl Default for Camera {
+    fn default() -> Self {
+        Self::new(
+            WorldPos(Point3::new(0., 0., 0.)),
+            Rad(0.),
+            Rad(0.),
+            1.,
+            Deg(90.),
+            0.1,
+            100.,
+        )
+    }
+}
+
 /// Projection matrix for the shaders, stored on the GPU
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]

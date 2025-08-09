@@ -15,22 +15,20 @@ use crate::{
     },
     entity::{
         SpawnEntityMessage,
-        components::{self, EntityType},
-        systems::{MoveSystem, System},
+        components::{self, Container, Crafter, EntityType, Reach, UprightOrientation, Vision},
+        systems::{
+            MoveSystem, System, crafting_tick, create_block_state, get_breaking_strength,
+            get_held_item, transfer_item,
+        },
     },
-    event::{MESSAGE_QUEUE, Message, Subscriber},
-    math::ray::RayCollision,
-    state::{
-        blocks::{Container, StatefulBlock},
-        player::Player,
-        world::{Chunk, PlaceBlockMessage, World},
-    },
-    ui::inventory::TransferItemSource,
+    event::{MESSAGE_QUEUE, Message, Subscriber, messages::SetCraftingRecipeMessage},
+    math::ray::{Ray, RayCollision},
+    state::world::{BlockChangedMessage, Chunk, PlaceBlockMessage, World, WorldPos},
 };
 
 /// Holds state information about the game independent of the rendering
 pub struct GameState {
-    pub player: Player,
+    pub player: Entity,
     pub world: World,
     pub entities: Vec<Entity>,
     pub ecs: hecs::World,
@@ -41,9 +39,11 @@ impl GameState {
     pub fn init(&mut self) {
         self.generate_chunks();
 
+        let player_pos = *self.ecs.get::<&WorldPos>(self.player).unwrap();
+
         // TODO: remove this - some debug entities
         MESSAGE_QUEUE.send(Message::SpawnEntity(SpawnEntityMessage {
-            pos: self.player.position.pos + Vector3::unit_z() * 3.,
+            pos: player_pos + Vector3::unit_z() * 3.,
             entity_type: EntityType::Sibeal,
         }));
     }
@@ -52,13 +52,12 @@ impl GameState {
     pub fn tick(&mut self, duration: &Duration) {
         self.generate_chunks();
 
-        self.world.tick(duration);
-
         self.run_ecs_systems(duration);
     }
 
     pub fn run_ecs_systems(&mut self, duration: &Duration) {
         MoveSystem::tick(&mut self.ecs, duration);
+        crafting_tick(&mut self.ecs, duration);
     }
 
     pub fn handle_keypress(&mut self, _event: &KeyEvent) {}
@@ -96,9 +95,15 @@ impl GameState {
         let pre_generate_buffer = 2; // Generate chunks randomly in this range
         let preemptive_chunks = 8; // Generate this many chunks pre-emptively per frame
 
-        let (player_chunk, _) = self.player.position.pos.to_block_pos().to_chunk_offset();
-        let player_vision_chunks =
-            (self.player.vision_distance as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
+        // Fetch player info from ECS
+        let mut query = self
+            .ecs
+            .query_one::<(&WorldPos, &Vision)>(self.player)
+            .unwrap();
+        let (player_pos, vision_distance) = query.get().unwrap();
+
+        let (player_chunk, _) = player_pos.to_block_pos().to_chunk_offset();
+        let player_vision_chunks = (vision_distance.0 as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
 
         // Get nearby chunks ordered by distance from player
         let mut nearby_chunks = player_chunk
@@ -139,8 +144,18 @@ impl GameState {
     }
 
     pub fn get_player_target_block_verbose(&self) -> Option<(Block, RayCollision)> {
-        let ray = self.player.position.ray();
-        let (player_chunk_pos, _) = self.player.position.pos.to_block_pos().to_chunk_offset();
+        let mut query = self
+            .ecs
+            .query_one::<(&WorldPos, &UprightOrientation, &Reach)>(self.player)
+            .unwrap();
+        let (player_pos, orientation, reach) = query.get().unwrap();
+
+        let ray = Ray {
+            pos: player_pos.0,
+            direction: orientation.forward(),
+        };
+
+        let (player_chunk_pos, _) = player_pos.to_block_pos().to_chunk_offset();
 
         // Always process the player's chunk
         let player_chunk = [self.world.chunks.get(&player_chunk_pos).unwrap()];
@@ -158,7 +173,7 @@ impl GameState {
                     .map(|col| (chunk_pos, col))
             })
             // And are within the player's reach
-            .filter(|(_, col)| col.distance <= self.player.arm_length)
+            .filter(|(_, col)| col.distance <= reach.0)
             // Process chunks in ascending distance from the player
             .sorted_by(|(_, c1), (_, c2)| c1.distance.total_cmp(&c2.distance))
             .flat_map(|(chunk_pos, _)| self.world.chunks.get(&chunk_pos));
@@ -175,11 +190,7 @@ impl GameState {
                     .filter(|b| blocks[b.block_type].data.renderable)
                     // Check which blocks are within arm's length
                     .filter(|b| {
-                        b.block_pos
-                            .to_world_pos()
-                            .0
-                            .distance2(self.player.position.pos.0)
-                            <= self.player.arm_length.powi(2) + 3.
+                        b.block_pos.to_world_pos().0.distance2(player_pos.0) <= reach.0.powi(2) + 3.
                     })
                     // Check which blocks are infront of player
                     .filter_map(|block| {
@@ -208,7 +219,7 @@ impl GameState {
         if blocks[target_block.block_type]
             .data
             .hardness
-            .is_none_or(|h| h > self.player.get_breaking_strength())
+            .is_none_or(|h| h > get_breaking_strength(&self.ecs, self.player))
         {
             // Block is too hard
             return;
@@ -219,13 +230,14 @@ impl GameState {
 
         // Give an item to the player
         if let Some(item) = blocks[target_block.block_type].data.item_on_break {
-            self.player.inventory.borrow_mut().add_item(item, 1);
+            let mut inventory = self.ecs.get::<&mut Container>(self.player).unwrap();
+            inventory.add_item(item, 1);
         }
     }
 
     fn place_block(&mut self, target_block: &Block, collision: &RayCollision) {
         // If the player doesn't have anything in their hand, don't do anything
-        let Some((item, count)) = self.player.hotbar.get_selected_item() else {
+        let Some((item, count)) = get_held_item(&self.ecs, self.player) else {
             return;
         };
         if count == 0 {
@@ -250,7 +262,8 @@ impl GameState {
         }
 
         // Remove the item from the player's inventory
-        self.player.inventory.borrow_mut().remove_item(item, 1);
+        let mut inventory = self.ecs.get::<&mut Container>(self.player).unwrap();
+        inventory.remove_item(item, 1);
 
         // Place the block
         MESSAGE_QUEUE.send(Message::PlaceBlock(PlaceBlockMessage {
@@ -268,12 +281,9 @@ impl GameState {
         let blocks = BLOCKS.get().unwrap();
         if blocks[target_block.block_type].data.interactable {
             // Interact with the block
-            let block_state = self
-                .world
-                .get_block_state_mut(&target_block.block_pos)
-                .expect("Block state doesnt exist!");
-
-            block_state.on_right_click();
+            MESSAGE_QUEUE.send(Message::SetInteractionMode(InteractionMode::Block(
+                target_block.block_pos,
+            )));
         } else {
             self.place_block(&target_block, &collision);
         }
@@ -282,8 +292,8 @@ impl GameState {
 
 #[derive(Debug)]
 pub struct TransferItemMessage {
-    pub source: TransferItemSource,
-    pub dest: TransferItemSource,
+    pub source: Entity,
+    pub dest: Entity,
     pub item: ItemType,
     pub count: usize,
 }
@@ -291,37 +301,8 @@ pub struct TransferItemMessage {
 impl Subscriber for GameState {
     fn handle_message(&mut self, event: &Message) {
         match event {
-            Message::TransferItem(TransferItemMessage {
-                source,
-                dest,
-                item,
-                count,
-            }) => {
-                use TransferItemSource::*;
-                let source: &mut dyn Container = match source {
-                    Inventory => &mut *self.player.inventory.borrow_mut(),
-                    Block(block_pos) => self
-                        .world
-                        .get_block_state_mut(block_pos)
-                        .expect("Block state doesn't exist!")
-                        .as_container_mut()
-                        .expect("Attempt to transfer item to non-container block!"),
-                };
-                source.remove_item(*item, *count);
-                let dest: &mut dyn Container = match dest {
-                    Inventory => &mut *self.player.inventory.borrow_mut(),
-                    Block(block_pos) => self
-                        .world
-                        .get_block_state_mut(block_pos)
-                        .expect("Block state doesn't exist!")
-                        .as_container_mut()
-                        .expect("Attempt to transfer item to non-container block!"),
-                };
-                assert!(
-                    dest.can_accept(*item, *count),
-                    "Container cannot accept item!"
-                );
-                dest.add_item(*item, *count);
+            Message::TransferItem(m) => {
+                transfer_item(&mut self.ecs, m);
             }
             Message::SpawnEntity(SpawnEntityMessage { pos, entity_type }) => {
                 // Create the entity
@@ -330,6 +311,71 @@ impl Subscriber for GameState {
                     components::Orientation(Quaternion::from_angle_y(Deg(180.))),
                 ));
                 self.entities.push(entity_id);
+            }
+            Message::PlaceBlock(PlaceBlockMessage { pos, block }) => {
+                let blocks = BLOCKS.get().unwrap();
+
+                // Place the block
+                *self.world.get_block_mut(pos).unwrap() = *block;
+
+                // Create a state if the block is stateful
+                if blocks[*block].data.state.is_some() {
+                    // Spawn a new entity for our block state
+                    let entity = create_block_state(&mut self.ecs, pos, *block);
+                    let old_entity = self.world.block_states.insert(pos.clone(), entity);
+                    assert!(
+                        old_entity.is_none(),
+                        "Overwrote existing state at {pos:?}! {old_entity:?} -> {block:?}"
+                    );
+                }
+
+                // Tell the world a block has changed
+                MESSAGE_QUEUE.send(Message::BlockChanged(BlockChangedMessage {
+                    pos: pos.clone(),
+                    prev_block: BlockType::Air,
+                    new_block: *block,
+                }));
+            }
+            Message::BreakBlock(pos) => {
+                let blocks = BLOCKS.get().unwrap();
+
+                let block_type = self.world.get_block_mut(pos).unwrap();
+
+                // Break block
+                let old_block = std::mem::replace(block_type, BlockType::Air);
+
+                // Remove the block state if it was stateful
+                if blocks[old_block].data.state.is_some() {
+                    // Destroy block state entity
+                    let Some(old_entity) = self.world.block_states.remove(pos) else {
+                        panic!("Attempted to remove stateful block, but no state existed! {pos:?}");
+                    };
+
+                    self.ecs
+                        .despawn(old_entity)
+                        .expect("Failed to destroy entity");
+                }
+
+                // Tell the world a block has changed
+                MESSAGE_QUEUE.send(Message::BlockChanged(BlockChangedMessage {
+                    pos: pos.clone(),
+                    prev_block: old_block,
+                    new_block: BlockType::Air,
+                }));
+            }
+            Message::SetCraftingRecipe(SetCraftingRecipeMessage { block, recipe }) => {
+                let entity = self
+                    .world
+                    .block_states
+                    .get(block)
+                    .expect("Block state doesn't exist!");
+
+                let mut state = self
+                    .ecs
+                    .get::<&mut Crafter>(*entity)
+                    .expect("Entity for block state doesn't exist!");
+
+                state.recipe = Some(recipe.clone());
             }
             _ => (),
         }

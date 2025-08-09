@@ -1,4 +1,4 @@
-use std::{ops, time::Duration};
+use std::ops;
 
 use cgmath::{InnerSpace, Point3, Vector3};
 use num_traits::Euclid;
@@ -6,10 +6,9 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     block::Block,
-    data::{block::BlockType, loader::BLOCKS, world_gen::DefaultGenerator},
-    event::{MESSAGE_QUEUE, Message, Subscriber},
+    data::{block::BlockType, world_gen::DefaultGenerator},
+    event::{Message, Subscriber},
     math::bbox::AABB,
-    state::blocks::{BlockState, crafter::SetCraftingRecipeMessage},
     world_gen::{ChunkGenerator, Perlin},
 };
 
@@ -227,7 +226,7 @@ pub struct World {
     // Generated chunks
     pub chunks: FxHashMap<ChunkPos, Chunk>,
     pub generator: Box<dyn ChunkGenerator>,
-    pub block_states: FxHashMap<BlockPos, BlockState>,
+    pub block_states: FxHashMap<BlockPos, hecs::Entity>,
 }
 
 impl World {
@@ -310,24 +309,6 @@ impl World {
             .get_mut(&chunk_pos)
             .map(|chunk| chunk.get_block_mut(offset))
     }
-
-    #[inline]
-    pub fn get_block_state(&self, pos: &BlockPos) -> Option<&BlockState> {
-        self.block_states.get(pos)
-    }
-
-    #[inline]
-    pub fn get_block_state_mut(&mut self, pos: &BlockPos) -> Option<&mut BlockState> {
-        self.block_states.get_mut(pos)
-    }
-
-    /// Advance the world by the given time
-    pub fn tick(&mut self, duration: &Duration) {
-        self.block_states
-            .iter()
-            .flat_map(|(_, state)| state.as_tickable())
-            .for_each(|block| block.tick(duration));
-    }
 }
 
 impl Default for World {
@@ -362,68 +343,9 @@ pub struct PlaceBlockMessage {
 impl Subscriber for World {
     fn handle_message(&mut self, event: &Message) {
         use Message::*;
-        match event {
-            BlockChanged(BlockChangedMessage { pos, .. }) => {
-                let (chunk_pos, _) = pos.to_chunk_offset();
-                self.update_exposed_blocks(&chunk_pos);
-            }
-            BreakBlock(pos) => {
-                let blocks = BLOCKS.get().unwrap();
-
-                let block_type = self.get_block_mut(pos).unwrap();
-
-                // Break block
-                let old_block = std::mem::replace(block_type, BlockType::Air);
-
-                // Remove the block state if it was stateful
-                if blocks[old_block].data.state.is_some() {
-                    let old_state = self.block_states.remove(pos);
-                    assert!(
-                        old_state.is_some(),
-                        "Attempted to remove stateful block, but no state existed! {pos:?}"
-                    );
-                }
-
-                // Tell the world a block has changed
-                MESSAGE_QUEUE.send(Message::BlockChanged(BlockChangedMessage {
-                    pos: pos.clone(),
-                    prev_block: old_block,
-                    new_block: BlockType::Air,
-                }));
-            }
-            PlaceBlock(PlaceBlockMessage { pos, block }) => {
-                let blocks = BLOCKS.get().unwrap();
-
-                // Place the block
-                *self.get_block_mut(pos).unwrap() = *block;
-
-                // Create a state if the block is stateful
-                if let Some(state_fn) = blocks[*block].data.state {
-                    let old_state = self.block_states.insert(pos.clone(), state_fn(pos));
-                    assert!(
-                        old_state.is_none(),
-                        "Overwrote existing state at {pos:?}! {old_state:?} -> {block:?}"
-                    );
-                }
-
-                // Tell the world a block has changed
-                MESSAGE_QUEUE.send(Message::BlockChanged(BlockChangedMessage {
-                    pos: pos.clone(),
-                    prev_block: BlockType::Air,
-                    new_block: *block,
-                }));
-            }
-            SetCraftingRecipe(SetCraftingRecipeMessage { block, recipe }) => {
-                let state = self
-                    .get_block_state_mut(block)
-                    .expect("Block state doesn't exist!");
-                let BlockState::Crafter(state) = state else {
-                    panic!("SetCraftingRecipeMessage is only valid for the Crafter block!");
-                };
-
-                state.set_recipe(recipe);
-            }
-            _ => (),
+        if let BlockChanged(BlockChangedMessage { pos, .. }) = event {
+            let (chunk_pos, _) = pos.to_chunk_offset();
+            self.update_exposed_blocks(&chunk_pos);
         }
     }
 }

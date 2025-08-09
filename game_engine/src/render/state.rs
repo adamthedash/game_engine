@@ -1,7 +1,7 @@
 use std::{path::Path, sync::Arc};
 
 use anyhow::Context;
-use cgmath::{Deg, EuclideanSpace, Matrix3, Matrix4, One};
+use cgmath::{EuclideanSpace, Matrix3, Matrix4, One};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, Buffer, BufferDescriptor,
     BufferUsages, CommandEncoderDescriptor, Device, LoadOp, Operations, RenderPassColorAttachment,
@@ -15,7 +15,7 @@ use crate::{
     InteractionMode,
     block::Block,
     data::loader::{BLOCK_TEXTURES, BLOCKS, init_block_info, init_item_info},
-    entity::components,
+    entity::components::{self, Vision},
     event::{Message, Subscriber},
     render::{
         camera::{Camera, CameraUniform},
@@ -29,7 +29,10 @@ use crate::{
         },
         texture::Texture,
     },
-    state::{game::GameState, player::Position, world::Chunk},
+    state::{
+        game::GameState,
+        world::{Chunk, WorldPos},
+    },
     ui::{UI, debug::DEBUG_WINDOW},
     util::{counter::Counter, stopwatch::StopWatch},
 };
@@ -77,7 +80,7 @@ pub struct RenderState {
 }
 
 impl RenderState {
-    pub async fn new(window: Arc<Window>, player_position: &Position) -> Self {
+    pub async fn new(window: Arc<Window>) -> Self {
         let draw_context = DrawContext::new(window).await;
 
         // Shaders
@@ -227,15 +230,7 @@ impl RenderState {
             block_wireframe_instance_buffer,
             block_wireframe_mesh,
             block_texture_bind_group,
-            camera: Camera::new(
-                player_position.pos,
-                player_position.yaw,
-                player_position.pitch,
-                1.,
-                Deg(90.),
-                0.1,
-                100.,
-            ),
+            camera: Camera::default(),
         }
     }
 
@@ -293,12 +288,16 @@ impl RenderState {
         let mut counter = Counter::new();
         counter.enabled = false;
 
+        let mut query = game
+            .ecs
+            .query_one::<(&WorldPos, &Vision)>(game.player)
+            .unwrap();
+        let (player_pos, vision_distance) = query.get().unwrap();
         let player_target_block = game.get_player_target_block();
 
         // Check what blocks are candidates for rendering
-        let (player_chunk, _) = game.player.position.pos.to_block_pos().to_chunk_offset();
-        let player_vision_chunks =
-            (game.player.vision_distance as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
+        let (player_chunk, _) = player_pos.to_block_pos().to_chunk_offset();
+        let player_vision_chunks = (vision_distance.0 as u32).div_ceil(Chunk::CHUNK_SIZE as u32);
 
         let blocks = BLOCKS.get().expect("Block data not initalised!");
         self.visible_blocks.clear();
@@ -473,7 +472,7 @@ impl RenderState {
             .chain(counter.get_debug_strings())
             .chain([
                 format!("pos: {:?}", self.camera.pos),
-                format!("player: {:#?}", game.player.aabb()),
+                // format!("player: {:#?}", game.player.aabb()),
                 format!("Blocks rendered: {}", self.instances_cpu.len()),
                 format!("Target block: {player_target_block:?}"),
             ])
@@ -504,10 +503,10 @@ impl Subscriber for RenderState {
     fn handle_message(&mut self, event: &Message) {
         use Message::*;
         match event {
-            PlayerMoved(Position { pos, yaw, pitch }) => {
+            PlayerMoved((pos, orientation)) => {
                 self.camera.pos.set(*pos);
-                self.camera.yaw.set(*yaw);
-                self.camera.pitch.set(*pitch);
+                self.camera.yaw.set(orientation.yaw);
+                self.camera.pitch.set(orientation.pitch);
                 self.update_camera_buffer();
             }
             SetInteractionMode(mode) => match mode {

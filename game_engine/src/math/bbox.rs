@@ -73,6 +73,13 @@ impl<S: BaseNum + PartialOrd> AABB<S> {
     pub fn size(&self) -> Vector3<S> {
         self.end - self.start
     }
+
+    pub fn translate(&self, offset: &Vector3<S>) -> Self {
+        Self {
+            start: self.start + offset,
+            end: self.end + offset,
+        }
+    }
 }
 
 impl AABB<f32> {

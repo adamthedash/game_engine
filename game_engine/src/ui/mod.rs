@@ -1,9 +1,6 @@
 pub mod axes;
-pub mod crafting;
 pub mod debug;
 pub mod helpers;
-pub mod hotbar;
-pub mod inventory;
 
 use axes::Axes;
 use egui::{Color32, Context, FontId, ImageSource, Response, Ui, Vec2};
@@ -17,9 +14,13 @@ use wgpu::{
 
 use crate::{
     InteractionMode,
+    entity::{
+        components::UIType,
+        systems::ui::{draw_crafting_window, draw_hotbar, draw_inventory, draw_ui},
+    },
     render::{camera::Camera, context::DrawContext},
     state::game::GameState,
-    ui::{crafting::CraftingWindow, debug::DEBUG_WINDOW},
+    ui::debug::DEBUG_WINDOW,
 };
 
 /// Trait to enable easy drawing of UI elements
@@ -77,28 +78,33 @@ impl UI {
 
             Axes { camera }.show_window(ctx);
 
+            let player_entity = game.ecs.entity(game.player).unwrap();
             match game_mode {
                 InteractionMode::Game => {}
                 InteractionMode::UI => {
-                    game.player.inventory.borrow().show_window(ctx);
-
-                    CraftingWindow {
-                        inventory: game.player.inventory.clone(),
-                    }
-                    .show_window(ctx);
+                    draw_inventory(ctx, player_entity);
+                    draw_crafting_window(ctx, player_entity);
                 }
                 InteractionMode::Block(block_pos) => {
-                    let block_state = game
-                        .world
-                        .get_block_state(block_pos)
-                        .unwrap_or_else(|| panic!("Block state doesn't exist for {block_pos:?}"));
+                    let block_entity =
+                        game.world.block_states.get(block_pos).unwrap_or_else(|| {
+                            panic!("Block state doesn't exist for {block_pos:?}")
+                        });
+                    let block_entity = game
+                        .ecs
+                        .entity(*block_entity)
+                        .expect("Entity doesn't exist for block state");
+                    assert!(
+                        block_entity.has::<UIType>(),
+                        "Entity doesn't have a UI component!"
+                    );
+                    draw_ui(ctx, block_entity);
 
                     // TODO: Only show inventory when block has some interaction with it?
-                    game.player.inventory.borrow().show_window(ctx);
-                    block_state.show_window(ctx);
+                    draw_inventory(ctx, player_entity);
                 }
             }
-            game.player.hotbar.show_window(ctx);
+            draw_hotbar(ctx, player_entity);
         });
 
         let screen_descriptor = ScreenDescriptor {

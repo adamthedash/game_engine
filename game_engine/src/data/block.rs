@@ -1,15 +1,13 @@
 use std::sync::LazyLock;
 
 use enum_map::Enum;
+use hecs::EntityBuilder;
 use num_derive::{FromPrimitive, ToPrimitive};
 use typed_builder::TypedBuilder;
 
 use crate::{
     data::item::ItemType,
-    state::{
-        blocks::{BlockState, chest::ChestState, crafter::CrafterState},
-        world::BlockPos,
-    },
+    entity::components::{Container, Crafter, UIType},
 };
 
 #[derive(Debug, Enum, PartialEq, Eq, Clone, Copy, ToPrimitive, FromPrimitive)]
@@ -52,7 +50,7 @@ pub struct BlockData {
 
     // Default state for the block when placed
     #[builder(default, setter(strip_option))]
-    pub state: Option<fn(&BlockPos) -> BlockState>,
+    pub state: Option<fn(&mut EntityBuilder)>,
 }
 
 pub(super) const TEXTURE_FOLDER: &str = "res/meshes";
@@ -137,7 +135,9 @@ pub(super) static BLOCK_DATA: LazyLock<Vec<BlockData>> = LazyLock::new(|| {
             .hardness(0)
             .item_on_break(ItemType::Chest)
             .interactable(true)
-            .state(|pos| BlockState::Chest(ChestState::new(pos)))
+            .state(|builder| {
+                builder.add(Container::default()).add(UIType::Chest);
+            })
             .build(),
         BlockData::builder()
             .texture_path("crafter.png")
@@ -145,7 +145,15 @@ pub(super) static BLOCK_DATA: LazyLock<Vec<BlockData>> = LazyLock::new(|| {
             .hardness(0)
             .item_on_break(ItemType::Crafter)
             .interactable(true)
-            .state(|pos| BlockState::Crafter(CrafterState::new(pos)))
+            .state(|builder| {
+                builder
+                    .add(Container::default())
+                    .add(UIType::Crafter)
+                    .add(Crafter {
+                        juice_per_second: 1.,
+                        ..Default::default()
+                    });
+            })
             .build(),
     ]
 });

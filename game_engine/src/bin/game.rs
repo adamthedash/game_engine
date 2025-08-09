@@ -1,24 +1,23 @@
 #![feature(int_roundings)]
-use std::{cell::RefCell, f32, rc::Rc, sync::Arc, time::Instant};
+use std::{sync::Arc, time::Instant};
 
-use cgmath::Rad;
+use cgmath::{Point3, Vector3};
 use game_engine::{
     InteractionMode,
     camera::{Controller, traits::PlayerController},
     data::item::ItemType,
-    event::{MESSAGE_QUEUE, Message, Subscriber},
+    entity::components::{Container, Hotbar, Reach, UprightOrientation, Vision},
+    event::{
+        MESSAGE_QUEUE, Message, Subscriber,
+        messages::{ItemFavouritedMessage, TransferItemRequestMessage, TransferItemSource},
+    },
+    math::bbox::AABB,
     render::state::RenderState,
     state::{
-        blocks::Container,
         game::{GameState, TransferItemMessage},
-        player::{Player, Position},
         world::{World, WorldPos},
     },
-    ui::{
-        debug::DEBUG_WINDOW,
-        hotbar::Hotbar,
-        inventory::{Inventory, TransferItemRequestMessage, TransferItemSource},
-    },
+    ui::debug::DEBUG_WINDOW,
     util::stopwatch::StopWatch,
 };
 use tokio::runtime::Runtime;
@@ -42,7 +41,7 @@ struct App {
 
 impl App {
     fn new() -> Self {
-        let inventory = Inventory::default();
+        let mut inventory = Container::default();
         inventory.add_item(ItemType::Dirt, 5);
         inventory.add_item(ItemType::Stone, 12);
         inventory.add_item(ItemType::Coal, 12);
@@ -55,34 +54,39 @@ impl App {
         inventory.add_item(ItemType::Chest, 12);
         inventory.add_item(ItemType::Crafter, 12);
 
-        let inventory = Rc::new(RefCell::new(inventory));
-        let hotbar = Hotbar {
-            slots: {
-                let mut slots = [None; 10];
-                slots[4] = Some(ItemType::Dirt);
-                slots[2] = Some(ItemType::Stone);
+        let mut hotbar = Hotbar::default();
+        hotbar.slots[4] = Some(ItemType::Dirt);
+        hotbar.slots[2] = Some(ItemType::Stone);
 
-                slots
+        let mut ecs = hecs::World::new();
+        let player_entity = ecs.spawn((
+            WorldPos((-7., -20., -14.).into()),
+            UprightOrientation::default(),
+            inventory,
+            hotbar,
+            Vision(100.),
+            Reach(5.),
+            {
+                // Create player's AABB
+                let height = 1.8;
+                let width = 0.8;
+                let head_height = 1.5;
+
+                let diff = Vector3::new(width / 2., height / 2., width / 2.);
+                let head_diff = Vector3::unit_y() * head_height / 2.;
+
+                AABB::<f32>::new(
+                    &(Point3::new(0., 0., 0.) - diff - head_diff),
+                    &(Point3::new(0., 0., 0.) + diff - head_diff),
+                )
             },
-            inventory: inventory.clone(),
-            selected: 0,
-        };
+        ));
 
         let mut game_state = GameState {
             world: World::default(),
-            player: Player {
-                position: Position {
-                    pos: WorldPos((-7., -20., -14.).into()),
-                    yaw: Rad(0.),
-                    pitch: Rad(0.),
-                },
-                vision_distance: 100.,
-                arm_length: 5.,
-                hotbar,
-                inventory,
-            },
+            player: player_entity,
             entities: vec![],
-            ecs: hecs::World::new(),
+            ecs,
         };
         game_state.init();
 
@@ -113,27 +117,53 @@ impl App {
                     count,
                     source,
                 }) => {
-                    // Inventory -> Block
-                    if let TransferItemSource::Inventory = source
-                        && let InteractionMode::Block(pos) = &self.interaction_mode
-                    {
-                        MESSAGE_QUEUE.send(TransferItem(TransferItemMessage {
-                            source: source.clone(),
-                            dest: TransferItemSource::Block(pos.clone()),
-                            item: *item,
-                            count: *count,
-                        }));
+                    if let Some((source, dest)) = match (source, &self.interaction_mode) {
+                        // Player -> Block
+                        (TransferItemSource::Inventory, InteractionMode::Block(target_block)) => {
+                            let dest = *self
+                                .game_state
+                                .world
+                                .block_states
+                                .get(target_block)
+                                .expect("Tried to transfer to non-stateful block!");
 
-                    // Block -> Inventory
-                    } else if matches!(source, TransferItemSource::Block(..)) {
+                            Some((self.game_state.player, dest))
+                        }
+                        // Block -> Player
+                        (
+                            TransferItemSource::Block(source_block),
+                            InteractionMode::Block(target_block),
+                        ) if source_block == target_block => {
+                            let source = *self
+                                .game_state
+                                .world
+                                .block_states
+                                .get(source_block)
+                                .expect("Tried to transfer from non-stateful block!");
+
+                            Some((source, self.game_state.player))
+                        }
+                        // TODO: Block -> Block?
+                        _ => {
+                            // Nothing
+                            None
+                        }
+                    } {
                         MESSAGE_QUEUE.send(TransferItem(TransferItemMessage {
-                            source: source.clone(),
-                            dest: TransferItemSource::Inventory,
+                            source,
+                            dest,
                             item: *item,
                             count: *count,
                         }));
                     }
-                    // TODO: Block -> Block?
+                }
+                &Message::ItemFavourited(ItemFavouritedMessage { item, slot }) => {
+                    let mut hotbar = self
+                        .game_state
+                        .ecs
+                        .get::<&mut Hotbar>(self.game_state.player)
+                        .unwrap();
+                    hotbar.set_favourite(slot, item);
                 }
                 _ => (),
             }
@@ -143,7 +173,6 @@ impl App {
             self.game_state.world.handle_message(&m);
 
             // Then player interaction events
-            self.game_state.player.hotbar.handle_message(&m);
             self.player_controller.handle_message(&m);
 
             // Then rendering events
@@ -165,9 +194,7 @@ impl ApplicationHandler for App {
                     )
                     .unwrap(),
             );
-            let render_state = self
-                .runtime
-                .block_on(RenderState::new(window, &self.game_state.player.position));
+            let render_state = self.runtime.block_on(RenderState::new(window));
 
             // Lock cursor
             render_state
@@ -206,8 +233,11 @@ impl ApplicationHandler for App {
                 log::warn!("WARNING: Failed to centre cursor!");
             }
 
-            self.player_controller
-                .handle_mouse_move(normalised_delta, &mut self.game_state.player.position);
+            self.player_controller.handle_mouse_move(
+                &mut self.game_state.ecs,
+                self.game_state.player,
+                normalised_delta,
+            );
         }
     }
 
@@ -235,8 +265,9 @@ impl ApplicationHandler for App {
                 if let Some(last_updated) = self.last_update {
                     let duration = Instant::now().duration_since(last_updated);
                     DEBUG_WINDOW.add_line(&format!("Last frame: {duration:?}"));
-                    self.player_controller.move_player(
-                        &mut self.game_state.player,
+                    self.player_controller.move_entity(
+                        &mut self.game_state.ecs,
+                        self.game_state.player,
                         &self.game_state.world,
                         &duration,
                     );
@@ -304,7 +335,12 @@ impl ApplicationHandler for App {
                 ..
             } => {
                 if matches!(self.interaction_mode, InteractionMode::Game) && *y != 0. {
-                    self.game_state.player.hotbar.scroll(*y < 0.);
+                    let mut hotbar = self
+                        .game_state
+                        .ecs
+                        .get::<&mut Hotbar>(self.game_state.player)
+                        .unwrap();
+                    hotbar.scroll(*y < 0.);
                 }
             }
             _ => {}

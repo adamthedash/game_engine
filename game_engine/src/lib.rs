@@ -12,6 +12,7 @@ use crate::state::world::BlockPos;
 pub mod block;
 pub mod camera;
 pub mod data;
+pub mod entity;
 pub mod event;
 pub mod math;
 pub mod perlin_cdf;
@@ -20,7 +21,6 @@ pub mod state;
 pub mod ui;
 pub mod util;
 pub mod world_gen;
-pub mod entity;
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum InteractionMode {

@@ -3,7 +3,7 @@ use cgmath::{InnerSpace, Point3, Vector3};
 use crate::{
     data::block::BlockType,
     math::{NumFuncs, bbox::AABB, ray::Ray},
-    state::{player::Player, world::World},
+    state::world::World,
 };
 
 /// Constant to avoid floating point weirdness
@@ -13,7 +13,7 @@ const EPSILON: f32 = 1e-3;
 /// Predict what we'll collide with if we move in the given direction
 /// Takes a proposed movement vector and returns an allowed one, along with any collisions.
 pub fn predict_collisions(
-    player: &Player,
+    player_aabb: &AABB<f32>,
     world: &World,
     mut movement_vector: Vector3<f32>,
 ) -> (Vector3<f32>, [Option<f32>; 3]) {
@@ -21,8 +21,6 @@ pub fn predict_collisions(
     if movement_vector.magnitude2() == 0. {
         return (movement_vector, [None; 3]);
     }
-
-    let player_aabb = player.aabb();
 
     // Expand player AABB by block size
     let test_aabb = player_aabb.minkowski_sum(&AABB::new(
@@ -81,7 +79,7 @@ pub fn predict_collisions(
         // Re-do collision detection with new movement vector
         // TODO: There's probably a more efficient way than recursively doing this, but it should
         // only happen to a maximum depth of 3 (once for each axis)
-        let (mv, c) = predict_collisions(player, world, movement_vector);
+        let (mv, c) = predict_collisions(player_aabb, world, movement_vector);
         movement_vector = mv;
         collision_returns.iter_mut().zip(c).for_each(|(c1, c2)| {
             if c2.is_some() {

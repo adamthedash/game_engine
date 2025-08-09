@@ -1,3 +1,5 @@
+pub mod messages;
+
 use std::{
     collections::VecDeque,
     sync::{LazyLock, Mutex},
@@ -5,14 +7,14 @@ use std::{
 
 use crate::{
     InteractionMode,
-    entity::SpawnEntityMessage,
-    state::{
-        blocks::crafter::SetCraftingRecipeMessage,
-        game::TransferItemMessage,
-        player::Position,
-        world::{BlockChangedMessage, BlockPos, PlaceBlockMessage},
+    entity::{SpawnEntityMessage, components::UprightOrientation},
+    event::messages::{
+        ItemFavouritedMessage, SetCraftingRecipeMessage, TransferItemRequestMessage,
     },
-    ui::inventory::{ItemFavouritedMessage, TransferItemRequestMessage},
+    state::{
+        game::TransferItemMessage,
+        world::{BlockChangedMessage, BlockPos, PlaceBlockMessage, WorldPos},
+    },
 };
 
 #[derive(Debug)]
@@ -20,7 +22,7 @@ pub enum Message {
     // Reactive messages - This thing has happened
     ItemFavourited(ItemFavouritedMessage),
     BlockChanged(BlockChangedMessage),
-    PlayerMoved(Position),
+    PlayerMoved((WorldPos, UprightOrientation)),
 
     // Action messages - Do this thing
     // It's assumed that at the action has been validated at this point

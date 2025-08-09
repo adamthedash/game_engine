@@ -1,16 +1,15 @@
 use std::{f32::consts::FRAC_PI_2, time::Duration};
 
-use cgmath::{Angle, InnerSpace, Rad, Vector3, Zero};
+use cgmath::{Angle, EuclideanSpace, InnerSpace, Rad, Vector3, Zero};
+use hecs::Entity;
 use winit::{event::KeyEvent, keyboard::PhysicalKey};
 
 use super::traits::PlayerController;
 use crate::{
     camera::collision::predict_collisions,
-    math::angles_to_vec3,
-    state::{
-        player::{Player, Position},
-        world::World,
-    },
+    entity::components::UprightOrientation,
+    math::bbox::AABB,
+    state::world::{World, WorldPos},
 };
 
 pub struct SpaceFlightController {
@@ -101,7 +100,12 @@ impl PlayerController for SpaceFlightController {
     }
 
     /// Turn the camera. delta is in normalised screen coordinates -1 to 1
-    fn handle_mouse_move(&mut self, delta: (f32, f32), player_position: &mut Position) -> bool {
+    fn handle_mouse_move(
+        &mut self,
+        ecs: &mut hecs::World,
+        entity: Entity,
+        delta: (f32, f32),
+    ) -> bool {
         if !self.enabled {
             return false;
         }
@@ -109,12 +113,14 @@ impl PlayerController for SpaceFlightController {
             return false;
         }
 
-        player_position.yaw += Rad(self.turn_speed * delta.0);
-        player_position.yaw = player_position.yaw.normalize();
+        let mut orientation = ecs.get::<&mut UprightOrientation>(entity).unwrap();
 
-        player_position.pitch -= Rad(self.turn_speed * delta.1);
+        orientation.yaw += Rad(self.turn_speed * delta.0);
+        orientation.yaw = orientation.yaw.normalize();
+
+        orientation.pitch -= Rad(self.turn_speed * delta.1);
         // Clip just under fully vertical to avoid weirdness
-        player_position.pitch.0 = player_position
+        orientation.pitch.0 = orientation
             .pitch
             .0
             .clamp(-FRAC_PI_2 * 0.99, FRAC_PI_2 * 0.99);
@@ -122,14 +128,26 @@ impl PlayerController for SpaceFlightController {
         true
     }
 
-    fn move_player(&mut self, player: &mut Player, world: &World, duration: &Duration) -> bool {
+    fn move_entity(
+        &mut self,
+        ecs: &mut hecs::World,
+        entity: Entity,
+        world: &World,
+        duration: &Duration,
+    ) -> bool {
+        let mut query = ecs
+            .query_one::<(&mut WorldPos, &mut UprightOrientation, &AABB<f32>)>(entity)
+            .unwrap();
+        let (position, orientation, player_aabb) = query.get().unwrap();
+        let player_aabb = player_aabb.translate(&position.0.to_vec());
+
         // TODO: momentum while we have inventory open?
         if !self.enabled {
             return false;
         }
 
         // Step 1: figure out the direction vector the player wants to move in
-        let forward = angles_to_vec3(player.position.yaw, player.position.pitch);
+        let forward = orientation.forward();
         let right = forward.cross(Vector3::unit_y()).normalize();
 
         let mut acceleration_vector = Vector3::new(0., 0., 0.);
@@ -191,7 +209,8 @@ impl PlayerController for SpaceFlightController {
 
         // Step 4: Figure out if we're colliding with any blocks
         let movement_vector = self.velocity * duration.as_secs_f32();
-        let (movement_vector, collisions) = predict_collisions(player, world, movement_vector);
+        let (movement_vector, collisions) =
+            predict_collisions(&player_aabb, world, movement_vector);
 
         // Null velocity in the direction of a collision
         [0, 1, 2].into_iter().for_each(|axis| {
@@ -202,7 +221,7 @@ impl PlayerController for SpaceFlightController {
 
         if movement_vector.magnitude2() > 0. {
             // Apply the movement vector
-            player.position.pos.0 += movement_vector;
+            position.0 += movement_vector;
 
             true
         } else {

@@ -1,5 +1,6 @@
 use std::{f32::consts::PI, time::Duration};
 
+use hecs::Entity;
 use winit::event::KeyEvent;
 
 use crate::{
@@ -8,11 +9,9 @@ use crate::{
         basic_flight::BasicFlightController, space_flight::SpaceFlightController,
         traits::PlayerController, walking::WalkingController,
     },
+    entity::components::UprightOrientation,
     event::{MESSAGE_QUEUE, Message, Subscriber},
-    state::{
-        player::{Player, Position},
-        world::World,
-    },
+    state::world::{World, WorldPos},
 };
 
 pub mod basic_flight;
@@ -69,25 +68,50 @@ impl PlayerController for Controller {
         self.as_controller_mut().handle_keypress(event);
     }
 
-    fn handle_mouse_move(&mut self, delta: (f32, f32), player_position: &mut Position) -> bool {
+    fn handle_mouse_move(
+        &mut self,
+        ecs: &mut hecs::World,
+        entity: Entity,
+        delta: (f32, f32),
+    ) -> bool {
         let moved = self
             .as_controller_mut()
-            .handle_mouse_move(delta, player_position);
+            .handle_mouse_move(ecs, entity, delta);
 
+        let mut query = ecs
+            .query_one::<(&mut WorldPos, &mut UprightOrientation)>(entity)
+            .unwrap();
+        let (position, orientation) = query.get().unwrap();
         if moved {
-            MESSAGE_QUEUE.send(Message::PlayerMoved(player_position.clone()));
+            MESSAGE_QUEUE.send(Message::PlayerMoved((
+                *position,
+                orientation.clone(),
+            )));
         }
 
         moved
     }
 
-    fn move_player(&mut self, player: &mut Player, world: &World, duration: &Duration) -> bool {
+    fn move_entity(
+        &mut self,
+        ecs: &mut hecs::World,
+        entity: Entity,
+        world: &World,
+        duration: &Duration,
+    ) -> bool {
         let moved = self
             .as_controller_mut()
-            .move_player(player, world, duration);
+            .move_entity(ecs, entity, world, duration);
 
+        let mut query = ecs
+            .query_one::<(&mut WorldPos, &mut UprightOrientation)>(entity)
+            .unwrap();
+        let (position, orientation) = query.get().unwrap();
         if moved {
-            MESSAGE_QUEUE.send(Message::PlayerMoved(player.position.clone()));
+            MESSAGE_QUEUE.send(Message::PlayerMoved((
+                *position,
+                orientation.clone(),
+            )));
         }
 
         moved
