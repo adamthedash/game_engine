@@ -6,6 +6,7 @@ use hecs::Entity;
 use rustc_hash::FxHashMap;
 
 use crate::{
+    InteractionMode,
     entity::components::{Container, Crafter, Hotbar, Reach, UIType, UprightOrientation, Vision},
     math::bbox::AABB,
     state::world::{BlockPos, WorldPos},
@@ -24,6 +25,7 @@ pub type Player = (
     Reach,
     // Model coordinates AABB
     AABB<f32>,
+    InteractionMode,
 );
 pub type Monster = (WorldPos, UprightOrientation);
 

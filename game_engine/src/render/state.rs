@@ -282,7 +282,7 @@ impl RenderState {
     }
 
     /// Perform the actual rendering to the screen
-    pub fn render(&mut self, game: &GameState, interaction_mode: &InteractionMode) {
+    pub fn render(&mut self, game: &GameState) {
         let mut stopwatch = StopWatch::new();
         let mut total_stopwatch = StopWatch::new();
         let mut counter = Counter::new();
@@ -484,7 +484,6 @@ impl RenderState {
             &self.camera,
             &texture_view,
             game,
-            interaction_mode,
         );
 
         DEBUG_WINDOW.clear();

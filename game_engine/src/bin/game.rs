@@ -1,12 +1,10 @@
 #![feature(int_roundings)]
 use std::{sync::Arc, time::Instant};
 
-use cgmath::{Point3, Vector3};
 use game_engine::{
     InteractionMode,
     camera::{Controller, traits::PlayerController},
-    data::item::ItemType,
-    entity::components::{Container, Hotbar, Reach, UprightOrientation, Vision},
+    entity::{components::Hotbar, systems::spawn_player},
     event::{
         MESSAGE_QUEUE, Message, Subscriber,
         messages::{
@@ -14,12 +12,8 @@ use game_engine::{
             TransferItemSource,
         },
     },
-    math::bbox::AABB,
     render::state::RenderState,
-    state::{
-        game::GameState,
-        world::{World, WorldPos},
-    },
+    state::{game::GameState, world::World},
     ui::debug::DEBUG_WINDOW,
     util::stopwatch::StopWatch,
 };
@@ -39,51 +33,12 @@ struct App {
     player_controller: Controller,
     game_state: GameState,
     last_update: Option<Instant>,
-    interaction_mode: InteractionMode,
 }
 
 impl App {
     fn new() -> Self {
-        let mut inventory = Container::default();
-        inventory.add_item(ItemType::Dirt, 5);
-        inventory.add_item(ItemType::Stone, 12);
-        inventory.add_item(ItemType::Coal, 12);
-        inventory.add_item(ItemType::Iron, 12);
-        inventory.add_item(ItemType::Copper, 12);
-        inventory.add_item(ItemType::Tin, 12);
-        inventory.add_item(ItemType::Bronze, 12);
-        inventory.add_item(ItemType::Steel, 12);
-        inventory.add_item(ItemType::MagicMetal, 12);
-        inventory.add_item(ItemType::Chest, 12);
-        inventory.add_item(ItemType::Crafter, 12);
-
-        let mut hotbar = Hotbar::default();
-        hotbar.slots[4] = Some(ItemType::Dirt);
-        hotbar.slots[2] = Some(ItemType::Stone);
-
         let mut ecs = hecs::World::new();
-        let player_entity = ecs.spawn((
-            WorldPos((-7., -20., -14.).into()),
-            UprightOrientation::default(),
-            inventory,
-            hotbar,
-            Vision(100.),
-            Reach(5.),
-            {
-                // Create player's AABB
-                let height = 1.8;
-                let width = 0.8;
-                let head_height = 1.5;
-
-                let diff = Vector3::new(width / 2., height / 2., width / 2.);
-                let head_diff = Vector3::unit_y() * head_height / 2.;
-
-                AABB::<f32>::new(
-                    &(Point3::new(0., 0., 0.) - diff - head_diff),
-                    &(Point3::new(0., 0., 0.) + diff - head_diff),
-                )
-            },
-        ));
+        let player_entity = spawn_player(&mut ecs);
 
         let mut game_state = GameState {
             world: World::default(),
@@ -99,7 +54,6 @@ impl App {
             player_controller: Controller::default_walking(),
             game_state,
             last_update: None,
-            interaction_mode: InteractionMode::Game,
         }
     }
 }
@@ -111,8 +65,26 @@ impl App {
         while let Some(m) = MESSAGE_QUEUE.take() {
             log::debug!("Message: {m:?}");
             match &m {
+                ToggleInteractionMode => {
+                    let interaction_mode = self
+                        .game_state
+                        .ecs
+                        .get::<&InteractionMode>(self.game_state.player)
+                        .unwrap();
+
+                    use InteractionMode::*;
+                    MESSAGE_QUEUE.send(SetInteractionMode(match *interaction_mode {
+                        Game => UI,
+                        UI | Block(_) => Game,
+                    }));
+                }
                 SetInteractionMode(mode) => {
-                    self.interaction_mode = mode.clone();
+                    let mut interaction_mode = self
+                        .game_state
+                        .ecs
+                        .get::<&mut InteractionMode>(self.game_state.player)
+                        .unwrap();
+                    *interaction_mode = mode.clone();
                 }
                 // TODO: This way of doing transfers is ugly af, see if we can find a cleaner way.
                 TransferItemRequest(TransferItemRequestMessage {
@@ -120,7 +92,13 @@ impl App {
                     count,
                     source,
                 }) => {
-                    if let Some((source, dest)) = match (source, &self.interaction_mode) {
+                    let interaction_mode = &*self
+                        .game_state
+                        .ecs
+                        .get::<&InteractionMode>(self.game_state.player)
+                        .unwrap();
+
+                    if let Some((source, dest)) = match (source, interaction_mode) {
                         // Player -> Block
                         (TransferItemSource::Inventory, InteractionMode::Block(target_block)) => {
                             let dest = *self
@@ -224,23 +202,33 @@ impl ApplicationHandler for App {
     ) {
         if let winit::event::DeviceEvent::MouseMotion { delta } = event
             && let Some(render_state) = &mut self.render_state
-            && matches!(self.interaction_mode, InteractionMode::Game)
             && self.player_controller.enabled()
         {
-            let config = &render_state.draw_context.config;
-            let normalised_delta = (
-                delta.0 as f32 / config.width as f32,
-                delta.1 as f32 / config.height as f32,
-            );
-            if render_state.draw_context.centre_cursor().is_err() {
-                log::warn!("WARNING: Failed to centre cursor!");
-            }
+            let is_game_mode = {
+                let interaction_mode = self
+                    .game_state
+                    .ecs
+                    .get::<&InteractionMode>(self.game_state.player)
+                    .unwrap();
+                matches!(*interaction_mode, InteractionMode::Game)
+            };
 
-            self.player_controller.handle_mouse_move(
-                &mut self.game_state.ecs,
-                self.game_state.player,
-                normalised_delta,
-            );
+            if is_game_mode {
+                let config = &render_state.draw_context.config;
+                let normalised_delta = (
+                    delta.0 as f32 / config.width as f32,
+                    delta.1 as f32 / config.height as f32,
+                );
+                if render_state.draw_context.centre_cursor().is_err() {
+                    log::warn!("WARNING: Failed to centre cursor!");
+                }
+
+                self.player_controller.handle_mouse_move(
+                    &mut self.game_state.ecs,
+                    self.game_state.player,
+                    normalised_delta,
+                );
+            }
         }
     }
 
@@ -293,7 +281,7 @@ impl ApplicationHandler for App {
 
                     render_state.update_camera_buffer();
 
-                    render_state.render(&self.game_state, &self.interaction_mode);
+                    render_state.render(&self.game_state);
                 }
             }
             WindowEvent::Resized(size) => {
@@ -317,27 +305,25 @@ impl ApplicationHandler for App {
 
                 if *key == KeyCode::Escape && !repeat && state.is_pressed() {
                     // Close interface or open inventory
-                    MESSAGE_QUEUE.send(Message::SetInteractionMode({
-                        use InteractionMode::*;
-                        match self.interaction_mode {
-                            Game => UI,
-                            UI | Block(_) => Game,
-                        }
-                    }));
+                    MESSAGE_QUEUE.send(Message::ToggleInteractionMode);
                 }
 
                 self.player_controller.handle_keypress(event);
                 self.game_state.handle_keypress(event);
             }
             event @ WindowEvent::MouseInput { .. } => {
-                self.game_state
-                    .handle_mouse_key(event, &mut self.interaction_mode);
+                self.game_state.handle_mouse_key(event);
             }
             WindowEvent::MouseWheel {
                 delta: MouseScrollDelta::LineDelta(_, y),
                 ..
             } => {
-                if matches!(self.interaction_mode, InteractionMode::Game) && *y != 0. {
+                let interaction_mode = self
+                    .game_state
+                    .ecs
+                    .get::<&InteractionMode>(self.game_state.player)
+                    .unwrap();
+                if matches!(*interaction_mode, InteractionMode::Game) && *y != 0. {
                     let mut hotbar = self
                         .game_state
                         .ecs

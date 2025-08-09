@@ -24,6 +24,7 @@ pub enum Message {
 
     // Action messages - Do this thing
     // It's assumed that at the action has been validated at this point
+    ToggleInteractionMode,
     SetInteractionMode(InteractionMode),
     BreakBlock(BlockPos),
     PlaceBlock(PlaceBlockMessage),

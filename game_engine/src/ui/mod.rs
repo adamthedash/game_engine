@@ -69,7 +69,6 @@ impl UI {
         camera: &Camera,
         view: &TextureView,
         game: &GameState,
-        game_mode: &InteractionMode,
     ) {
         let inputs = self.egui_state.take_egui_input(&draw_context.window);
         let output = self.egui_context.run(inputs, |ctx| {
@@ -79,7 +78,8 @@ impl UI {
             Axes { camera }.show_window(ctx);
 
             let player_entity = game.ecs.entity(game.player).unwrap();
-            match game_mode {
+            let interaction_mode = &*player_entity.get::<&InteractionMode>().unwrap();
+            match interaction_mode {
                 InteractionMode::Game => {}
                 InteractionMode::UI => {
                     draw_inventory(ctx, player_entity);

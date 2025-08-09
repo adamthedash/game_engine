@@ -2,18 +2,22 @@ pub mod ui;
 
 use std::time::Duration;
 
-use cgmath::{Rotation, Vector3};
+use cgmath::{Point3, Rotation, Vector3};
 use hecs::{Entity, EntityBuilder, World};
 
 use crate::{
+    InteractionMode,
     data::{
         block::BlockType,
         item::ItemType,
         loader::{BLOCKS, ITEMS},
     },
-    entity::components::{Container, Crafter, Hotbar, Orientation, Position},
+    entity::components::{
+        Container, Crafter, Hotbar, Orientation, Position, Reach, UprightOrientation, Vision,
+    },
     event::messages::TransferItemMessage,
-    state::world::BlockPos,
+    math::bbox::AABB,
+    state::world::{BlockPos, WorldPos},
 };
 
 pub trait System {
@@ -119,4 +123,50 @@ pub fn get_held_item(ecs: &World, entity: Entity) -> Option<(ItemType, usize)> {
     let (inventory, hotbar) = query.get().unwrap();
 
     hotbar.slots[hotbar.selected].map(|item| (item, inventory.items[item]))
+}
+
+/// Spawn the default player
+pub fn spawn_player(ecs: &mut World) -> Entity {
+    let mut inventory = Container::default();
+    inventory.add_item(ItemType::Dirt, 5);
+    inventory.add_item(ItemType::Stone, 12);
+    inventory.add_item(ItemType::Coal, 12);
+    inventory.add_item(ItemType::Iron, 12);
+    inventory.add_item(ItemType::Copper, 12);
+    inventory.add_item(ItemType::Tin, 12);
+    inventory.add_item(ItemType::Bronze, 12);
+    inventory.add_item(ItemType::Steel, 12);
+    inventory.add_item(ItemType::MagicMetal, 12);
+    inventory.add_item(ItemType::Chest, 12);
+    inventory.add_item(ItemType::Crafter, 12);
+
+    let mut hotbar = Hotbar::default();
+    hotbar.slots[4] = Some(ItemType::Dirt);
+    hotbar.slots[2] = Some(ItemType::Stone);
+
+    let aabb = {
+        // Create player's AABB
+        let height = 1.8;
+        let width = 0.8;
+        let head_height = 1.5;
+
+        let diff = Vector3::new(width / 2., height / 2., width / 2.);
+        let head_diff = Vector3::unit_y() * head_height / 2.;
+
+        AABB::<f32>::new(
+            &(Point3::new(0., 0., 0.) - diff - head_diff),
+            &(Point3::new(0., 0., 0.) + diff - head_diff),
+        )
+    };
+
+    ecs.spawn((
+        WorldPos((-7., -20., -14.).into()),
+        UprightOrientation::default(),
+        inventory,
+        hotbar,
+        Vision(100.),
+        Reach(5.),
+        aabb,
+        InteractionMode::Game,
+    ))
 }

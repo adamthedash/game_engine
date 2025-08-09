@@ -65,11 +65,14 @@ impl GameState {
 
     pub fn handle_keypress(&mut self, _event: &KeyEvent) {}
 
-    pub fn handle_mouse_key(&mut self, event: &WindowEvent, mode: &mut InteractionMode) {
+    pub fn handle_mouse_key(&mut self, event: &WindowEvent) {
         assert!(matches!(event, WindowEvent::MouseInput { .. }));
 
-        if !matches!(mode, InteractionMode::Game) {
-            return;
+        {
+            let interaction_mode = self.ecs.get::<&InteractionMode>(self.player).unwrap();
+            if !matches!(*interaction_mode, InteractionMode::Game) {
+                return;
+            }
         }
 
         if matches!(
