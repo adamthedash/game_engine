@@ -59,14 +59,11 @@ impl Camera {
         let zfar = create_signal(zfar);
 
         let view_proj_matrix = create_memo(move || {
-            let (sin_pitch, cos_pitch) = pitch.get().0.sin_cos();
-            let (sin_yaw, cos_yaw) = yaw.get().0.sin_cos();
+            let pitch = pitch.get();
+            let yaw = yaw.get();
+            let forward = angles_to_vec3(yaw, pitch);
 
-            let view = Matrix4::look_to_rh(
-                pos.get().0,
-                Vector3::new(cos_pitch * cos_yaw, sin_pitch, cos_pitch * sin_yaw).normalize(),
-                Vector3::unit_y(),
-            );
+            let view = Matrix4::look_to_rh(pos.get().0, forward, Vector3::unit_y());
             let proj = perspective(fovy.get(), aspect.get(), znear.get(), zfar.get());
 
             OPENGL_TO_WGPU_MATRIX * proj * view

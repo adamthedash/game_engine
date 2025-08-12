@@ -140,7 +140,7 @@ pub(super) static BLOCK_DATA: LazyLock<Vec<BlockData>> = LazyLock::new(|| {
             })
             .build(),
         BlockData::builder()
-            .texture_path("crafter.png")
+            .texture_path("debug.png")
             .block_type(BlockType::Crafter)
             .hardness(0)
             .item_on_break(ItemType::Crafter)

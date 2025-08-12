@@ -7,7 +7,9 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     InteractionMode,
-    entity::components::{Container, Crafter, Hotbar, Reach, UIType, UprightOrientation, Vision},
+    entity::components::{
+        Behaviour, Container, Crafter, Hotbar, Movement, Reach, UIType, UprightOrientation, Vision,
+    },
     math::bbox::AABB,
     state::world::{BlockPos, WorldPos},
 };
@@ -27,6 +29,13 @@ pub type Player = (
     AABB<f32>,
     InteractionMode,
 );
-pub type Monster = (WorldPos, UprightOrientation);
+pub type Monster = (
+    WorldPos,
+    UprightOrientation,
+    Behaviour,
+    AABB<f32>,
+    Movement,
+    Vision,
+);
 
 pub type BlockStates = FxHashMap<BlockPos, Entity>;

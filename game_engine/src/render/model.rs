@@ -130,6 +130,7 @@ impl Model {
                     .mesh
                     .texcoords
                     .chunks_exact(2)
+                    // Bottom-left -> Top-left origin
                     .map(|tc| [tc[0], 1. - tc[1]]);
 
                 let normals: Box<dyn Iterator<Item = [f32; 3]>> = if m.mesh.normals.is_empty() {

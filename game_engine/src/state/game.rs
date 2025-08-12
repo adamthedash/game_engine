@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use cgmath::{Deg, InnerSpace, MetricSpace, Quaternion, Rotation3, Vector3};
+use cgmath::{InnerSpace, MetricSpace, Point3, Vector3};
 use hecs::Entity;
 use itertools::Itertools;
 use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
@@ -13,10 +13,12 @@ use crate::{
         loader::{BLOCKS, ITEMS},
     },
     entity::{
-        components::{self, Container, Crafter, EntityType, Reach, UprightOrientation, Vision},
+        components::{
+            Behaviour, Container, Crafter, EntityType, Movement, Reach, UprightOrientation, Vision,
+        },
         systems::{
-            MoveSystem, System, crafting_tick, create_block_state, get_breaking_strength,
-            get_held_item, transfer_item,
+            crafting_tick, create_block_state, get_breaking_strength, get_held_item, npc_movement,
+            transfer_item,
         },
     },
     event::{
@@ -25,7 +27,10 @@ use crate::{
             BlockChangedMessage, PlaceBlockMessage, SetCraftingRecipeMessage, SpawnEntityMessage,
         },
     },
-    math::ray::{Ray, RayCollision},
+    math::{
+        bbox::AABB,
+        ray::{Ray, RayCollision},
+    },
     state::world::{Chunk, World, WorldPos},
 };
 
@@ -59,7 +64,7 @@ impl GameState {
     }
 
     pub fn run_ecs_systems(&mut self, duration: &Duration) {
-        MoveSystem::tick(&mut self.ecs, duration);
+        npc_movement(&mut self.ecs, &self.world, duration);
         crafting_tick(&mut self.ecs, duration);
     }
 
@@ -305,8 +310,16 @@ impl Subscriber for GameState {
             Message::SpawnEntity(SpawnEntityMessage { pos, entity_type }) => {
                 // Create the entity
                 let entity_id = self.ecs.spawn((
-                    components::Position(*pos),
-                    components::Orientation(Quaternion::from_angle_y(Deg(180.))),
+                    *pos,
+                    UprightOrientation::default(),
+                    Behaviour::Idle,
+                    AABB::new(
+                        &Point3::new(-0.5_f32, -0.5, -0.5),
+                        &Point3::new(0.5, 0.5, 0.5),
+                    ),
+                    Vision(10.),
+                    Movement { speed: 1. },
+                    entity_type.clone(),
                 ));
                 self.entities.push(entity_id);
             }

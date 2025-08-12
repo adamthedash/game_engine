@@ -1,28 +1,21 @@
-use cgmath::{Point3, Quaternion, Rad, Vector3, Zero};
+use std::f32::consts::FRAC_PI_2;
+
+use cgmath::{InnerSpace, Matrix4, Point3, Quaternion, Rad, Vector3, Zero};
 use enum_map::EnumMap;
+use hecs::Entity;
 
 use crate::{
     data::{
         item::ItemType,
         recipe::{RECIPES, Recipe},
     },
-    entity::EntityId,
     math::angles_to_vec3,
     state::world::WorldPos,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum EntityType {
     Sibeal,
-}
-
-#[derive(Debug, Clone)]
-pub struct Position(pub WorldPos);
-
-impl Default for Position {
-    fn default() -> Self {
-        Self(WorldPos(Point3::new(0., 0., 0.)))
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -38,7 +31,7 @@ impl Default for Orientation {
 pub struct Vision(pub f32);
 
 pub struct Movement {
-    speed: f32,
+    pub speed: f32,
 }
 
 /// Reach distance
@@ -47,7 +40,7 @@ pub struct Reach(pub f32);
 pub enum Behaviour {
     Idle,
     Wandering(WorldPos),
-    Persuing(EntityId),
+    Persuing(Entity),
 }
 
 #[derive(Default)]
@@ -113,6 +106,29 @@ impl UprightOrientation {
     #[inline]
     pub fn forward(&self) -> Vector3<f32> {
         angles_to_vec3(self.yaw, self.pitch)
+    }
+
+    /// Create from a facing direction. Clamps limits to avoid weirdness.
+    #[inline]
+    pub fn from_forward(mut facing: Vector3<f32>) -> Self {
+        assert!(facing.magnitude2() > 0.);
+        facing = facing.normalize();
+
+        const CLAMP: f32 = std::f32::consts::FRAC_PI_2 * 0.99;
+
+        // TODO: edge cases
+        let yaw = ((-facing.x).atan2(facing.z) + FRAC_PI_2).rem_euclid(std::f32::consts::PI * 2.);
+        let pitch = facing.y.asin().clamp(-CLAMP, CLAMP);
+
+        Self {
+            pitch: Rad(pitch),
+            yaw: Rad(yaw),
+        }
+    }
+
+    #[inline]
+    pub fn to_mat4(&self) -> Matrix4<f32> {
+        Matrix4::look_to_rh(Point3::new(0., 0., 0.), self.forward(), Vector3::unit_y())
     }
 }
 

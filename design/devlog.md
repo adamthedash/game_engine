@@ -660,6 +660,10 @@ I also came across [this YouTube channel](https://www.youtube.com/@TheCherno) wh
 ## Day 32
 I ended up going full into ECS for most things. At first it was a bit more cumbersome but now that I have most things converted over it's a lot nicer to have a single way of querying and actioning on state for the game. The one thing that I don't really like is that I lose the OOP-style methods for more complex objects. For example I used to have a `Player.get_breaking_strength()` which read from the `Container` and `Hotbar` "components" under the hood, but now I have a `get_breaking_strength(&ECS, EntityId)`. The benefit is that I can do that to any entity with the right components though.  
 
+## Day 33  
+Now that I have most data over on the ECS, I can start thinking about how my systems will work.  
+
+
 
 
 

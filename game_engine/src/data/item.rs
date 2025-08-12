@@ -188,7 +188,7 @@ pub(super) static ITEM_DATA: LazyLock<Vec<ItemData>> = LazyLock::new(|| {
         ItemData::builder()
             .item_type(ItemType::Crafter)
             .name("Crafter")
-            .icon_path("crafter.png")
+            .icon_path("debug.png")
             .weight(1.)
             .block(BlockType::Crafter)
             .build(),

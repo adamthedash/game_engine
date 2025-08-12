@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use cgmath::{Angle, BaseFloat, InnerSpace, Rad, Vector3, Zero};
 use num_traits::{Float, float::TotalOrder};
 
@@ -6,7 +8,7 @@ pub mod frustum;
 pub mod ray;
 pub mod rng;
 
-pub trait NumFuncs: Float {
+pub trait NumFuncs: Float + Debug {
     /// Returns the futher of the two numbers from 0
     #[inline]
     fn further(&self, other: Self) -> Self {
@@ -26,10 +28,13 @@ pub trait NumFuncs: Float {
     /// Returns the futher of the two numbers from 0
     #[inline]
     fn closer(&self, other: Self) -> Self {
+        if self.is_zero() || other.is_zero() {
+            return Self::zero();
+        }
         assert_eq!(
             self.is_sign_negative(),
             other.is_sign_negative(),
-            "Numbers must be on the same side of 0"
+            "Numbers must be on the same side of 0, got {self:?}, {other:?}",
         );
 
         if self.is_sign_negative() {
@@ -56,7 +61,7 @@ pub trait NumFuncs: Float {
     }
 }
 
-impl<T: Float> NumFuncs for T {}
+impl<T: Float + Debug> NumFuncs for T {}
 
 pub trait Vectorfuncs {
     /// Convert a vector offset to it's closest unit offset along one cardinal direction

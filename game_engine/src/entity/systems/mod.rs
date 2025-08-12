@@ -2,38 +2,105 @@ pub mod ui;
 
 use std::time::Duration;
 
-use cgmath::{Point3, Rotation, Vector3};
+use cgmath::{EuclideanSpace, InnerSpace, MetricSpace, Point3, Vector3};
 use hecs::{Entity, EntityBuilder, World};
+use rand::{random_bool, random_range};
 
 use crate::{
     InteractionMode,
+    camera::collision::predict_collisions,
     data::{
         block::BlockType,
         item::ItemType,
         loader::{BLOCKS, ITEMS},
     },
     entity::components::{
-        Container, Crafter, Hotbar, Orientation, Position, Reach, UprightOrientation, Vision,
+        Behaviour, Container, Crafter, Hotbar, Movement, Reach, UprightOrientation, Vision,
     },
     event::messages::TransferItemMessage,
     math::bbox::AABB,
     state::world::{BlockPos, WorldPos},
 };
 
-pub trait System {
-    fn tick(eccs: &mut World, duration: &Duration);
-}
+pub fn npc_movement(ecs: &mut World, world: &crate::state::world::World, duration: &Duration) {
+    let mut q = ecs.query::<(
+        &mut WorldPos,
+        &mut UprightOrientation,
+        &mut Behaviour,
+        &AABB<f32>,
+        &Vision,
+        &Movement,
+    )>();
+    for (_, (position, orientation, behaviour, aabb, vision, movement)) in q.iter() {
+        let idle_time = 2.; // Average time spent idling
 
-pub struct MoveSystem;
+        let mut move_towards_target =
+            |position: &mut WorldPos, target_pos: &WorldPos, buffer: f32| {
+                let direction = target_pos.0 - position.0;
+                let move_distance = (movement.speed * duration.as_secs_f32())
+                    .min(direction.magnitude() - buffer)
+                    .max(0.);
 
-impl System for MoveSystem {
-    fn tick(ecs: &mut World, duration: &Duration) {
-        for (_, (position, orientation)) in ecs.query_mut::<(&mut Position, &mut Orientation)>() {
-            let facing = orientation.0.rotate_vector(Vector3::unit_z());
-            let movement_speed = 0.1 * duration.as_secs_f32();
+                // Face at target
+                // TODO: reverse direction when entity model is oriented properly
+                *orientation = UprightOrientation::from_forward(-direction);
 
-            position.0.0 += facing * movement_speed;
+                let move_vector = direction.normalize_to(move_distance);
+                let npc_aabb = aabb.translate(&position.0.to_vec());
+                let (move_vector, collisions) = predict_collisions(&npc_aabb, world, move_vector);
+                position.0 += move_vector;
+
+                let collided = collisions.iter().any(|c| c.is_some());
+                let new_distance = target_pos.0.distance(position.0);
+
+                (new_distance, collided)
+            };
+
+        // If there's a player in sight, persue them
+        let mut players = ecs.query::<&WorldPos>().without::<&Behaviour>();
+        let player = players
+            .iter()
+            .find(|(_, pos)| pos.0.distance2(position.0) <= vision.0.powi(2));
+        if let Some((entity, _)) = player {
+            *behaviour = Behaviour::Persuing(entity);
         }
+
+        match behaviour {
+            Behaviour::Idle => {
+                // Chance of going to Wandering state
+                if random_bool((duration.as_secs_f32() / idle_time).clamp(0., 1.) as f64) {
+                    // Select a random point nearby to wander to
+                    let target_pos = *position
+                        + Vector3::new(
+                            random_range(-5_f32..5.),
+                            random_range(-5_f32..5.),
+                            random_range(-5_f32..5.),
+                        );
+
+                    *behaviour = Behaviour::Wandering(target_pos);
+                }
+            }
+            Behaviour::Wandering(target_pos) => {
+                let (distance, collided) = move_towards_target(position, target_pos, 0.);
+                if distance == 0. || collided {
+                    *behaviour = Behaviour::Idle
+                }
+            }
+            Behaviour::Persuing(target) => {
+                // Get target
+                let target_pos = ecs
+                    .get::<&WorldPos>(*target)
+                    .expect("Failed to get target entity!");
+
+                // Target has gone out of range, give up
+                let distance_to_target = target_pos.0.distance2(position.0);
+                if distance_to_target > vision.0.powi(2) {
+                    *behaviour = Behaviour::Idle;
+                } else {
+                    move_towards_target(position, &target_pos, 1.);
+                }
+            }
+        };
     }
 }
 

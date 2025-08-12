@@ -1,7 +1,7 @@
 use std::{path::Path, sync::Arc};
 
 use anyhow::Context;
-use cgmath::{EuclideanSpace, Matrix3, Matrix4, One};
+use cgmath::{EuclideanSpace, Matrix3, Matrix4, One, SquareMatrix};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, Buffer, BufferDescriptor,
     BufferUsages, CommandEncoderDescriptor, Device, LoadOp, Operations, RenderPassColorAttachment,
@@ -15,7 +15,7 @@ use crate::{
     InteractionMode,
     block::Block,
     data::loader::{BLOCK_TEXTURES, BLOCKS, init_block_info, init_item_info},
-    entity::components::{self, Vision},
+    entity::components::{self, Behaviour, Vision},
     event::{Message, Subscriber},
     render::{
         camera::{Camera, CameraUniform},
@@ -355,15 +355,16 @@ impl RenderState {
         );
 
         // Entities
-
         let mut sibeal_query = game
             .ecs
-            .query::<(&components::Position, &components::Orientation)>();
-        let (_, (sibeal_pos, sibeal_rot)) = sibeal_query.iter().next().unwrap();
+            .query::<(&WorldPos, &components::UprightOrientation)>()
+            .with::<&Behaviour>();
+        let (_, (sibeal_pos, sibeal_rot)) =
+            sibeal_query.iter().next().expect("Failed to fetch entity");
 
         let sibeal_instances = [texture::Instance {
-            model: (Matrix4::from_translation(sibeal_pos.0.0.to_vec())
-                * Matrix4::from(sibeal_rot.0))
+            model: (Matrix4::from_translation(sibeal_pos.0.to_vec())
+                * sibeal_rot.to_mat4().invert().unwrap())
             .into(),
             normal: Matrix3::one().into(),
             texture_index: 0,
