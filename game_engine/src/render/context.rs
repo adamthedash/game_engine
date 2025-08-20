@@ -59,12 +59,10 @@ impl DrawContext {
         // Device - Yet another GPU handle
         // Queue - Used to send draw operations to the GPU
         let (device, queue) = adapter
-            .request_device(
-                &DeviceDescriptor {
-                    required_features: Features::empty(),
-                    ..Default::default()
-                },
-            )
+            .request_device(&DeviceDescriptor {
+                required_features: Features::empty(),
+                ..Default::default()
+            })
             .await
             .unwrap();
 

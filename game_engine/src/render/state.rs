@@ -188,7 +188,7 @@ impl RenderState {
             create_instance_buffer::<texture::Instance>(&draw_context.device, 1, "Sibeal");
 
         // GUI
-        let mut ui = UI::new(&draw_context.device, &draw_context.window);
+        let mut ui = UI::new(&draw_context);
 
         // Item textures
         init_item_info(&draw_context, &mut ui.egui_renderer);

@@ -8,8 +8,8 @@ use egui_taffy::{TuiBuilderLogic, TuiWidget};
 use egui_wgpu::{Renderer, ScreenDescriptor};
 use egui_winit::State;
 use wgpu::{
-    CommandEncoder, Device, LoadOp, Operations, RenderPassColorAttachment, RenderPassDescriptor,
-    StoreOp, TextureFormat, TextureView,
+    CommandEncoder, LoadOp, Operations, RenderPassColorAttachment, RenderPassDescriptor,
+    StoreOp, TextureView,
 };
 
 use crate::{
@@ -39,14 +39,14 @@ pub struct UI {
 }
 
 impl UI {
-    pub fn new(device: &Device, window: &winit::window::Window) -> Self {
+    pub fn new(context: &DrawContext) -> Self {
         let egui_renderer =
-            egui_wgpu::Renderer::new(device, TextureFormat::Bgra8UnormSrgb, None, 1, false);
+            egui_wgpu::Renderer::new(&context.device, context.config.format, None, 1, false);
         let egui_context = egui::Context::default();
         let egui_state = egui_winit::State::new(
             egui_context.clone(),
             egui::ViewportId::ROOT,
-            &window,
+            &context.window,
             None,
             None,
             None,
